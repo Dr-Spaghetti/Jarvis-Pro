@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "JarvisClient",
-  "description": "Client registry entry schema",
+  "description": "Client registry entry schema v2",
   "type": "object",
   "required": ["id", "name"],
   "properties": {
@@ -10,30 +10,71 @@
       "description": "Unique slug ID (lowercase, hyphens). Used in all CLI commands.",
       "pattern": "^[a-z0-9-]+$"
     },
-    "name": { "type": "string", "description": "Display name" },
+    "name": { "type": "string" },
     "active": { "type": "boolean", "default": true },
-    "tags": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "e.g. ['legal', 'home-services', 'philadelphia']"
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "industry": {
+      "type": "string",
+      "description": "Slug industry (e.g. law-firm, home-services, medical, restaurant)"
     },
-    "business_type": { "type": "string", "description": "Human-readable business category" },
+    "business_type": { "type": "string" },
     "primary_keyword": { "type": "string" },
     "secondary_keywords": { "type": "array", "items": { "type": "string" } },
     "city": { "type": "string" },
     "state": { "type": "string", "description": "2-letter state code" },
     "website": { "type": "string", "format": "uri" },
-    "integrations": {
+    "billing": {
       "type": "object",
       "properties": {
-        "local_falcon_id": { "type": "string" },
-        "gbp_url": { "type": "string", "format": "uri" },
-        "gbp_cid": { "type": "string", "description": "Google Business CID number" },
-        "yext_account_id": { "type": "string" },
+        "plan": { "type": "string", "enum": ["retainer", "monthly", "project", "trial"] },
+        "monthly_usd": { "type": "number" },
+        "billing_day": { "type": "integer", "minimum": 1, "maximum": 31 }
+      }
+    },
+    "local_falcon": {
+      "type": "object",
+      "properties": {
+        "location_ids": { "type": "array", "items": { "type": "string" } },
+        "campaign_ids": { "type": "array", "items": { "type": "string" } },
+        "default_grid": { "type": "string", "default": "7x7" },
+        "default_radius_miles": { "type": "integer", "default": 5 }
+      }
+    },
+    "gbp": {
+      "type": "object",
+      "properties": {
+        "place_id": { "type": "string", "description": "ChIJ… format Google Place ID" },
+        "cid": { "type": "string", "description": "Numeric CID" },
+        "profile_url": { "type": "string", "format": "uri" },
+        "primary_category": { "type": "string" }
+      }
+    },
+    "yext": {
+      "type": "object",
+      "properties": {
+        "account_id": { "type": "string" },
+        "listing_count": { "type": "integer" },
+        "managed_directly": { "type": "boolean" },
         "brightlocal_id": { "type": "string" },
         "whitespark_id": { "type": "string" },
         "moz_campaign_id": { "type": "string" }
       }
+    },
+    "citations": {
+      "type": "object",
+      "properties": {
+        "target_directories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "e.g. ['yelp','bbb','avvo','justia']"
+        },
+        "last_audit": { "type": "string", "format": "date" }
+      }
+    },
+    "overrides": {
+      "type": "object",
+      "description": "Per-client skill behaviour overrides (e.g. citation_audit_skip: ['facebook'])",
+      "additionalProperties": true
     },
     "contact": {
       "type": "object",

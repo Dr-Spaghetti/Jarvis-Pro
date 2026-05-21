@@ -14,7 +14,9 @@ Your action items must be implementable the same day they're read."""
 
 PROMPT = """\
 Client: {client_context}
-GBP URL: {gbp_url}
+GBP Profile URL: {gbp_url}
+GBP Place ID: {place_id}
+Primary Category: {primary_category}
 
 Perform a GBP optimization audit. For each element, give a score 0-10 and specific notes.
 
@@ -63,6 +65,8 @@ class GBPMonitorSkill(SkillBase):
     def _run(self, client: Client, **params) -> str:
         prompt = PROMPT.format(
             client_context=client.to_context_string(),
-            gbp_url=client.integrations.gbp_url or "(GBP URL not configured)",
+            gbp_url=client.gbp.profile_url or "(GBP profile URL not configured)",
+            place_id=client.gbp.place_id or "(not set)",
+            primary_category=client.gbp.primary_category or "(not set)",
         )
         return self.anthropic.complete(prompt, system=SYSTEM, max_tokens=3000)

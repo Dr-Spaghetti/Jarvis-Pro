@@ -19,6 +19,7 @@ PROMPT_WITH_DATA = """\
 Client: {client_name}
 Location: {location}
 Primary keyword: {primary_keyword}
+Grid: {grid} at {radius} mile radius
 Report date: {date}
 
 Local Falcon Data:
@@ -38,7 +39,7 @@ Client: {client_name}
 Location: {location}
 Primary keyword: {primary_keyword}
 
-Local Falcon is not yet configured for this client (no local_falcon_id set).
+Local Falcon is not yet configured for this client (no location_ids set).
 
 Generate a Local Falcon setup checklist and explain what they can expect to learn
 from their first scan. Include:
@@ -64,12 +65,13 @@ class FalconReportSkill(SkillBase):
             )
             return self.anthropic.complete(prompt, system=SYSTEM, max_tokens=2000)
 
-        # Attempt to fetch real data
         falcon_data = self._fetch_falcon_data(client)
         prompt = PROMPT_WITH_DATA.format(
             client_name=client.name,
             location=client.location_str,
             primary_keyword=client.primary_keyword,
+            grid=client.local_falcon.default_grid,
+            radius=client.local_falcon.default_radius_miles,
             date=date,
             falcon_data=falcon_data,
         )
@@ -80,10 +82,11 @@ class FalconReportSkill(SkillBase):
             from integrations.local_falcon import LocalFalconClient
             from core.config import settings
             if not settings.has_local_falcon:
-                return "(LOCAL_FALCON_API_KEY not configured — using placeholder data)"
+                return "(LOCAL_FALCON_API_KEY not configured — add to .env)"
             fc = LocalFalconClient()
-            summary = fc.summarize_latest_scan(client.integrations.local_falcon_id)
-            trend = fc.get_trend_report(client.integrations.local_falcon_id, days=30)
+            location_id = client.local_falcon.primary_location_id
+            summary = fc.summarize_latest_scan(location_id)
+            trend = fc.get_trend_report(location_id, days=30)
             return f"{summary}\n\nTrend (30 days): {trend}"
         except Exception as exc:
             logger.warning("falcon_fetch_failed", client=client.id, exc=str(exc))

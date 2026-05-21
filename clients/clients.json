@@ -1,29 +1,52 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "clients": [
     {
       "id": "kaplunmarx",
       "name": "KaplunMarx",
       "active": true,
       "tags": ["legal", "personal-injury", "philadelphia"],
+      "industry": "law-firm",
       "business_type": "Personal Injury Law Firm",
       "primary_keyword": "personal injury lawyer philadelphia",
       "secondary_keywords": [
         "car accident lawyer philadelphia",
-        "slip and fall attorney philadelphia"
+        "slip and fall attorney philadelphia",
+        "wrongful death lawyer philadelphia"
       ],
       "city": "Philadelphia",
       "state": "PA",
       "website": "https://kaplunmarx.com",
-      "integrations": {
-        "local_falcon_id": "",
-        "gbp_url": "",
-        "gbp_cid": "",
-        "yext_account_id": "",
+      "billing": {
+        "plan": "retainer",
+        "monthly_usd": 1500,
+        "billing_day": 1
+      },
+      "local_falcon": {
+        "location_ids": [],
+        "campaign_ids": [],
+        "default_grid": "7x7",
+        "default_radius_miles": 5
+      },
+      "gbp": {
+        "place_id": "",
+        "cid": "",
+        "profile_url": "",
+        "primary_category": "Personal injury attorney"
+      },
+      "yext": {
+        "account_id": "",
+        "listing_count": 0,
+        "managed_directly": true,
         "brightlocal_id": "",
         "whitespark_id": "",
         "moz_campaign_id": ""
       },
+      "citations": {
+        "target_directories": ["avvo", "justia", "findlaw", "martindale", "lawyers.com", "yelp", "bbb", "google"],
+        "last_audit": ""
+      },
+      "overrides": {},
       "contact": {
         "name": "",
         "email": "",
@@ -38,24 +61,47 @@
       "name": "Carpet Salem",
       "active": true,
       "tags": ["home-services", "flooring", "salem"],
+      "industry": "home-services",
       "business_type": "Flooring & Carpet Installation",
       "primary_keyword": "carpet installation salem oregon",
       "secondary_keywords": [
         "hardwood flooring salem",
-        "flooring store salem"
+        "flooring store salem",
+        "vinyl plank flooring salem"
       ],
       "city": "Salem",
       "state": "OR",
       "website": "",
-      "integrations": {
-        "local_falcon_id": "",
-        "gbp_url": "",
-        "gbp_cid": "",
-        "yext_account_id": "",
+      "billing": {
+        "plan": "monthly",
+        "monthly_usd": 800,
+        "billing_day": 15
+      },
+      "local_falcon": {
+        "location_ids": [],
+        "campaign_ids": [],
+        "default_grid": "7x7",
+        "default_radius_miles": 10
+      },
+      "gbp": {
+        "place_id": "",
+        "cid": "",
+        "profile_url": "",
+        "primary_category": "Carpet store"
+      },
+      "yext": {
+        "account_id": "",
+        "listing_count": 0,
+        "managed_directly": true,
         "brightlocal_id": "",
         "whitespark_id": "",
         "moz_campaign_id": ""
       },
+      "citations": {
+        "target_directories": ["yelp", "bbb", "houzz", "angi", "homeadvisor", "google", "bing"],
+        "last_audit": ""
+      },
+      "overrides": {},
       "contact": {
         "name": "",
         "email": "",
