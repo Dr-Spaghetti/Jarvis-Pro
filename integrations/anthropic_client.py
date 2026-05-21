@@ -17,7 +17,11 @@ class JarvisAnthropicClient:
         key = api_key or settings.anthropic_api_key
         if not key:
             raise RuntimeError("ANTHROPIC_API_KEY is not set. Run: cp .env.example .env")
-        self._client = anthropic.Anthropic(api_key=key)
+        # sk-ant-si- prefix = Claude Code session ingress (OAuth), uses auth_token
+        if key.startswith("sk-ant-si-"):
+            self._client = anthropic.Anthropic(auth_token=key)
+        else:
+            self._client = anthropic.Anthropic(api_key=key)
         self.model = model or settings.default_model
 
     # ── Simple completion ────────────────────────────────────────────────────

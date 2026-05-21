@@ -31,7 +31,16 @@ from rich.table import Table
 
 from core.config import settings
 from core.logger import logger
-from core.registry import Client, ClientIntegrations, ClientRegistry
+from core.registry import (
+    Client,
+    ClientBilling,
+    ClientContact,
+    ClientRegistry,
+    CitationsConfig,
+    GBPConfig,
+    LocalFalconConfig,
+    YextConfig,
+)
 
 app = typer.Typer(
     name="jarvis",
@@ -211,7 +220,9 @@ def client_show(client_id: str = typer.Argument(..., help="Client ID or name")):
         rprint(f"[red]Client not found: {client_id}[/red]")
         raise typer.Exit(1)
     console.print(Panel(client.to_context_string(), title=f"[bold]{client.name}[/bold]"))
-    rprint(f"\n[dim]Integrations: {client.integrations.model_dump()}[/dim]")
+    rprint(f"\n[dim]Local Falcon: {client.local_falcon.model_dump()}[/dim]")
+    rprint(f"[dim]GBP: {client.gbp.model_dump()}[/dim]")
+    rprint(f"[dim]Yext: {client.yext.model_dump()}[/dim]")
 
 
 @client_app.command("add")
@@ -229,9 +240,11 @@ def client_add():
     notes = typer.prompt("Notes", default="")
 
     rprint("\n[bold]Integrations (press Enter to skip):[/bold]")
-    gbp_url = typer.prompt("GBP URL", default="")
-    local_falcon_id = typer.prompt("Local Falcon location ID", default="")
+    gbp_url = typer.prompt("GBP Profile URL", default="")
+    gbp_category = typer.prompt("GBP Primary Category", default="")
+    falcon_location_id = typer.prompt("Local Falcon location ID", default="")
     yext_id = typer.prompt("Yext account ID", default="")
+    citations_raw = typer.prompt("Citation directories (comma-separated)", default="yelp,bbb,google")
 
     client = Client(
         id=client_id,
@@ -242,10 +255,13 @@ def client_add():
         state=state,
         website=website,
         notes=notes,
-        integrations=ClientIntegrations(
-            gbp_url=gbp_url,
-            local_falcon_id=local_falcon_id,
-            yext_account_id=yext_id,
+        gbp=GBPConfig(profile_url=gbp_url, primary_category=gbp_category),
+        local_falcon=LocalFalconConfig(
+            location_ids=[falcon_location_id] if falcon_location_id else []
+        ),
+        yext=YextConfig(account_id=yext_id),
+        citations=CitationsConfig(
+            target_directories=[d.strip() for d in citations_raw.split(",") if d.strip()]
         ),
     )
 

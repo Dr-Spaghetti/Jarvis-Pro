@@ -13,7 +13,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.config import settings
-from core.registry import Client, ClientContact, ClientIntegrations, ClientRegistry
+from core.registry import (
+    Client,
+    ClientBilling,
+    ClientContact,
+    CitationsConfig,
+    ClientRegistry,
+    GBPConfig,
+    LocalFalconConfig,
+    YextConfig,
+)
 from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
@@ -42,7 +51,8 @@ def main():
 
     name = prompt("Business name", required=True)
     suggested_id = slugify(name)
-    client_id = prompt(f"Client ID (slug)", default=suggested_id)
+    client_id = prompt("Client ID (slug)", default=suggested_id)
+    industry = prompt("Industry (e.g. law-firm, home-services, medical)")
     business_type = prompt("Business type (e.g. Personal Injury Law Firm)")
     primary_keyword = prompt("Primary keyword (e.g. 'plumber las vegas')")
 
@@ -52,31 +62,49 @@ def main():
     website = prompt("Website URL")
 
     console.print("\n[bold]Keywords[/bold]")
-    secondary_kws_raw = prompt("Secondary keywords (comma-separated)", default="")
-    secondary_keywords = [k.strip() for k in secondary_kws_raw.split(",") if k.strip()]
+    secondary_raw = prompt("Secondary keywords (comma-separated)", default="")
+    secondary_keywords = [k.strip() for k in secondary_raw.split(",") if k.strip()]
 
     console.print("\n[bold]Contact[/bold]")
     contact_name = prompt("Contact name")
     contact_email = prompt("Contact email")
     contact_phone = prompt("Contact phone")
 
-    console.print("\n[bold]Integrations[/bold]")
-    gbp_url = prompt("GBP URL (Google Business Profile)")
-    gbp_cid = prompt("GBP CID (numeric ID)")
-    local_falcon_id = prompt("Local Falcon location ID")
+    console.print("\n[bold]Billing[/bold]")
+    plan = prompt("Plan (retainer/monthly/project)", default="monthly")
+    monthly_usd = float(prompt("Monthly USD", default="0") or "0")
+
+    console.print("\n[bold]GBP[/bold]")
+    gbp_url = prompt("GBP Profile URL")
+    gbp_place_id = prompt("GBP Place ID (ChIJ...)")
+    gbp_category = prompt("GBP Primary Category")
+
+    console.print("\n[bold]Local Falcon[/bold]")
+    lf_location_raw = prompt("Location ID(s) (comma-separated)", default="")
+    lf_locations = [x.strip() for x in lf_location_raw.split(",") if x.strip()]
+    lf_grid = prompt("Default grid", default="7x7")
+    lf_radius = int(prompt("Default radius (miles)", default="5") or "5")
+
+    console.print("\n[bold]Yext & Other Listings[/bold]")
     yext_id = prompt("Yext account ID")
     brightlocal_id = prompt("BrightLocal campaign ID")
 
-    console.print("\n[bold]Notes[/bold]")
-    notes = prompt("Any notes about this client")
+    console.print("\n[bold]Citations[/bold]")
+    citations_raw = prompt(
+        "Target directories (comma-separated)",
+        default="yelp,bbb,google",
+    )
+    citation_dirs = [d.strip() for d in citations_raw.split(",") if d.strip()]
 
-    console.print("\n[bold]Tags[/bold] (comma-separated, e.g. 'legal,philadelphia')")
-    tags_raw = prompt("Tags", default="")
+    console.print("\n[bold]Tags & Notes[/bold]")
+    tags_raw = prompt("Tags (comma-separated, e.g. 'legal,philadelphia')", default="")
     tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
+    notes = prompt("Notes")
 
     client = Client(
         id=client_id,
         name=name,
+        industry=industry,
         business_type=business_type,
         primary_keyword=primary_keyword,
         secondary_keywords=secondary_keywords,
@@ -85,14 +113,16 @@ def main():
         website=website,
         tags=tags,
         notes=notes,
+        billing=ClientBilling(plan=plan, monthly_usd=monthly_usd),
         contact=ClientContact(name=contact_name, email=contact_email, phone=contact_phone),
-        integrations=ClientIntegrations(
-            gbp_url=gbp_url,
-            gbp_cid=gbp_cid,
-            local_falcon_id=local_falcon_id,
-            yext_account_id=yext_id,
-            brightlocal_id=brightlocal_id,
+        gbp=GBPConfig(place_id=gbp_place_id, profile_url=gbp_url, primary_category=gbp_category),
+        local_falcon=LocalFalconConfig(
+            location_ids=lf_locations,
+            default_grid=lf_grid,
+            default_radius_miles=lf_radius,
         ),
+        yext=YextConfig(account_id=yext_id, brightlocal_id=brightlocal_id),
+        citations=CitationsConfig(target_directories=citation_dirs),
     )
 
     console.print("\n[bold]Summary[/bold]")
@@ -111,11 +141,8 @@ def main():
         rprint(f"[red]Error: {e}[/red]")
         return
 
-    # Optionally create Obsidian profile
     if settings.has_vault:
-        create_note = console.input(
-            "Create Obsidian client profile? [y/N]: "
-        ).strip().lower()
+        create_note = console.input("Create Obsidian client profile? [y/N]: ").strip().lower()
         if create_note == "y":
             try:
                 from integrations.obsidian import ObsidianVault
@@ -126,9 +153,10 @@ def main():
                 rprint(f"[yellow]Could not create Obsidian profile: {exc}[/yellow]")
 
     rprint(f"\n[bold green]Done! Client '{name}' is ready.[/bold green]")
-    rprint(f"Next steps:")
+    rprint(f"\nNext steps:")
     rprint(f"  jarvis skill run citation-audit --clients {client_id}")
     rprint(f"  jarvis skill run gbp-monitor --clients {client_id}")
+    rprint(f"  jarvis skill run keyword-hygiene --clients {client_id}")
 
 
 if __name__ == "__main__":
