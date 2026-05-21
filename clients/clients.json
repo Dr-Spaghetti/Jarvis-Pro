@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "clients": [
+    {
+      "id": "kaplunmarx",
+      "name": "KaplunMarx",
+      "active": true,
+      "tags": ["legal", "personal-injury", "philadelphia"],
+      "business_type": "Personal Injury Law Firm",
+      "primary_keyword": "personal injury lawyer philadelphia",
+      "secondary_keywords": [
+        "car accident lawyer philadelphia",
+        "slip and fall attorney philadelphia"
+      ],
+      "city": "Philadelphia",
+      "state": "PA",
+      "website": "https://kaplunmarx.com",
+      "integrations": {
+        "local_falcon_id": "",
+        "gbp_url": "",
+        "gbp_cid": "",
+        "yext_account_id": "",
+        "brightlocal_id": "",
+        "whitespark_id": "",
+        "moz_campaign_id": ""
+      },
+      "contact": {
+        "name": "",
+        "email": "",
+        "phone": ""
+      },
+      "notes": "Top-priority client. Focus on 5-star review velocity and citation consistency.",
+      "onboarded_at": "2026-01-15T00:00:00",
+      "updated_at": "2026-05-21T00:00:00"
+    },
+    {
+      "id": "carpet-salem",
+      "name": "Carpet Salem",
+      "active": true,
+      "tags": ["home-services", "flooring", "salem"],
+      "business_type": "Flooring & Carpet Installation",
+      "primary_keyword": "carpet installation salem oregon",
+      "secondary_keywords": [
+        "hardwood flooring salem",
+        "flooring store salem"
+      ],
+      "city": "Salem",
+      "state": "OR",
+      "website": "",
+      "integrations": {
+        "local_falcon_id": "",
+        "gbp_url": "",
+        "gbp_cid": "",
+        "yext_account_id": "",
+        "brightlocal_id": "",
+        "whitespark_id": "",
+        "moz_campaign_id": ""
+      },
+      "contact": {
+        "name": "",
+        "email": "",
+        "phone": ""
+      },
+      "notes": "",
+      "onboarded_at": "2026-02-01T00:00:00",
+      "updated_at": "2026-05-21T00:00:00"
+    }
+  ]
+}

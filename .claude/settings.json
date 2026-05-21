@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python*)",
+      "Bash(pip*)",
+      "Bash(pytest*)",
+      "Bash(git*)",
+      "Bash(find*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(ruff*)",
+      "Bash(python3 cli.py*)",
+      "Bash(python3 scripts/*)",
+      "Bash(python3 mcp_server.py*)"
+    ]
+  }
+}

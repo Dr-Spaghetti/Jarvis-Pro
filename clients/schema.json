@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JarvisClient",
+  "description": "Client registry entry schema",
+  "type": "object",
+  "required": ["id", "name"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique slug ID (lowercase, hyphens). Used in all CLI commands.",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": { "type": "string", "description": "Display name" },
+    "active": { "type": "boolean", "default": true },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "e.g. ['legal', 'home-services', 'philadelphia']"
+    },
+    "business_type": { "type": "string", "description": "Human-readable business category" },
+    "primary_keyword": { "type": "string" },
+    "secondary_keywords": { "type": "array", "items": { "type": "string" } },
+    "city": { "type": "string" },
+    "state": { "type": "string", "description": "2-letter state code" },
+    "website": { "type": "string", "format": "uri" },
+    "integrations": {
+      "type": "object",
+      "properties": {
+        "local_falcon_id": { "type": "string" },
+        "gbp_url": { "type": "string", "format": "uri" },
+        "gbp_cid": { "type": "string", "description": "Google Business CID number" },
+        "yext_account_id": { "type": "string" },
+        "brightlocal_id": { "type": "string" },
+        "whitespark_id": { "type": "string" },
+        "moz_campaign_id": { "type": "string" }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" }
+      }
+    },
+    "notes": { "type": "string" },
+    "onboarded_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,60 @@
+version: "3.8"
+
+# Jarvis-Pro — LibreChat + supporting services
+# Usage: docker compose up -d
+# Then visit: http://localhost:3080
+
+services:
+  # ── LibreChat ─────────────────────────────────────────────────────────────
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: jarvis-librechat
+    restart: unless-stopped
+    ports:
+      - "3080:3080"
+    depends_on:
+      - mongodb
+      - meilisearch
+    environment:
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET required}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET required}
+      - CREDS_KEY=${CREDS_KEY:?CREDS_KEY required}
+      - CREDS_IV=${CREDS_IV:?CREDS_IV required}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
+      - ALLOW_SOCIAL_LOGIN=false
+    volumes:
+      - ./librechat.yaml:/app/librechat.yaml:ro
+      - librechat_images:/app/client/public/images
+      - librechat_logs:/app/api/logs
+
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: jarvis-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    command: mongod --noauth
+
+  # ── Meilisearch (conversation search) ────────────────────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
+    container_name: jarvis-meilisearch
+    restart: unless-stopped
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey}
+      - MEILI_ENV=production
+    volumes:
+      - meilisearch_data:/meili_data
+
+volumes:
+  mongodb_data:
+  meilisearch_data:
+  librechat_images:
+  librechat_logs:

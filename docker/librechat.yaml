@@ -1,0 +1,67 @@
+# LibreChat configuration for Jarvis-Pro
+# Place this file at docker/librechat.yaml
+# Reference: https://www.librechat.ai/docs/configuration/librechat_yaml
+
+version: 1.1.4
+
+cache: true
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+rateLimits:
+  fileUploads:
+    ipMax: 100
+    ipWindowInMinutes: 60
+    userMax: 50
+    userWindowInMinutes: 60
+
+# ── Interface ─────────────────────────────────────────────────────────────────
+interface:
+  # Disable unused providers to keep the UI clean
+  endpointsMenu: true
+  modelSelect: true
+  parameters: true
+  sidePanel: true
+  presets: true
+  prompts: true
+  bookmarks: true
+  multiConvo: true
+  agents: true
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+endpoints:
+  anthropic:
+    apiKey: "${ANTHROPIC_API_KEY}"
+    models:
+      default: ["claude-sonnet-4-6", "claude-opus-4-7", "claude-haiku-4-5-20251001"]
+      fetch: false
+    titleConvo: true
+    titleModel: "claude-haiku-4-5-20251001"
+    summarize: true
+    summaryModel: "claude-haiku-4-5-20251001"
+
+# ── MCP Servers ───────────────────────────────────────────────────────────────
+# Add Jarvis-Pro tools as MCP servers so LibreChat agents can call them
+mcpServers:
+  jarvis-skills:
+    # Run the Jarvis MCP server (stdio mode)
+    # Exposes: run_skill, list_skills, list_clients, research
+    type: stdio
+    command: python
+    args: ["mcp_server.py"]
+    env:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      OBSIDIAN_VAULT_PATH: "${OBSIDIAN_VAULT_PATH}"
+      LOCAL_FALCON_API_KEY: "${LOCAL_FALCON_API_KEY}"
+
+# ── File handling ─────────────────────────────────────────────────────────────
+fileConfig:
+  endpoints:
+    anthropic:
+      disabled: false
+      fileLimit: 5
+      fileSizeLimit: 10  # MB
+      totalSizeLimit: 50
+      supportedMimeTypes:
+        - "image/.*"
+        - "application/pdf"
+        - "text/.*"
