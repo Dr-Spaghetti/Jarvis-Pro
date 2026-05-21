@@ -29,7 +29,7 @@ Build a keyword map organized by intent. Include estimated monthly search volume
 Intent categories:
 - Navigational (branded)
 - Informational ("how to", "best", "what is")
-- Local Transactional ("near me", "in {city}")
+- Local Transactional ("near me", "in {{city}}")
 - Service-Specific Transactional
 
 ## 2. Gap Analysis
@@ -63,5 +63,9 @@ class KeywordHygieneSkill(SkillBase):
     def _run(self, client: Client, **params) -> str:
         prompt = PROMPT.format(
             client_context=client.to_context_string(),
+            city=client.city or "your city",
+            state=client.state or "",
+            business_type=client.business_type or client.industry or "local business",
+            primary_keyword=client.primary_keyword or client.name,
         )
         return self.anthropic.complete(prompt, system=SYSTEM, max_tokens=3500)

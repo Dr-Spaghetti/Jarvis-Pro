@@ -90,6 +90,8 @@ def research(
     depth: int = typer.Option(2, "--depth", "-d", help="Research depth (1-5)"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to Obsidian vault"),
     no_cache: bool = typer.Option(False, "--no-cache", help="Skip cache lookup"),
+    speak: bool = typer.Option(False, "--speak", help="Read the summary aloud via TTS"),
+    voice: Optional[str] = typer.Option(None, "--voice", help="TTS voice alias (see `jarvis voices`)"),
 ):
     """Run the multi-source research harness."""
     _require_anthropic()
@@ -116,6 +118,11 @@ def research(
     if result.sources:
         rprint(f"\n[dim]Sources: {len(result.sources)} cited[/dim]")
 
+    if speak and result.summary:
+        from integrations.tts import speak as tts_speak
+        with console.status("[dim]Speaking...[/dim]"):
+            tts_speak(result.summary, voice=voice, skill="research")
+
 
 # ── skill ──────────────────────────────────────────────────────────────────────
 
@@ -139,6 +146,8 @@ def skill_run(
     clients: str = typer.Option("all", "--clients", "-c", help="'all' or comma-separated IDs"),
     save_vault: bool = typer.Option(False, "--save-vault", help="Write output to Obsidian vault"),
     show_output: bool = typer.Option(True, "--output/--no-output", help="Print output to console"),
+    speak: bool = typer.Option(False, "--speak", help="Read the output aloud via TTS"),
+    voice: Optional[str] = typer.Option(None, "--voice", help="TTS voice alias (see `jarvis voices`)"),
 ):
     """Run a skill across one or more clients."""
     _require_anthropic()
@@ -164,16 +173,30 @@ def skill_run(
 
     rprint(f"\n[bold]Running [cyan]{skill_name}[/cyan] for {len(client_list)} client(s)...[/bold]\n")
 
+    if save_vault and not settings.has_vault:
+        rprint("[yellow]Warning: --save-vault set but OBSIDIAN_VAULT_PATH is not configured — output will not be saved.[/yellow]")
+
     results = []
     for client in client_list:
         with console.status(f"  {client.name}..."):
             r = skill.run(client, save_vault=save_vault)
         status = "[green]OK[/green]" if r.success else "[red]FAIL[/red]"
         rprint(f"  {status} {client.name} ({r.duration_s:.1f}s) [dim]exec:{r.execution_id}[/dim]")
+        if r.error:
+            rprint(f"       [red dim]{r.error}[/red dim]")
         if show_output and r.output:
-            console.print(Panel(str(r.output)[:2000], title=client.name, border_style="dim"))
+            output_str = str(r.output)
+            truncated = len(output_str) > 4000
+            console.print(Panel(output_str[:4000], title=client.name, border_style="dim"))
+            if truncated:
+                rprint(f"       [dim](output truncated — full text in vault if --save-vault was used)[/dim]")
         if r.vault_path:
             rprint(f"       [dim]Saved: {r.vault_path}[/dim]")
+        if speak and r.success and r.output:
+            from integrations.tts import speak as tts_speak
+            resolved_voice = voice or None  # tts_speak will pick skill-appropriate default
+            with console.status(f"  [dim]Speaking {client.name}...[/dim]"):
+                tts_speak(str(r.output), voice=resolved_voice, skill=skill_name)
         results.append(r)
 
     ok = sum(1 for r in results if r.success)
@@ -374,12 +397,16 @@ def feedback(
     notes: str = typer.Option("", "--notes", "-n"),
 ):
     """Rate a previous skill execution to improve future runs."""
+    if not 1 <= rating <= 5:
+        rprint(f"[red]Rating must be between 1 and 5 (got {rating}).[/red]")
+        raise typer.Exit(1)
     settings.ensure_jarvis_dirs()
     from self_improvement.feedback_loop import FeedbackLoop
 
     ok = FeedbackLoop().quick_feedback(execution_id, rating, notes)
     if ok:
-        rprint(f"[green]Feedback recorded for execution {execution_id}. Thank you.[/green]")
+        stars = "★" * rating + "☆" * (5 - rating)
+        rprint(f"[green]Feedback recorded for execution {execution_id}: {stars} ({rating}/5). Thank you.[/green]")
     else:
         rprint(f"[yellow]Execution ID {execution_id} not found.[/yellow]")
 
@@ -457,10 +484,13 @@ def info():
         status = f"[green]{good_msg}[/green]" if value else f"[red]{bad_msg}[/red]"
         table.add_row(name, status)
 
+    import os
     check("Anthropic API", settings.has_anthropic, "configured", "NOT SET")
     check("Obsidian Vault", settings.has_vault, f"{settings.vault_path}", "not configured")
     check("Local Falcon", settings.has_local_falcon, "configured", "not configured")
     check("Brave Search", settings.has_brave_search, "configured", "not configured (using DuckDuckGo)")
+    elevenlabs_key = bool(os.getenv("ELEVENLABS_API_KEY", ""))
+    check("TTS (ElevenLabs)", elevenlabs_key, "configured — 10 voices available", "not configured (offline fallback)")
 
     reg = _registry()
     table.add_row("Clients", f"{len(reg.list(active_only=True))} active")
@@ -468,6 +498,31 @@ def info():
     table.add_row("Research Model", settings.research_model)
 
     console.print(table)
+
+
+@app.command()
+def voices():
+    """List all available TTS voices and their characteristics."""
+    from integrations.tts import list_voices, SKILL_VOICE_MAP, DEFAULT_VOICE
+
+    table = Table(title="TTS Voice Catalog", show_header=True, header_style="bold cyan")
+    table.add_column("Alias", style="bold")
+    table.add_column("Gender")
+    table.add_column("Style")
+    table.add_column("Best For")
+    table.add_column("Default?")
+
+    skill_defaults = set(SKILL_VOICE_MAP.values())
+
+    for v in list_voices():
+        is_default = "★ default" if v.alias == DEFAULT_VOICE else ("◎ skill default" if v.alias in skill_defaults else "")
+        table.add_row(v.alias, v.gender, v.style, v.best_for, is_default)
+
+    console.print(table)
+    rprint("\n[dim]Usage: jarvis skill run citation-audit --clients all --speak[/dim]")
+    rprint("[dim]       jarvis skill run gbp-monitor --clients kaplunmarx --speak --voice sage[/dim]")
+    rprint("[dim]       jarvis research 'NAP inconsistency' --speak --voice elli[/dim]")
+    rprint("\n[dim]Set ELEVENLABS_API_KEY in .env for premium quality. Offline fallback is always available.[/dim]")
 
 
 if __name__ == "__main__":

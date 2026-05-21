@@ -5,7 +5,11 @@
       "id": "kaplunmarx",
       "name": "KaplunMarx",
       "active": true,
-      "tags": ["legal", "personal-injury", "philadelphia"],
+      "tags": [
+        "legal",
+        "personal-injury",
+        "philadelphia"
+      ],
       "industry": "law-firm",
       "business_type": "Personal Injury Law Firm",
       "primary_keyword": "personal injury lawyer philadelphia",
@@ -19,7 +23,7 @@
       "website": "https://kaplunmarx.com",
       "billing": {
         "plan": "retainer",
-        "monthly_usd": 1500,
+        "monthly_usd": 1500.0,
         "billing_day": 1
       },
       "local_falcon": {
@@ -29,9 +33,9 @@
         "default_radius_miles": 5
       },
       "gbp": {
-        "place_id": "",
+        "place_id": "ChIJ9Z_CmrSxuokRzss5c2i7Bwg",
         "cid": "",
-        "profile_url": "",
+        "profile_url": "https://maps.google.com/?cid=test",
         "primary_category": "Personal injury attorney"
       },
       "yext": {
@@ -43,7 +47,16 @@
         "moz_campaign_id": ""
       },
       "citations": {
-        "target_directories": ["avvo", "justia", "findlaw", "martindale", "lawyers.com", "yelp", "bbb", "google"],
+        "target_directories": [
+          "avvo",
+          "justia",
+          "findlaw",
+          "martindale",
+          "lawyers.com",
+          "yelp",
+          "bbb",
+          "google"
+        ],
         "last_audit": ""
       },
       "overrides": {},
@@ -54,13 +67,17 @@
       },
       "notes": "Top-priority client. Focus on 5-star review velocity and citation consistency.",
       "onboarded_at": "2026-01-15T00:00:00",
-      "updated_at": "2026-05-21T00:00:00"
+      "updated_at": "2026-05-21T22:53:55.016695"
     },
     {
       "id": "carpet-salem",
       "name": "Carpet Salem",
       "active": true,
-      "tags": ["home-services", "flooring", "salem"],
+      "tags": [
+        "home-services",
+        "flooring",
+        "salem"
+      ],
       "industry": "home-services",
       "business_type": "Flooring & Carpet Installation",
       "primary_keyword": "carpet installation salem oregon",
@@ -74,7 +91,7 @@
       "website": "",
       "billing": {
         "plan": "monthly",
-        "monthly_usd": 800,
+        "monthly_usd": 800.0,
         "billing_day": 15
       },
       "local_falcon": {
@@ -98,7 +115,15 @@
         "moz_campaign_id": ""
       },
       "citations": {
-        "target_directories": ["yelp", "bbb", "houzz", "angi", "homeadvisor", "google", "bing"],
+        "target_directories": [
+          "yelp",
+          "bbb",
+          "houzz",
+          "angi",
+          "homeadvisor",
+          "google",
+          "bing"
+        ],
         "last_audit": ""
       },
       "overrides": {},
