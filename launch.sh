@@ -17,6 +17,8 @@ export DATA_DIR="${HOME}/.jarvis-webui"
 export WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY:-jarvis-local-secret}"
 export WEBUI_URL="${WEBUI_URL:-http://localhost:8080}"
 export MCP_SELF_URL="${MCP_SELF_URL:-http://localhost:8765/mcp}"
+export OPENAI_API_BASE_URL="https://api.anthropic.com/v1"
+export OPENAI_API_KEY="${ANTHROPIC_API_KEY}"
 unset WEBUI_ADMIN_EMAIL
 unset WEBUI_ADMIN_PASSWORD
 
