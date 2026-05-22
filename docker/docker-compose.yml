@@ -1,8 +1,8 @@
 services:
   # ── Open WebUI ─────────────────────────────────────────────────────────────
   # Primary interface — ChatGPT-quality UI with voice, Claude, and Jarvis tools.
-  # Open http://localhost:3000 after `docker compose up -d`
-  # First launch: create an admin account, then sign in.
+  # Run: docker compose up -d   →   open http://localhost:3000
+  # No login required (single-user mode). Everything auto-configured on first boot.
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: jarvis-open-webui
@@ -15,6 +15,10 @@ services:
       # ── Claude (required) ─────────────────────────────────────────────────
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 
+      # ── Single-user mode — no login screen ────────────────────────────────
+      # Change to true if you want account-based access control
+      - WEBUI_AUTH=false
+
       # ── ElevenLabs TTS (optional — browser TTS used if not set) ───────────
       # Set AUDIO_TTS_ENGINE=elevenlabs in your .env to enable
       - AUDIO_TTS_ENGINE=${AUDIO_TTS_ENGINE:-}
@@ -25,20 +29,24 @@ services:
       # ── STT (browser Web Speech API — free, no key needed) ────────────────
       - AUDIO_STT_ENGINE=web
 
+      # ── Pre-select Claude as default model ────────────────────────────────
+      - DEFAULT_MODELS=${DEFAULT_MODEL:-claude-sonnet-4-6}
+
       # ── Security ──────────────────────────────────────────────────────────
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-jarvis-webui-secret-change-me}
-
-      # ── Disable OpenAI errors if no key ───────────────────────────────────
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # ── Tell the setup script where Open WebUI lives ──────────────────────
+      - WEBUI_ADMIN_EMAIL=${WEBUI_ADMIN_EMAIL:-admin@jarvis.local}
+      - WEBUI_ADMIN_PASSWORD=${WEBUI_ADMIN_PASSWORD:-jarvis-admin-2026}
     volumes:
       - open_webui_data:/app/backend/data
     depends_on:
       - jarvis
 
   # ── Jarvis Backend ─────────────────────────────────────────────────────────
-  # Provides the MCP tool server (SEO skills, research, client registry)
-  # and an OpenAI-compatible API wrapper around Claude.
-  # Open WebUI connects to these automatically once you add the Tool Server.
+  # Provides MCP tools (SEO skills, research, client registry) + OpenAI-compatible API.
+  # On first boot, setup_webui.py auto-registers itself as a Tool Server in Open WebUI.
   jarvis:
     build:
       context: ..
@@ -46,9 +54,9 @@ services:
     container_name: jarvis-backend
     restart: unless-stopped
     ports:
-      - "7860:7860"   # Jarvis native dashboard (backup UI)
+      - "7860:7860"   # Jarvis native dashboard (fallback)
       - "8000:8000"   # OpenAI-compatible API
-      - "8765:8765"   # MCP Streamable HTTP (add as Tool Server in Open WebUI)
+      - "8765:8765"   # MCP Streamable HTTP
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -59,6 +67,11 @@ services:
       - DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-6}
       - RESEARCH_MODEL=${RESEARCH_MODEL:-claude-opus-4-7}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Setup script config
+      - WEBUI_URL=http://open-webui:8080
+      - MCP_SELF_URL=http://jarvis-backend:8765/mcp
+      - WEBUI_ADMIN_EMAIL=${WEBUI_ADMIN_EMAIL:-admin@jarvis.local}
+      - WEBUI_ADMIN_PASSWORD=${WEBUI_ADMIN_PASSWORD:-jarvis-admin-2026}
     volumes:
       - ../clients:/app/clients
       - jarvis_data:/app/.jarvis

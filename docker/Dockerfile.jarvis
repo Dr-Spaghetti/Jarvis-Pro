@@ -15,10 +15,13 @@ COPY . .
 # Create runtime dirs
 RUN mkdir -p .jarvis clients
 
+COPY docker/setup_webui.py /app/setup_webui.py
+
 EXPOSE 7860 8000 8765
 
 CMD ["sh", "-c", "\
   python serve.py & \
   python mcp_http_server.py & \
+  python setup_webui.py & \
   python webapp/app.py \
 "]
