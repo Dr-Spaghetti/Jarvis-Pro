@@ -12,12 +12,12 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
   exit 1
 fi
 
-export WEBUI_AUTH=true
+export WEBUI_AUTH=false
 export WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY:-jarvis-local-secret}"
 export WEBUI_URL="${WEBUI_URL:-http://localhost:8080}"
 export MCP_SELF_URL="${MCP_SELF_URL:-http://localhost:8765/mcp}"
-export WEBUI_ADMIN_EMAIL="${WEBUI_ADMIN_EMAIL:-admin@jarvis.local}"
-export WEBUI_ADMIN_PASSWORD="${WEBUI_ADMIN_PASSWORD:-jarvis-admin-2026}"
+unset WEBUI_ADMIN_EMAIL
+unset WEBUI_ADMIN_PASSWORD
 
 echo ""
 echo "  ██ Jarvis-Pro"
