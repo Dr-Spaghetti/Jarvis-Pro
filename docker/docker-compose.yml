@@ -1,17 +1,54 @@
 services:
-  # ── Jarvis Web UI ──────────────────────────────────────────────────────────
-  # The native Jarvis dashboard — zero extra config, runs on Python.
-  # Open http://localhost:7860 after `docker compose up -d`
+  # ── Open WebUI ─────────────────────────────────────────────────────────────
+  # Primary interface — ChatGPT-quality UI with voice, Claude, and Jarvis tools.
+  # Open http://localhost:3000 after `docker compose up -d`
+  # First launch: create an admin account, then sign in.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: jarvis-open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # ── Claude (required) ─────────────────────────────────────────────────
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # ── ElevenLabs TTS (optional — browser TTS used if not set) ───────────
+      # Set AUDIO_TTS_ENGINE=elevenlabs in your .env to enable
+      - AUDIO_TTS_ENGINE=${AUDIO_TTS_ENGINE:-}
+      - AUDIO_TTS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - AUDIO_TTS_VOICE=${ELEVENLABS_VOICE_ID:-EXAVITQu4vr4xnSDxMaL}
+      - AUDIO_TTS_MODEL=eleven_multilingual_v2
+
+      # ── STT (browser Web Speech API — free, no key needed) ────────────────
+      - AUDIO_STT_ENGINE=web
+
+      # ── Security ──────────────────────────────────────────────────────────
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-jarvis-webui-secret-change-me}
+
+      # ── Disable OpenAI errors if no key ───────────────────────────────────
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - open_webui_data:/app/backend/data
+    depends_on:
+      - jarvis
+
+  # ── Jarvis Backend ─────────────────────────────────────────────────────────
+  # Provides the MCP tool server (SEO skills, research, client registry)
+  # and an OpenAI-compatible API wrapper around Claude.
+  # Open WebUI connects to these automatically once you add the Tool Server.
   jarvis:
     build:
       context: ..
       dockerfile: docker/Dockerfile.jarvis
-    container_name: jarvis-ui
+    container_name: jarvis-backend
     restart: unless-stopped
     ports:
-      - "7860:7860"   # Web dashboard
+      - "7860:7860"   # Jarvis native dashboard (backup UI)
       - "8000:8000"   # OpenAI-compatible API
-      - "8765:8765"   # MCP Streamable HTTP
+      - "8765:8765"   # MCP Streamable HTTP (add as Tool Server in Open WebUI)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -23,71 +60,9 @@ services:
       - RESEARCH_MODEL=${RESEARCH_MODEL:-claude-opus-4-7}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
-      - ../clients:/app/clients          # persist client registry
-      - jarvis_jarvis_data:/app/.jarvis   # persist metrics + cache
-
-  # ── LibreChat ──────────────────────────────────────────────────────────────
-  # Full AI chat UI with agent support and MCP tool calling.
-  # Requires a LibreChat registry account: https://hub.librechat.ai
-  # Image: registry.librechat.ai/danny-avila/librechat:v0.8.5
-  # Uncomment this service after running: docker login registry.librechat.ai
-  #
-  # librechat:
-  #   image: registry.librechat.ai/danny-avila/librechat:v0.8.5
-  #   container_name: jarvis-librechat
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3080:3080"
-  #   depends_on:
-  #     - mongodb
-  #     - meilisearch
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-  #   environment:
-  #     - HOST=0.0.0.0
-  #     - NODE_ENV=production
-  #     - MONGO_URI=mongodb://mongodb:27017/LibreChat
-  #     - MEILI_HOST=http://meilisearch:7700
-  #     - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey}
-  #     - JWT_SECRET=${JWT_SECRET}
-  #     - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-  #     - CREDS_KEY=${CREDS_KEY}
-  #     - CREDS_IV=${CREDS_IV}
-  #     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-  #     - ALLOW_REGISTRATION=false
-  #     - ALLOW_SOCIAL_LOGIN=false
-  #   volumes:
-  #     - ./librechat.yaml:/app/librechat.yaml:ro
-  #     - librechat_images:/app/client/public/images
-  #     - librechat_logs:/app/api/logs
-  #     - ../clients:/app/uploads/clients:ro
-  #     - librechat_uploads:/app/uploads
-
-  # ── MongoDB ────────────────────────────────────────────────────────────────
-  # Required by LibreChat (uncomment above service first)
-  # mongodb:
-  #   image: bitnami/mongodb:latest
-  #   container_name: jarvis-mongodb
-  #   restart: unless-stopped
-  #   volumes:
-  #     - mongodb_data:/bitnami/mongodb
-
-  # ── Meilisearch ────────────────────────────────────────────────────────────
-  # Required by LibreChat for full-text conversation search
-  # meilisearch:
-  #   image: getmeili/meilisearch:v1.7
-  #   container_name: jarvis-meilisearch
-  #   restart: unless-stopped
-  #   environment:
-  #     - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey}
-  #     - MEILI_ENV=production
-  #   volumes:
-  #     - meilisearch_data:/meili_data
+      - ../clients:/app/clients
+      - jarvis_data:/app/.jarvis
 
 volumes:
-  jarvis_jarvis_data:
-  # mongodb_data:
-  # meilisearch_data:
-  # librechat_images:
-  # librechat_uploads:
-  # librechat_logs:
+  open_webui_data:
+  jarvis_data:

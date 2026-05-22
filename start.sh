@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Start Jarvis-Pro web UI
+# Start Jarvis-Pro backend servers (API + MCP + legacy dashboard)
+# For the full Open WebUI experience: cd docker && docker compose up -d
 # Usage: ./start.sh [port]
 set -e
 
@@ -8,11 +9,14 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "  ██ Jarvis-Pro"
-echo "  ─────────────────────────────────"
-echo "  Web UI  → http://localhost:$PORT"
-echo "  API     → http://localhost:8000"
-echo "  MCP     → http://localhost:8765/mcp"
-echo "  ─────────────────────────────────"
+echo "  ─────────────────────────────────────────────────"
+echo "  Recommended: cd docker && docker compose up -d"
+echo "               then open http://localhost:3000"
+echo "  ─────────────────────────────────────────────────"
+echo "  Legacy dashboard → http://localhost:$PORT"
+echo "  API              → http://localhost:8000"
+echo "  MCP tools        → http://localhost:8765/mcp"
+echo "  ─────────────────────────────────────────────────"
 echo ""
 
 # Start API servers in background
