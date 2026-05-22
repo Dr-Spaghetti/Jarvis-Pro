@@ -8,7 +8,7 @@ Stop Open WebUI first, then run:
 
 Then restart with ./launch.sh
 """
-import os, sys, json, sqlite3, time
+import os, sys, json, sqlite3
 from pathlib import Path
 
 DATA_DIR = os.environ.get("DATA_DIR", str(Path.home() / ".jarvis-webui"))
@@ -60,17 +60,16 @@ else:
 data["OPENAI_API_BASE_URLS"] = urls
 data["OPENAI_API_KEYS"]      = keys
 
-# Write back
-ts = int(time.time())
+# Write back — don't touch timestamp columns, Open WebUI uses ISO strings not ints
 if row:
     conn.execute(
-        "UPDATE config SET data=?, updated_at=? WHERE id=?",
-        (json.dumps(data), ts, row["id"])
+        "UPDATE config SET data=? WHERE id=?",
+        (json.dumps(data), row["id"])
     )
 else:
     conn.execute(
-        "INSERT INTO config (data, version, created_at, updated_at) VALUES (?, 1, ?, ?)",
-        (json.dumps(data), ts, ts)
+        "INSERT INTO config (data, version) VALUES (?, 1)",
+        (json.dumps(data),)
     )
 
 conn.commit()
