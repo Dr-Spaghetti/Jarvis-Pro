@@ -14,8 +14,8 @@ except ImportError:
     print("[setup] requests not available, skipping Open WebUI auto-setup")
     sys.exit(0)
 
-WEBUI_URL   = os.environ.get("WEBUI_URL", "http://open-webui:8080")
-MCP_URL     = os.environ.get("MCP_SELF_URL", "http://jarvis-backend:8765/mcp")
+WEBUI_URL   = os.environ.get("WEBUI_URL", "http://localhost:8080")
+MCP_URL     = os.environ.get("MCP_SELF_URL", "http://localhost:8765/mcp")
 ADMIN_EMAIL = os.environ.get("WEBUI_ADMIN_EMAIL", "admin@jarvis.local")
 ADMIN_PASS  = os.environ.get("WEBUI_ADMIN_PASSWORD", "jarvis-admin-2026")
 ADMIN_NAME  = os.environ.get("WEBUI_ADMIN_NAME", "Admin")
