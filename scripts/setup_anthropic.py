@@ -13,147 +13,133 @@ except ImportError:
     print("pip install requests")
     sys.exit(1)
 
-BASE = "http://localhost:8080"
-KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
+BASE  = "http://localhost:8080"
+KEY   = os.environ.get("ANTHROPIC_API_KEY", "")
+EMAIL = "admin@jarvis.local"
+PASS  = "jarvis"
 
 if not KEY:
     print("ERROR: ANTHROPIC_API_KEY is not set.")
     print("Run:  export ANTHROPIC_API_KEY=sk-ant-api03-...")
     sys.exit(1)
 
-# Models to register (Anthropic API IDs)
-MODELS = [
-    "claude-sonnet-4-6",
-    "claude-opus-4-7",
-    "claude-haiku-4-5",
-]
-
 def wait_for_webui():
-    print("Waiting for Open WebUI...")
     for _ in range(15):
         try:
-            r = requests.get(f"{BASE}/health", timeout=3)
-            if r.ok:
-                print("Open WebUI is up.")
+            if requests.get(f"{BASE}/health", timeout=3).ok:
                 return True
         except Exception:
             pass
         time.sleep(2)
-    print("Could not reach Open WebUI at localhost:8080")
+    print("Cannot reach Open WebUI at localhost:8080")
     return False
 
-def get_session_token(s):
-    """Load the page to get a session cookie, then extract the JWT."""
-    # Load root — Open WebUI sets a session/cookie in no-auth mode
-    s.get(f"{BASE}/", timeout=10)
-
-    # Try to get user info (works in no-auth mode, returns default user)
-    r = s.get(f"{BASE}/api/v1/auths/", timeout=5)
+def get_token(s):
+    # WEBUI_AUTH=false: signin returns a token even without a real user
+    r = s.post(f"{BASE}/api/v1/auths/signin",
+               json={"email": EMAIL, "password": PASS}, timeout=5)
     if r.ok:
-        try:
-            data = r.json()
-            token = data.get("token") or data.get("access_token")
-            if token:
-                print(f"Got session token via /api/v1/auths/")
-                return token
-        except Exception:
-            pass
-
-    # Fallback: try signing in with any email (no-auth mode may accept anything)
-    for email, pw in [
-        ("admin@jarvis.local", "jarvis"),
-        ("user@localhost", "password"),
-    ]:
-        r = s.post(f"{BASE}/api/v1/auths/signin",
-                   json={"email": email, "password": pw}, timeout=5)
-        if r.ok:
-            token = r.json().get("token")
-            if token:
-                print(f"Got token via signin ({email})")
-                return token
-
+        token = r.json().get("token")
+        if token:
+            print(f"Got session token.")
+            return token
+    print(f"Signin failed: {r.status_code} {r.text[:200]}")
     return None
 
-def add_openai_connection(s, token):
-    """Register Anthropic as an OpenAI-compatible connection."""
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+def probe_get(s, headers, paths):
+    """Try GETs until one returns JSON, return (path, data)."""
+    for p in paths:
+        try:
+            r = s.get(f"{BASE}{p}", headers=headers, timeout=5)
+            data = r.json()
+            if isinstance(data, dict) and r.status_code < 500:
+                return p, data
+        except Exception:
+            pass
+    return None, {}
 
-    # Open WebUI stores OpenAI-compatible connection URLs + keys together
-    # Try the v1 API endpoint first, then fallback
-    payload = {
-        "url": "https://api.anthropic.com/v1",
-        "key": KEY,
-    }
+def configure_anthropic(s, token):
+    headers = {"Authorization": f"Bearer {token}"}
 
-    endpoints = [
+    # Discover the actual config endpoint
+    config_paths = [
         "/api/openai/config",
         "/api/v1/openai/config",
     ]
+    cfg_path, current = probe_get(s, headers, config_paths)
+    print(f"Config endpoint: {cfg_path or 'not found'}")
+    print(f"Current config: {json.dumps(current, indent=2)[:400]}")
 
-    # First, read existing config so we don't overwrite other connections
-    existing_urls = []
-    existing_keys = []
-    for ep in endpoints:
-        r = s.get(f"{BASE}{ep}", headers=headers, timeout=5)
-        if r.ok:
-            try:
-                data = r.json()
-                existing_urls = data.get("OPENAI_API_BASE_URLS", [])
-                existing_keys = data.get("OPENAI_API_KEYS", [])
-                break
-            except Exception:
-                pass
+    # Build updated URL/key lists
+    urls = current.get("OPENAI_API_BASE_URLS", [])
+    keys = current.get("OPENAI_API_KEYS", [])
+    target = "https://api.anthropic.com/v1"
+    if target not in urls:
+        urls.append(target)
+        keys.append(KEY)
+        print("Adding Anthropic to connection list...")
+    else:
+        # Update the key in case it changed
+        idx = urls.index(target)
+        keys[idx] = KEY
+        print("Anthropic already in list, updating key...")
 
-    anthropic_url = "https://api.anthropic.com/v1"
-    if anthropic_url not in existing_urls:
-        existing_urls.append(anthropic_url)
-        existing_keys.append(KEY)
+    payload = {"OPENAI_API_BASE_URLS": urls, "OPENAI_API_KEYS": keys}
 
-    update_payload = {
-        "OPENAI_API_BASE_URLS": existing_urls,
-        "OPENAI_API_KEYS": existing_keys,
-    }
+    # Try update sub-path first, then PUT on main path
+    update_attempts = []
+    if cfg_path:
+        update_attempts = [
+            ("POST", f"{cfg_path}/update"),
+            ("PUT",  cfg_path),
+            ("POST", cfg_path),
+        ]
+    # Also try versioned variants
+    update_attempts += [
+        ("POST", "/api/openai/config/update"),
+        ("POST", "/api/v1/openai/config/update"),
+        ("PUT",  "/api/openai/config"),
+        ("PUT",  "/api/v1/openai/config"),
+    ]
 
-    for ep in endpoints:
-        r = s.post(f"{BASE}{ep}", json=update_payload, headers=headers, timeout=5)
-        print(f"POST {ep} → {r.status_code}")
-        if r.ok:
-            print("  Anthropic connection registered.")
-            return True
-        else:
-            print(f"  {r.text[:200]}")
+    for method, path in update_attempts:
+        try:
+            fn = getattr(s, method.lower())
+            r = fn(f"{BASE}{path}", json=payload, headers=headers, timeout=5)
+            print(f"  {method} {path} → {r.status_code}")
+            if r.ok:
+                print("  SUCCESS — Anthropic connection saved.")
+                return True
+            if r.status_code not in (404, 405):
+                print(f"  Response: {r.text[:200]}")
+        except Exception as e:
+            pass
 
+    print("\nAll update attempts failed. Dumping available routes for diagnosis:")
+    for p in ["/api/openai/", "/api/v1/openai/", "/openapi.json"]:
+        try:
+            r = s.get(f"{BASE}{p}", headers=headers, timeout=5)
+            if r.ok:
+                try:
+                    print(f"\n{p}: {json.dumps(r.json(), indent=2)[:800]}")
+                except Exception:
+                    print(f"\n{p}: (HTML, {len(r.text)} bytes)")
+        except Exception:
+            pass
     return False
-
-def enable_models(s, token):
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-    for model_id in MODELS:
-        payload = {
-            "id": model_id,
-            "name": model_id,
-            "meta": {"description": "Anthropic Claude"},
-            "is_active": True,
-        }
-        r = s.post(f"{BASE}/api/v1/models/", json=payload, headers=headers, timeout=5)
-        status = "OK" if r.ok else f"FAILED ({r.status_code})"
-        print(f"  Model {model_id}: {status}")
 
 def main():
     if not wait_for_webui():
         sys.exit(1)
 
     s = requests.Session()
-    token = get_session_token(s)
+    token = get_token(s)
     if not token:
-        print("\nWARNING: Could not get session token. Trying without auth...")
+        sys.exit(1)
 
-    print("\nRegistering Anthropic connection...")
-    ok = add_openai_connection(s, token)
-
-    print("\nEnabling models...")
-    enable_models(s, token)
-
-    print("\nDone. Refresh http://localhost:8080 and check the model selector.")
+    print("\nConfiguring Anthropic connection...")
+    configure_anthropic(s, token)
+    print("\nDone. Hard-refresh the browser (Ctrl+Shift+R) and check the model selector.")
 
 if __name__ == "__main__":
     main()
