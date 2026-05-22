@@ -13,6 +13,7 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
 fi
 
 export WEBUI_AUTH=false
+export DATA_DIR="${HOME}/.jarvis-webui"
 export WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY:-jarvis-local-secret}"
 export WEBUI_URL="${WEBUI_URL:-http://localhost:8080}"
 export MCP_SELF_URL="${MCP_SELF_URL:-http://localhost:8765/mcp}"
@@ -32,8 +33,8 @@ python mcp_http_server.py > /tmp/jarvis-mcp.log 2>&1 &
 MCP_PID=$!
 echo "  MCP server started (pid $MCP_PID)"
 
-# Auto-configure Open WebUI after it boots (runs in background)
-(sleep 20 && python docker/setup_webui.py) &
+# Auto-configure skipped: setup_webui.py creates a user which breaks WEBUI_AUTH=false on restart.
+# Configure Open WebUI manually via Settings in the browser.
 
 echo "  Open WebUI starting — ready in ~15 seconds"
 echo ""
