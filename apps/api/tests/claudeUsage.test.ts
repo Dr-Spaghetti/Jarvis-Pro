@@ -526,7 +526,7 @@ describe("readClaudeUsageSnapshot", () => {
                 headers: { "Content-Type": "application/json" },
               }),
             );
-          }, 50);
+          }, 300);
         }),
     );
 
@@ -543,9 +543,9 @@ describe("readClaudeUsageSnapshot", () => {
     expect(snapshot.status).toBe("ok");
     expect(snapshot.source).toBe("oauth-api");
     expect(snapshot.primaryUsedPercent).toBe(14);
-    expect(Date.now() - startedAt).toBeLessThan(40);
+    expect(Date.now() - startedAt).toBeLessThan(200);
 
-    await new Promise((resolve) => setTimeout(resolve, 90));
+    await new Promise((resolve) => setTimeout(resolve, 450));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -560,7 +560,7 @@ describe("readClaudeUsageSnapshot", () => {
                 headers: { "Content-Type": "application/json" },
               }),
             );
-          }, 50);
+          }, 300);
         }),
     );
 
@@ -575,9 +575,9 @@ describe("readClaudeUsageSnapshot", () => {
 
     expect(snapshot.status).toBe("unavailable");
     expect(snapshot.message).toMatch(/refresh in progress/i);
-    expect(Date.now() - startedAt).toBeLessThan(40);
+    expect(Date.now() - startedAt).toBeLessThan(200);
 
-    await new Promise((resolve) => setTimeout(resolve, 90));
+    await new Promise((resolve) => setTimeout(resolve, 450));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { readCodexUsageSnapshot } from "../src/codexUsage";
@@ -101,7 +102,9 @@ describe("readCodexUsageSnapshot", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe("https://chatgpt.com/backend-api/wham/usage");
 
     expect(writeFileText).toHaveBeenCalledTimes(1);
-    expect(writeFileText.mock.calls[0]?.[0]).toBe("/workspace/.codex/auth.json");
+    // Source uses path.join, which is platform-specific; build the expected path
+    // the same way so the assertion holds on Windows and POSIX alike.
+    expect(writeFileText.mock.calls[0]?.[0]).toBe(join("/workspace/.codex", "auth.json"));
     expect(writeFileText.mock.calls[0]?.[1]).toContain("fresh-access-token");
   });
 });

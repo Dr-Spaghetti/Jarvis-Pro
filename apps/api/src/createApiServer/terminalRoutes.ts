@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { posix } from "node:path";
 import { readDeckTentacles } from "../deck/readDeckTentacles";
 import { resolvePrompt } from "../prompts";
 import {
@@ -34,7 +34,9 @@ const buildTentacleInitialPrompt = (
     return Promise.resolve(undefined);
   }
 
-  const tentacleFolderPath = join(".octogent", "tentacles", tentacleId);
+  // Agent-facing prompt text — use forward slashes on every OS so the injected
+  // path is deterministic (Windows `join` would emit backslashes).
+  const tentacleFolderPath = posix.join(".octogent", "tentacles", tentacleId);
   return resolvePrompt(promptsDir, "tentacle-context-init", {
     tentacleName: tentacle.displayName,
     tentacleId,
