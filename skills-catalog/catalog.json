@@ -1,0 +1,32 @@
+{
+  "gmail-triage": {
+    "requiredEnv": [],
+    "runtime": ["node"],
+    "setup": "npm install -g @googleworkspace/cli && gws auth setup"
+  },
+  "infographic-generator": {
+    "requiredEnv": [],
+    "runtime": ["node"],
+    "setup": "cd /tmp && npm install playwright"
+  },
+  "linkedin-asset-analyzer": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": null
+  },
+  "twitter-reader": {
+    "requiredEnv": ["JINA_API_KEY"],
+    "runtime": ["python"],
+    "setup": null
+  },
+  "video-performance-analyzer": {
+    "requiredEnv": ["GEMINI_API_KEY"],
+    "runtime": ["python"],
+    "setup": "pip install google-genai --break-system-packages"
+  },
+  "x-scanner": {
+    "requiredEnv": ["XAI_API_KEY"],
+    "runtime": ["python"],
+    "setup": null
+  }
+}

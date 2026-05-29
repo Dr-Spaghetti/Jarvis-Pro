@@ -1,0 +1,11 @@
+# Keep line endings LF across platforms so Biome formatting stays stable.
+* text=auto eol=lf
+
+# Treat known binaries as binary.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
