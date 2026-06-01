@@ -54,6 +54,26 @@
     "runtime": [],
     "setup": "Requires the QuickBooks (Intuit) connector. Read-only; can log a snapshot to the vault."
   },
+  "weekly-review": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Reviews and organizes the Obsidian vault (MCP or OBSIDIAN_VAULT_PATH); composes task-manager."
+  },
+  "review-manager": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Reads reviews via the Local Falcon (or GBP) connector; drafts work without one. Posting needs GBP write access + confirmation."
+  },
+  "skill-creator": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Scaffolds and verifies new bundled skills in skills-catalog/ to the house standard."
+  },
+  "scheduled-automation": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Uses Windows Task Scheduler + the `claude` CLI to run skills on a schedule (gather/draft/report scope only)."
+  },
   "gmail-triage": {
     "requiredEnv": [],
     "runtime": ["node"],
