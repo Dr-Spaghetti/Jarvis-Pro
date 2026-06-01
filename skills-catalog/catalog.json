@@ -29,6 +29,26 @@
     "runtime": [],
     "setup": "Planning needs nothing. Live read/write needs a connected, authenticated calendar MCP (e.g. a Google Calendar connector) — check `claude mcp list`."
   },
+  "local-falcon-seo": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Requires the Local Falcon MCP connector in Claude Code (`claude mcp list`). Saves summaries to the Obsidian vault when available."
+  },
+  "client-reporting": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Uses the Local Falcon (and optionally Canva) connectors plus the Obsidian vault; degrades to a text report if a connector is missing."
+  },
+  "lead-prospecting": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Requires the Apollo connector; optionally writes to Airtable and the vault. Never auto-sends outreach."
+  },
+  "finance-snapshot": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Requires the QuickBooks (Intuit) connector. Read-only; can log a snapshot to the vault."
+  },
   "gmail-triage": {
     "requiredEnv": [],
     "runtime": ["node"],
