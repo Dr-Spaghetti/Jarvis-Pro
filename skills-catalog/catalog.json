@@ -4,6 +4,21 @@
     "runtime": [],
     "setup": "Live: install the Obsidian 'Local REST API' plugin, then `claude mcp add --transport http --scope user obsidian https://127.0.0.1:27124/mcp/ -H \"Authorization: Bearer <API_KEY>\"`. File-based fallback: set OBSIDIAN_VAULT_PATH in .env."
   },
+  "web-research": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No setup. Uses Claude's built-in web search/fetch; can save cited notes to the Obsidian vault when available."
+  },
+  "email-assistant": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Drafting needs nothing. Reading/sending needs a connected, authenticated email MCP (e.g. the claude.ai Gmail connector) — check `claude mcp list`."
+  },
+  "calendar": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Planning needs nothing. Live read/write needs a connected, authenticated calendar MCP (e.g. a Google Calendar connector) — check `claude mcp list`."
+  },
   "gmail-triage": {
     "requiredEnv": [],
     "runtime": ["node"],
