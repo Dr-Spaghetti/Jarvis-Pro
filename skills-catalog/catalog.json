@@ -39,6 +39,11 @@
     "runtime": [],
     "setup": "No API key. Tracks goals/habits in the vault (Areas/Personal); feeds daily-brief and weekly-review."
   },
+  "review-repair-outreach": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Orchestrates Maps/Apollo + lead-prospecting/review-manager/email-assistant/task-manager; tracks prospects privately in the vault + a private Google Sheet. Reads Areas/Freelance/Review-Outreach/ playbook."
+  },
   "gbp-post-writer": {
     "requiredEnv": [],
     "runtime": [],
