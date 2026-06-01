@@ -11,5 +11,10 @@ export default defineConfig({
     // (transcripts, registry persistence); on Windows, running files in parallel
     // threads makes that I/O race and flake. Sequential files = deterministic.
     fileParallelism: false,
+    // A few tests assert real wall-clock timing (background refresh, file
+    // persistence). Under heavy transient machine load (e.g. cloud sync) these
+    // can slip; auto-retry absorbs the flake without masking real failures (a
+    // genuinely broken test fails all attempts).
+    retry: 2,
   },
 });

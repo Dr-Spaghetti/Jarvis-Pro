@@ -43,6 +43,9 @@ knowledge.
 
 ## Core principles
 
+- **Know the user first.** If `Profile.md` exists at the vault root, read it at
+  the start of a session for standing context — who they are, their goals,
+  priorities, and preferences — and tailor everything to it.
 - **Retrieve before you answer.** For any "what do I know / did I write about
   X" question, SEARCH the vault first and answer from the user's own notes,
   citing the note name/path. Do not answer from general knowledge when the user

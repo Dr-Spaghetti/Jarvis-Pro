@@ -20,6 +20,10 @@ it tight, and write it where the day lives — today's daily note.
 
 ## Gather (use what's connected; skip what isn't)
 
+First, read `Profile.md` (if present) for the user's current priorities and
+goals — the brief should reflect what matters to *them*, including personal,
+freelance, and financial goals, not just work.
+
 1. **Schedule** — via the calendar skill/connector: today's events in order,
    flag conflicts and back-to-backs, note anything needing prep.
 2. **Needs response** — via the email skill/connector: unread/important email

@@ -19,6 +19,26 @@
     "runtime": [],
     "setup": "No API key. Orchestrates the calendar/email/task-manager/finance/SEO skills and the vault; uses whatever connectors are available."
   },
+  "personal-finance": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Tracks personal budget/net-worth/goals in the vault (Areas/Finances). Not financial advice."
+  },
+  "freelance-manager": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Runs side gigs lead->paid in the vault (Areas/Freelance); composes task-manager, email-assistant, personal-finance."
+  },
+  "thought-partner": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Candid ideation/planning on any topic; reads Profile.md; captures to Ideas/."
+  },
+  "goals-habits": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Tracks goals/habits in the vault (Areas/Personal); feeds daily-brief and weekly-review."
+  },
   "gbp-post-writer": {
     "requiredEnv": [],
     "runtime": [],
