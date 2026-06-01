@@ -1,32 +1,29 @@
 /*
- * JustifyLocal theme — dark navy base with a gold accent and professional blue.
- * Derived from the brand identity (gold/yellow primary, navy/charcoal, blue).
- * Kept dark intentionally: the console is an always-on orchestration surface,
- * and a full light-mode conversion would require re-tuning contrast everywhere.
- * To match exact brand hex codes later, edit the values below.
+ * Theme — black / gold / white.
+ * Near-black surfaces, white text, gold accent. Edit the values below to retune.
  */
 :root {
-  --bg-canvas: #060a11;
-  --bg-surface-1: #0b1119;
-  --bg-surface-2: #121c28;
-  --border-subtle: #243244;
-  --text-primary: #e8ebf0;
-  --text-secondary: #a6b0bd;
-  --accent-primary: #f0b429;
-  --term-red: #8c0b12;
+  --bg-canvas: #000000;
+  --bg-surface-1: #0d0d0d;
+  --bg-surface-2: #161616;
+  --border-subtle: #2b2b2b;
+  --text-primary: #ffffff;
+  --text-secondary: #bdbdbd;
+  --accent-primary: #f5b50a;
+  --term-red: #c0392b;
   --term-green: #25d366;
-  --term-blue: #14365e;
+  --term-blue: #1f1f1f;
   --term-warning: #ffb020;
-  --terminal-bg: #0f1825;
-  --terminal-header-bg-top: #1b3a5b;
-  --terminal-header-bg-bottom: #122740;
-  --terminal-header-text: #e8ebf0;
-  --control-border-strong: #243244;
-  --control-bg-strong: #0b1119;
+  --terminal-bg: #0a0a0a;
+  --terminal-header-bg-top: #1c1c1c;
+  --terminal-header-bg-bottom: #0d0d0d;
+  --terminal-header-text: #f5b50a;
+  --control-border-strong: #2b2b2b;
+  --control-bg-strong: #0d0d0d;
   --ui-base-font-size: 17px;
 }
 
 body {
-  background: radial-gradient(circle at top right, #0e1c2e 0%, var(--bg-canvas) 54%);
+  background: radial-gradient(circle at top right, #1a1407 0%, var(--bg-canvas) 55%);
   color: var(--text-primary);
 }
