@@ -19,6 +19,26 @@
     "runtime": [],
     "setup": "No API key. Orchestrates the calendar/email/task-manager/finance/SEO skills and the vault; uses whatever connectors are available."
   },
+  "gbp-post-writer": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Drafts GBP posts from vault client context; publishing needs a GBP write integration + confirmation."
+  },
+  "seo-content-writer": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Uses built-in web research + the vault; produces drafts with on-page SEO guidance."
+  },
+  "content-calendar": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Plans content across channels from pillars/goals; feeds the production skills and saves to the vault."
+  },
+  "meeting-notes": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Structures transcripts into vault notes and turns action items into tasks (task-manager)."
+  },
   "web-research": {
     "requiredEnv": [],
     "runtime": [],
