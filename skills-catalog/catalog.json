@@ -14,6 +14,11 @@
     "runtime": [],
     "setup": "No API key. Manages tasks/projects in the Obsidian vault (MCP or OBSIDIAN_VAULT_PATH)."
   },
+  "daily-brief": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Orchestrates the calendar/email/task-manager/finance/SEO skills and the vault; uses whatever connectors are available."
+  },
   "web-research": {
     "requiredEnv": [],
     "runtime": [],
