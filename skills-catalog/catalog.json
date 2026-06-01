@@ -4,6 +4,16 @@
     "runtime": [],
     "setup": "Live: install the Obsidian 'Local REST API' plugin, then `claude mcp add --transport http --scope user obsidian https://127.0.0.1:27124/mcp/ -H \"Authorization: Bearer <API_KEY>\"`. File-based fallback: set OBSIDIAN_VAULT_PATH in .env."
   },
+  "capture": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Ingests articles/YouTube/PDF into the Obsidian second brain (MCP or OBSIDIAN_VAULT_PATH)."
+  },
+  "task-manager": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "No API key. Manages tasks/projects in the Obsidian vault (MCP or OBSIDIAN_VAULT_PATH)."
+  },
   "web-research": {
     "requiredEnv": [],
     "runtime": [],

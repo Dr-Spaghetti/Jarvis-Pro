@@ -435,7 +435,9 @@ describe("createApiServer", () => {
     predicate: (document: TDocument) => boolean,
   ): Promise<TDocument> => {
     const registryPath = join(workspaceCwd, ".octogent", "state", "tentacles.json");
-    const timeoutAt = Date.now() + 2_000;
+    // Generous deadline: under heavy parallel test load on Windows, file
+    // persistence can land just after a tight 2s window, causing spurious flakes.
+    const timeoutAt = Date.now() + 15_000;
 
     while (Date.now() < timeoutAt) {
       if (existsSync(registryPath)) {
