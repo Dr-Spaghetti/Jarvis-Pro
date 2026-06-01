@@ -25,7 +25,10 @@ size signals, and any disqualifiers. A tight ICP beats a big messy list.
 ## Workflow
 
 1. **Search** with Apollo (companies and/or people) matching the ICP.
-2. **Enrich** the promising ones (firmographics, contacts, key roles).
+2. **Enrich** the promising ones (firmographics, contacts, key roles). Use the
+   Apollo API for bulk, or the **Apollo browser extension** for a fast manual grab
+   while viewing a company site / LinkedIn — better for businesses the bulk API
+   doesn't surface cleanly (e.g. corporate parents, smaller locals).
 3. **Qualify** against the ICP; drop poor fits. Note *why* each is a fit.
 4. **Store** the shortlist:
    - To **Airtable** if connected (a prospects table), and/or

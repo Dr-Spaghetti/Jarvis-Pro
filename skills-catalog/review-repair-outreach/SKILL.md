@@ -34,18 +34,30 @@ sequence, target criteria, objections, fulfillment SOP) and `Profile.md`.
 
 ## Pipeline (per prospect)
 1. **Discover** — Google Maps: "[vertical] in [city]" → profiles with a review in
-   the last 30–60 days. Best verticals: dentists, med spas, law firms, home
-   services (HVAC/plumbing/roofing), auto, vets, real estate, property mgmt.
-2. **Qualify** — read the bad review against Google's removal policy
-   (see review-manager). Mark **removable? Y/N**:
-   - **Y** (fake / non-customer / competitor / employee / off-topic / profanity /
-     AI-generated / incentivized / impersonation / illegal) → lead with **Removal
-     (pay-on-success)**.
-   - **N** (legit bad experience, e.g. 1★ no text) → lead with **Suppression**
-     (review-gen + responses, recurring).
-3. **Enrich contact** — small locals: phone/email off the listing/site; mid/large:
-   Apollo (`apollo_organizations_enrich`, `apollo_mixed_people_api_search`,
-   `apollo_people_match`). Verify the email (bounce <2% is the #1 lever).
+   the last 30–60 days. Priority verticals (high value-fit): **off-campus /
+   student-housing apartment operators**, dentists/ortho/DSO, med spas/cosmetic,
+   law firms, multi-location home services (HVAC/roofing), auto, vets, real estate.
+2. **Qualify on TWO axes** (pursue only when both are medium–high):
+   - **(a) Removable?** read the review vs Google policy (see review-manager).
+     **Y** (fake / non-customer / competitor / employee / off-topic / profanity /
+     AI-generated / incentivized / impersonation / illegal) → **Removal
+     (pay-on-success)**. **N** (legit, e.g. 1★ no text) → **Suppression** (recurring).
+   - **(b) Value-fit?** score customer-lifetime-value/deal size, review-dependence
+     (esp. sight-unseen decisions), demonstrated review-value signals, pain acuity,
+     and ability to pay. Assign a **price tier**: Tier 1 $700–900 (student housing,
+     dental/DSO, med spa, law, multi-location home services); Tier 2 $400–600 (solid
+     single-location locals); Tier 3 skip / suppression-only (restaurants, retail —
+     usually won't pay). **Never anchor the top price on a low-margin business;
+     pick the high tier only when they can genuinely pay and are likely to say yes.**
+   - *Apartments note:* out-of-state students choose sight-unseen, leases are
+     $10k–30k+, and operators visibly value reviews → Tier-1 gold mine, especially
+     during spring leasing season.
+3. **Enrich contact** — small locals: phone/email off the listing/site; mid/large
+   and corporate operators (apartment parents, DSO groups): **Apollo** —
+   `apollo_organizations_enrich`, `apollo_mixed_people_api_search`,
+   `apollo_people_match`, OR the **Apollo browser extension** for a fast manual
+   grab while viewing the company site / LinkedIn (often better than the API for
+   these). Verify the email (bounce <2% is the #1 lever).
 4. **Outreach** — personalize the sequence templates to the *specific* review;
    hand to email-assistant. **Never send without Nick's confirmation**; CAN-SPAM
    footer (physical address + unsubscribe) on every email.
