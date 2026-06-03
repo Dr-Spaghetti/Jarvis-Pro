@@ -299,6 +299,21 @@ export const buildDeckSkillsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/deck/skills");
 };
 
+const buildBrainUrl = (path: string, runtimeBaseUrl: string | null) =>
+  runtimeBaseUrl ? buildAbsoluteUrl(runtimeBaseUrl, path) : path;
+
+export const buildBrainRecentUrl = (limit = 12, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brain/recent?limit=${limit}`, runtimeBaseUrl);
+
+export const buildBrainSearchUrl = (query: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brain/search?q=${encodeURIComponent(query)}`, runtimeBaseUrl);
+
+export const buildBrainNoteUrl = (notePath: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brain/note?path=${encodeURIComponent(notePath)}`, runtimeBaseUrl);
+
+export const buildBrainCaptureUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/brain/capture", runtimeBaseUrl);
+
 export const buildDeckTentacleUrl = (tentacleId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
   const encodedTentacleId = encodeURIComponent(tentacleId);
   const path = `/api/deck/tentacles/${encodedTentacleId}`;

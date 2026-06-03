@@ -7,6 +7,7 @@ import { CanvasPrimaryView } from "./CanvasPrimaryView";
 import { CodeIntelPrimaryView } from "./CodeIntelPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { DeckPrimaryView } from "./DeckPrimaryView";
+import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { MonitorPrimaryView } from "./MonitorPrimaryView";
 import { PromptsPrimaryView } from "./PromptsPrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
@@ -33,6 +34,7 @@ type PrimaryViewRouterProps = {
   onConversationsActionPanel: (content: ReactNode) => void;
   promptsEnabled: boolean;
   onPromptsSidebarContent: (content: ReactNode) => void;
+  onPrimaryNavChange: (index: PrimaryNavIndex) => void;
 };
 
 export const PrimaryViewRouter = ({
@@ -48,7 +50,12 @@ export const PrimaryViewRouter = ({
   onConversationsActionPanel,
   promptsEnabled,
   onPromptsSidebarContent,
+  onPrimaryNavChange,
 }: PrimaryViewRouterProps) => {
+  if (activePrimaryNav === 9) {
+    return <JarvisHomePrimaryView onNavigate={onPrimaryNavChange} />;
+  }
+
   if (activePrimaryNav === 2) {
     return <DeckPrimaryView {...deckPrimaryViewProps} />;
   }

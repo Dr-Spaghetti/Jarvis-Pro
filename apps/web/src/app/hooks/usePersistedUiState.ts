@@ -16,7 +16,7 @@ type UsePersistedUiStateOptions = {
   columns: TerminalView;
 };
 
-const DEFAULT_ACTIVE_PRIMARY_NAV: PrimaryNavIndex = 1;
+const DEFAULT_ACTIVE_PRIMARY_NAV: PrimaryNavIndex = 9;
 const DEFAULT_IS_AGENTS_SIDEBAR_VISIBLE = true;
 const DEFAULT_IS_ACTIVE_AGENTS_SECTION_EXPANDED = true;
 const DEFAULT_IS_RUNTIME_STATUS_STRIP_VISIBLE = true;

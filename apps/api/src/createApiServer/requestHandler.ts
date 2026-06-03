@@ -10,6 +10,12 @@ import type { CodexUsageSnapshot } from "../codexUsage";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
+import {
+  handleBrainCaptureRoute,
+  handleBrainNoteRoute,
+  handleBrainRecentRoute,
+  handleBrainSearchRoute,
+} from "./brainRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
   handleConversationExportRoute,
@@ -107,6 +113,10 @@ type CreateApiRequestHandlerOptions = {
 };
 
 const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
+  [
+    "brain",
+    [handleBrainRecentRoute, handleBrainSearchRoute, handleBrainNoteRoute, handleBrainCaptureRoute],
+  ],
   ["channels", [handleChannelMessagesRoute]],
   ["hooks", [handleHookRoute]],
   ["prompts", [handlePromptsCollectionRoute, handlePromptItemRoute]],

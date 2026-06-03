@@ -7,6 +7,7 @@ export const MIN_SIDEBAR_WIDTH = 240;
 export const MAX_SIDEBAR_WIDTH = 520;
 
 export const PRIMARY_NAV_ITEMS = [
+  { index: 9, label: "Jarvis" },
   { index: 1, label: "Agents" },
   { index: 2, label: "Deck" },
   { index: 3, label: "Activity" },

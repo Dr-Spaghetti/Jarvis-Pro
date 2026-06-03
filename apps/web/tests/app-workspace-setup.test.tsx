@@ -170,6 +170,9 @@ describe("App workspace setup", () => {
 
     render(<App />);
 
+    // Default landing is now the Jarvis home; the setup card lives in the Agents view.
+    fireEvent.click(await screen.findByRole("button", { name: "[1] Agents" }));
+
     expect(await screen.findByLabelText("Workspace setup")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
     expect(screen.getByLabelText("Main content canvas")).toBeInTheDocument();
@@ -204,6 +207,9 @@ describe("App workspace setup", () => {
     });
 
     render(<App />);
+
+    // Default landing is now the Jarvis home; navigate to the Agents view for setup.
+    fireEvent.click(await screen.findByRole("button", { name: "[1] Agents" }));
 
     const setupCard = await screen.findByLabelText("Workspace setup");
     fireEvent.click(within(setupCard).getByRole("button", { name: "Update .gitignore" }));
