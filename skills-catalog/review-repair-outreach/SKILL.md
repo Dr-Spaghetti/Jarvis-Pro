@@ -1,86 +1,87 @@
 ---
 name: review-repair-outreach
 description: >
-  Run Nick's review-repair client-acquisition engine end-to-end: find local
-  businesses with fresh negative/policy-violating Google reviews, qualify them,
-  enrich the contact, send a personalized outreach sequence, track the pipeline,
-  and route fulfillment. Trigger whenever Nick says: find review-repair leads,
-  build a prospect list, who can I pitch review removal to, run outreach, draft
-  the review-removal emails, update the outreach pipeline, or "work the review
-  business".
+  Run Nick's review-repair client-acquisition engine end-to-end and AUTOMATED:
+  discover local businesses + their Google ratings via the Local Falcon API, rank
+  by pain + value-fit, qualify, enrich the decision-maker's contact via Apollo,
+  draft a personalized outreach sequence, and log everything to the private
+  tracker. Trigger whenever Nick says: find review-repair leads, build/refresh the
+  prospect list, who can I pitch review removal to, run the outreach engine, draft
+  the review emails, update the pipeline, or "work the review business".
 compatibility: >
-  Orchestrator. Uses Google Maps (manual or, later, Places API) for discovery,
-  Apollo for contact enrichment, and a PRIVATE prospect tracker — the Obsidian
-  vault master, mirrored to a private Google Sheet for sharing on demand. Composes
-  lead-prospecting, review-manager, email-assistant, and task-manager. Reads the
-  playbook in Areas/Freelance/Review-Outreach/ and Profile.md. No API key.
+  Automated orchestrator (no browser scraping — Google blocks it). Data sources,
+  all API: Local Falcon (`searchForLocalFalconBusinessLocation` = free
+  ratings/counts/place data; Reviews Analysis report = $19/location for deep review
+  text) for discovery + reviews; Apollo for contacts; an optional bulk-reviews API
+  (Outscraper/Places) for cheap full review text. Output: the PRIVATE vault tracker
+  `Areas/Freelance/Review-Outreach/Prospects.md`, mirrored to a private Google
+  Sheet. Composes lead-prospecting, review-manager, email-assistant, task-manager,
+  personal-finance. Reads the playbook in Areas/Freelance/Review-Outreach/ + Profile.md.
 ---
 
 # Review-Repair Outreach Engine
 
-Nick's fastest-cash system. The asset is the **pipeline**, not the removal —
-fulfillment is a commodity (legit self-removal or the $300 pay-on-success
-subcontractor). Operate honestly and compliantly at all times.
+Nick's fastest-cash system, built to run hands-off inside the tool. The asset is
+the **pipeline**, not the removal (fulfillment is delegated to the $300
+pay-on-success guy or done legitimately). Honest + compliant always.
 
-Always load the playbook first: `Areas/Freelance/Review-Outreach/` (offer, email
-sequence, target criteria, objections, fulfillment SOP) and `Profile.md`.
+Load first: the playbook in `Areas/Freelance/Review-Outreach/` (Offer, Email
+Sequence, Target Criteria + contact-routing rule, Fulfillment SOP) and `Profile.md`
+(goals, voice, current channel preference — **email-only for now**).
 
-## Two tracks (run in parallel)
-- **Track 1 — manual hot prospects (now, $0):** the 10–20 businesses with the
-  freshest, clearly policy-violating reviews → reach by phone / website contact
-  form / personal email. Fastest path to the first 1–2 clients.
-- **Track 2 — scaled cold email:** only from a separate, warmed sending domain
-  (never justifylocal.com) with SPF/DKIM/DMARC, 25–40/inbox/day, verified list.
+## Automated pipeline (this is how to run it)
+1. **Discover + rank — FREE, no browser.** For each target (or a vertical+area),
+   call Local Falcon `searchForLocalFalconBusinessLocation` → get rating, review
+   count, place_id, address, phone, site, categories. Rank by **pain (lowest
+   rating) × value-fit (CLV, review-dependence, ability to pay) → price tier**
+   (Tier 1 $700–900 student housing / dental-DSO / med spa / law / multi-loc home
+   services; Tier 2 $400–600 single-loc locals; Tier 3 skip). Never anchor the top
+   price on a low-margin business.
+2. **Qualify removable vs suppress.** Removable = a policy-violating review (fake /
+   non-customer / competitor / employee / off-topic / profanity / AI-generated /
+   incentivized / impersonation / illegal). This needs the **review TEXT**, which
+   the free search does NOT include — pull it via a reviews API (Outscraper/Places,
+   pennies) or Local Falcon Reviews Analysis ($19/location). **Flag the cost and
+   get Nick's OK before spending.** Until then, run **suppression-led** on the
+   lowest-rated (the low rating itself is the pitch).
+3. **Enrich contact (Apollo).** `apollo_mixed_people_api_search` (free) to find the
+   decision-maker; `apollo_people_match` to reveal the email (**1 credit each —
+   confirm count first**). Routing (see Target Criteria): **independent business →
+   on-site property manager / owner** (email usually on site/listing); **big
+   operator (GMH, Greystar, Landmark, Core, etc.) → corporate marketing** (Apollo).
+   Property-level emails often aren't in Apollo — note that, don't fabricate one.
+4. **Draft outreach.** Personalize the Email Sequence to the specific business/
+   review (cite specifics). Separate, tailored emails per contact — never CC a PM
+   and their corporate exec. Hand to email-assistant. **Never send without Nick's
+   explicit approval** (he reviews every email); his default signature handles the
+   footer; CAN-SPAM applies.
+5. **Track.** Write/update each prospect + contact in the vault tracker
+   `Prospects.md`; mirror to the private Google Sheet on request. Stages: New →
+   Contacted → Replied → Call → Won → Fulfilled → Paid. Create follow-ups via
+   task-manager.
+6. **Fulfill.** Removable → legit self-report or the $300 guy; not removable →
+   suppression via review-manager. On payment, log income via personal-finance.
 
-## Pipeline (per prospect)
-1. **Discover** — Google Maps: "[vertical] in [city]" → profiles with a review in
-   the last 30–60 days. Priority verticals (high value-fit): **off-campus /
-   student-housing apartment operators**, dentists/ortho/DSO, med spas/cosmetic,
-   law firms, multi-location home services (HVAC/roofing), auto, vets, real estate.
-2. **Qualify on TWO axes** (pursue only when both are medium–high):
-   - **(a) Removable?** read the review vs Google policy (see review-manager).
-     **Y** (fake / non-customer / competitor / employee / off-topic / profanity /
-     AI-generated / incentivized / impersonation / illegal) → **Removal
-     (pay-on-success)**. **N** (legit, e.g. 1★ no text) → **Suppression** (recurring).
-   - **(b) Value-fit?** score customer-lifetime-value/deal size, review-dependence
-     (esp. sight-unseen decisions), demonstrated review-value signals, pain acuity,
-     and ability to pay. Assign a **price tier**: Tier 1 $700–900 (student housing,
-     dental/DSO, med spa, law, multi-location home services); Tier 2 $400–600 (solid
-     single-location locals); Tier 3 skip / suppression-only (restaurants, retail —
-     usually won't pay). **Never anchor the top price on a low-margin business;
-     pick the high tier only when they can genuinely pay and are likely to say yes.**
-   - *Apartments note:* out-of-state students choose sight-unseen, leases are
-     $10k–30k+, and operators visibly value reviews → Tier-1 gold mine, especially
-     during spring leasing season.
-3. **Enrich contact** — small locals: phone/email off the listing/site; mid/large
-   and corporate operators (apartment parents, DSO groups): **Apollo** —
-   `apollo_organizations_enrich`, `apollo_mixed_people_api_search`,
-   `apollo_people_match`, OR the **Apollo browser extension** for a fast manual
-   grab while viewing the company site / LinkedIn (often better than the API for
-   these). Verify the email (bounce <2% is the #1 lever).
-4. **Outreach** — personalize the sequence templates to the *specific* review;
-   hand to email-assistant. **Never send without Nick's confirmation**; CAN-SPAM
-   footer (physical address + unsubscribe) on every email.
-5. **Track** — log/update the prospect in the tracker. The private master lives in
-   the vault (`Areas/Freelance/Review-Outreach/Prospects.md`); mirror to the
-   private Google Sheet when Nick wants to show Vinny. Stages: New → Contacted →
-   Replied → Call → Won → Fulfilled → Paid. Create follow-up tasks via task-manager.
-6. **Fulfill** — removable: legit self-report (keep margin) or delegate to the
-   $300 guy; not removable: suppression via review-manager. On payment, log income
-   via personal-finance.
+## Fits the wider Jarvis
+New replies + due follow-ups surface in **daily-brief**; pipeline + KPIs reviewed
+in **weekly-review**; income logged via **personal-finance**; the tracker lives in
+the **Obsidian** brain. KPIs: reply ≥3–5%, bounce <2%, complaints <0.1%, ~2–4
+closes/mo.
 
-## KPIs (refine with real data)
-Reply ≥3–5% (8–12% when hyper-relevant), bounce <2%, complaints <0.1%, ~2–4
-closes/mo. Surface replies + follow-ups in daily-brief; review the pipeline in
-weekly-review.
+## Cost ladder (cheapest-first; flag before spending)
+Local Falcon search = FREE · Apollo people search = FREE · Apollo email enrich = 1
+credit/contact · bulk reviews (Outscraper/Places) = pennies · Local Falcon Reviews
+Analysis = $19/location (reserve for hot targets / landed clients).
 
 ## Guardrails (non-negotiable)
 - Honest **pay-on-success** only; never promise to remove a *legitimate* review.
-- CAN-SPAM compliant on every send; separate warmed domain; verified list.
-- Do not resell any fraudulent removal method (fake court orders / bogus DMCA) —
-  if delegating, the method must be legitimate.
-- Cheapest option first; flag any cost before incurring it.
+- **Never send or commit to a client without Nick's explicit approval.**
+- CAN-SPAM on every send; for scaled cold email use a separate warmed domain
+  (never justifylocal.com); verify addresses.
+- Don't resell any fraudulent removal method (fake court orders / bogus DMCA).
+- Flag every cost before incurring it.
 
 ## What this does NOT do
-- It does not send emails or commit to clients without Nick's confirmation.
-- It does not fabricate reviews, contacts, or removability — qualify honestly.
+- It does not scrape Google Maps in a browser (unreliable + blocked) — it uses APIs.
+- It does not send emails, spend credits, or commit to clients without confirmation.
+- It does not fabricate reviews, contacts, ratings, or removability.
