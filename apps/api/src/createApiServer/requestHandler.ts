@@ -76,6 +76,13 @@ import {
   handleGithubSummaryRoute,
   handleUsageHeatmapRoute,
 } from "./usageRoutes";
+import {
+  handleVoiceConfigRoute,
+  handleVoiceIntentRoute,
+  handleVoiceSpeakRoute,
+  handleVoiceTextFallbackRoute,
+  handleVoiceTranscribeRoute,
+} from "./voiceRoutes";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -164,6 +171,16 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ],
   ["tentacles", [handleTentacleGitRoute, handleTentacleGitPullRequestRoute]],
   ["code-intel", [handleCodeIntelEventsRoute]],
+  [
+    "voice",
+    [
+      handleVoiceConfigRoute,
+      handleVoiceTranscribeRoute,
+      handleVoiceIntentRoute,
+      handleVoiceSpeakRoute,
+      handleVoiceTextFallbackRoute,
+    ],
+  ],
 ]);
 
 const extractRoutePrefix = (pathname: string): string | null => {

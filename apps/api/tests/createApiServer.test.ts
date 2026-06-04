@@ -502,6 +502,96 @@ describe("createApiServer", () => {
     await expect(response.json()).resolves.toEqual([]);
   });
 
+  it("reports voice providers without exposing secrets", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("ELEVENLABS_API_KEY", "");
+    vi.stubEnv("ELEVENLABS_VOICE_ID", "");
+    const baseUrl = await startServer();
+
+    try {
+      const response = await fetch(`${baseUrl}/api/voice/config`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        wake: {
+          provider: "browser-speech-recognition",
+          phrases: ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis", "jarvis"],
+        },
+        transcription: {
+          provider: "openai",
+          configured: false,
+          defaultModel: "gpt-4o-mini-transcribe",
+          models: [
+            "gpt-4o-mini-transcribe",
+            "gpt-4o-transcribe",
+            "gpt-4o-transcribe-diarize",
+            "whisper-1",
+          ],
+          whisperSupported: true,
+        },
+        tts: {
+          provider: "elevenlabs",
+          configured: false,
+          voiceIdConfigured: false,
+          fallback: "browser-speech-synthesis",
+        },
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects voice transcription when OpenAI credentials are missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const baseUrl = await startServer();
+
+    try {
+      const response = await fetch(`${baseUrl}/api/voice/transcribe?model=whisper-1`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "audio/webm",
+        },
+        body: new Uint8Array([1, 2, 3]),
+      });
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        error: "OPENAI_API_KEY is not configured.",
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("resolves wake-prefixed Jarvis voice commands", async () => {
+    const baseUrl = await startServer();
+
+    const response = await fetch(`${baseUrl}/api/voice/intent`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transcript: "Yo Jarvis search my brain for monitor ideas",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      transcript: "Yo Jarvis search my brain for monitor ideas",
+      commandText: "search my brain for monitor ideas",
+      intent: {
+        type: "brain-search",
+        query: "monitor ideas",
+      },
+    });
+  });
+
   it("returns session summaries for GET /api/conversations", async () => {
     const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
     temporaryDirectories.push(workspaceCwd);

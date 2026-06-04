@@ -314,6 +314,25 @@ export const buildBrainNoteUrl = (notePath: string, runtimeBaseUrl = readRuntime
 export const buildBrainCaptureUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/brain/capture", runtimeBaseUrl);
 
+export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/voice/config", runtimeBaseUrl);
+
+export const buildVoiceTranscribeUrl = (
+  model: string | null,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = model
+    ? `/api/voice/transcribe?model=${encodeURIComponent(model)}`
+    : "/api/voice/transcribe";
+  return buildBrainUrl(path, runtimeBaseUrl);
+};
+
+export const buildVoiceIntentUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/voice/intent", runtimeBaseUrl);
+
+export const buildVoiceSpeakUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/voice/speak", runtimeBaseUrl);
+
 export const buildDeckTentacleUrl = (tentacleId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
   const encodedTentacleId = encodeURIComponent(tentacleId);
   const path = `/api/deck/tentacles/${encodedTentacleId}`;
