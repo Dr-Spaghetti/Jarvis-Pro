@@ -398,25 +398,47 @@ export const handleBrainSearchRoute: ApiRouteHandler = async ({
     return true;
   }
   const needle = q.toLowerCase();
+  // Multi-term lexical scoring: match each query word independently and reward
+  // notes that hit the title, path, headings, and more of the distinct terms.
+  const terms = needle.split(/\s+/).filter((term) => term.length >= 2);
+  const searchTerms = terms.length > 0 ? terms : [needle];
   const results: Array<{ score: number; mtime: number; note: BrainNote }> = [];
   for (const rel of listMarkdownFiles(vaultDir)) {
     const full = join(vaultDir, rel);
     try {
       const content = readFileSync(full, "utf8");
       const lower = content.toLowerCase();
-      const inName = rel.toLowerCase().includes(needle);
-      const occurrences = lower.split(needle).length - 1;
-      if (!inName && occurrences === 0) continue;
-      const score = (inName ? 10 : 0) + Math.min(occurrences, 5);
-      const body = stripFrontmatter(content);
+      const title = deriveTitle(content, rel);
+      const titleLower = title.toLowerCase();
+      const pathLower = rel.toLowerCase();
+      const headingsLower = (content.match(/^#{1,6}\s+.+$/gm) ?? []).join("\n").toLowerCase();
+
+      let matchedTerms = 0;
+      let score = 0;
+      let firstHit: string | null = null;
+      for (const term of searchTerms) {
+        const occurrences = lower.split(term).length - 1;
+        const inTitle = titleLower.includes(term);
+        const inPath = pathLower.includes(term);
+        const inHeading = headingsLower.includes(term);
+        if (occurrences === 0 && !inTitle && !inPath) continue;
+        matchedTerms += 1;
+        if (!firstHit) firstHit = term;
+        score +=
+          (inTitle ? 12 : 0) + (inPath ? 6 : 0) + (inHeading ? 4 : 0) + Math.min(occurrences, 5);
+      }
+      if (matchedTerms === 0) continue;
+      // Notes matching more of the distinct query terms rank higher.
+      score *= matchedTerms;
+      const mtime = statSync(full).mtimeMs;
       results.push({
         score,
-        mtime: statSync(full).mtimeMs,
+        mtime,
         note: {
-          title: deriveTitle(content, rel),
+          title,
           path: toPosix(rel),
-          modified: new Date(statSync(full).mtimeMs).toISOString(),
-          snippet: buildSnippet(body, q),
+          modified: new Date(mtime).toISOString(),
+          snippet: buildSnippet(stripFrontmatter(content), firstHit ?? q),
         },
       });
     } catch {

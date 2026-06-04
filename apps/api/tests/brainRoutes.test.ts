@@ -114,6 +114,21 @@ describe("brainRoutes", () => {
     expect(res.json.notes[0].snippet.toLowerCase()).toContain("venue");
   });
 
+  it("search ranks multi-term + title matches above single-term body matches", async () => {
+    writeFileSync(
+      join(vault, "Pricing Notes.md"),
+      "# Pricing Notes\n\nThoughts on pricing tiers and strategy for clients.\n",
+    );
+    writeFileSync(join(vault, "Random.md"), "# Random\n\nA note that mentions strategy once.\n");
+    const res = await call(handleBrainSearchRoute, "GET", "/api/brain/search?q=pricing%20strategy");
+    expect(res.status).toBe(200);
+    const titles = res.json.notes.map((n: { title: string }) => n.title);
+    // Pricing Strategy (title has both terms) and Pricing Notes (both terms) outrank
+    // Random.md, which only matches "strategy".
+    expect(titles[0]).toBe("Pricing Strategy");
+    expect(titles.indexOf("Random")).toBeGreaterThan(titles.indexOf("Pricing Notes"));
+  });
+
   it("note reads a file and blocks path traversal", async () => {
     const ok = await call(
       handleBrainNoteRoute,
