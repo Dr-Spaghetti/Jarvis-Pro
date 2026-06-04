@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PrimaryNavIndex } from "../app/constants";
 import {
   buildBrainCaptureUrl,
+  buildBrainJournalUrl,
+  buildBrainMemoryUrl,
   buildBrainNoteUrl,
   buildBrainRecentUrl,
   buildBrainSearchUrl,
@@ -15,6 +17,13 @@ import {
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
+type JournalEntry = {
+  ts: string;
+  status: "ok" | "warn" | "error";
+  skill: string | null;
+  action: string;
+  detail: string | null;
+};
 type VoiceConfig = {
   wake: { phrases: string[] };
   transcription: {
@@ -73,6 +82,17 @@ type JarvisHomePrimaryViewProps = {
 const formatDate = (iso: string): string => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString();
+};
+
+const formatTimeAgo = (iso: string): string => {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
 };
 
 const asNotes = (value: unknown): BrainNote[] => {
@@ -141,6 +161,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [capturing, setCapturing] = useState(false);
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<{ title: string; content: string } | null>(null);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [memoryCount, setMemoryCount] = useState<number | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
   const [voiceStatus, setVoiceStatus] = useState("Voice idle");
@@ -186,6 +208,28 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         if (res.ok) {
           const data = (await res.json()) as unknown;
           if (Array.isArray(data)) setAgentCount(data.length);
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const res = await fetch(buildBrainJournalUrl(6), {
+          headers: { Accept: "application/json" },
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { entries?: unknown };
+          if (Array.isArray(data.entries)) setJournal(data.entries as JournalEntry[]);
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const res = await fetch(buildBrainMemoryUrl(), {
+          headers: { Accept: "application/json" },
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { items?: unknown };
+          if (Array.isArray(data.items)) setMemoryCount(data.items.length);
         }
       } catch {
         /* ignore */
@@ -523,7 +567,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             JARVIS<span>{" // command center"}</span>
           </h1>
           <div className="jarvis-status">
-            <b>● online</b> · {skillCount ?? "—"} skills ready
+            <b>● online</b> · {skillCount ?? "—"} skills · {memoryCount ?? 0} memories
           </div>
         </header>
 
@@ -685,6 +729,29 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           {voiceError && <p className="jarvis-empty">{voiceError}</p>}
         </section>
 
+        <section className="jarvis-panel jarvis-activity" aria-label="Recent activity">
+          <p className="jarvis-panel-title">Activity</p>
+          {journal.length === 0 ? (
+            <p className="jarvis-empty">
+              No activity logged yet. Skills and Jarvis actions will appear here.
+            </p>
+          ) : (
+            <ul className="jarvis-activity-list">
+              {journal.map((entry) => (
+                <li
+                  className="jarvis-activity-row"
+                  key={`${entry.ts}:${entry.skill ?? ""}:${entry.action}`}
+                >
+                  <span className="jarvis-activity-dot" data-status={entry.status} />
+                  <span className="jarvis-activity-action">{entry.action}</span>
+                  {entry.skill && <span className="jarvis-activity-skill">{entry.skill}</span>}
+                  <span className="jarvis-activity-time">{formatTimeAgo(entry.ts)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section className="jarvis-tiles" aria-label="Command tiles">
           <button type="button" className="jarvis-tile" onClick={() => onNavigate(2)}>
             <div className="jarvis-tile-label">Skills</div>
@@ -703,7 +770,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           </button>
           <button type="button" className="jarvis-tile" onClick={() => onNavigate(3)}>
             <div className="jarvis-tile-label">Activity</div>
-            <div className="jarvis-tile-value">⟳</div>
+            <div className="jarvis-tile-value">{journal.length || "—"}</div>
             <div className="jarvis-tile-sub">Recent activity →</div>
           </button>
         </section>

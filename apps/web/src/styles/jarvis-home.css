@@ -318,6 +318,60 @@
   margin-top: 6px;
 }
 
+/* Activity (journal) */
+.jarvis-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.jarvis-activity-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 12px;
+}
+.jarvis-activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--term-green);
+  box-shadow: 0 0 8px var(--term-green);
+}
+.jarvis-activity-dot[data-status="warn"] {
+  background: var(--term-warning);
+  box-shadow: 0 0 8px var(--term-warning);
+}
+.jarvis-activity-dot[data-status="error"] {
+  background: var(--term-red);
+  box-shadow: 0 0 8px var(--term-red);
+}
+.jarvis-activity-action {
+  color: var(--text-primary);
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jarvis-activity-skill {
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+.jarvis-activity-time {
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .jarvis-grid-2 {
   display: grid;
   grid-template-columns: 1.4fr 1fr;

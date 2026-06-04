@@ -314,6 +314,18 @@ export const buildBrainNoteUrl = (notePath: string, runtimeBaseUrl = readRuntime
 export const buildBrainCaptureUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/brain/capture", runtimeBaseUrl);
 
+export const buildBrainJournalUrl = (limit = 20, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brain/journal?limit=${limit}`, runtimeBaseUrl);
+
+export const buildBrainJournalAppendUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/brain/journal", runtimeBaseUrl);
+
+export const buildBrainMemoryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/brain/memory", runtimeBaseUrl);
+
+export const buildBrainRememberUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/brain/remember", runtimeBaseUrl);
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 
