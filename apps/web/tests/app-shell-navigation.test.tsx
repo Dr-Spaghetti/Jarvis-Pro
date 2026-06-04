@@ -50,6 +50,19 @@ const mockShellRequests = () => {
       return jsonResponse({});
     }
 
+    if (url.endsWith("/api/voice/config") && method === "GET") {
+      return jsonResponse({
+        wake: { phrases: ["yo jarvis", "heyo jarvis", "jarvis"] },
+        transcription: {
+          configured: false,
+          defaultModel: "gpt-4o-mini-transcribe",
+          models: ["gpt-4o-mini-transcribe", "whisper-1"],
+          whisperSupported: true,
+        },
+        tts: { configured: false, fallback: "browser-speech-synthesis" },
+      });
+    }
+
     return notFoundResponse();
   });
 };
@@ -68,7 +81,7 @@ describe("App shell and navigation", () => {
     expect(await screen.findByLabelText("Runtime status strip")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
     expect(screen.getByLabelText("Main content canvas")).toBeInTheDocument();
-    expect(screen.getByLabelText("Telemetry ticker tape")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Telemetry ticker tape")).toBeInTheDocument();
     expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
     expect(screen.getByText("Press 1-9 to navigate")).toBeInTheDocument();
   });

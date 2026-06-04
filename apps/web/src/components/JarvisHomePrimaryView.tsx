@@ -8,9 +8,63 @@ import {
   buildBrainSearchUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
+  buildVoiceConfigUrl,
+  buildVoiceIntentUrl,
+  buildVoiceSpeakUrl,
+  buildVoiceTranscribeUrl,
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
+type VoiceConfig = {
+  wake: { phrases: string[] };
+  transcription: {
+    configured: boolean;
+    defaultModel: string;
+    models: string[];
+    whisperSupported: boolean;
+  };
+  tts: { configured: boolean; fallback: string };
+};
+type JarvisIntentResolution = {
+  transcript: string;
+  commandText: string;
+  intent:
+    | {
+        type: "navigate";
+        target:
+          | "agents"
+          | "deck"
+          | "activity"
+          | "code-intel"
+          | "monitor"
+          | "conversations"
+          | "prompts"
+          | "settings"
+          | "jarvis";
+      }
+    | { type: "brain-search"; query: string }
+    | { type: "brain-capture"; text: string }
+    | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
+    | { type: "unknown"; text: string };
+};
+type SpeechRecognitionResultLike = {
+  readonly isFinal?: boolean;
+  readonly 0?: { readonly transcript?: string };
+};
+type SpeechRecognitionEventLike = {
+  readonly results: ArrayLike<SpeechRecognitionResultLike>;
+};
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 type JarvisHomePrimaryViewProps = {
   onNavigate: (index: PrimaryNavIndex) => void;
@@ -33,6 +87,49 @@ const asNotes = (value: unknown): BrainNote[] => {
   );
 };
 
+const voiceNavTargets: Record<
+  Extract<JarvisIntentResolution["intent"], { type: "navigate" }>["target"],
+  PrimaryNavIndex
+> = {
+  jarvis: 9,
+  agents: 1,
+  deck: 2,
+  activity: 3,
+  "code-intel": 4,
+  monitor: 5,
+  conversations: 6,
+  prompts: 7,
+  settings: 8,
+};
+
+const normalizeVoiceText = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getSpeechRecognitionConstructor = (): SpeechRecognitionConstructor | null => {
+  const browserWindow = window as Window & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition ?? null;
+};
+
+const extractCommandAfterWake = (transcript: string, phrases: string[]): string | null => {
+  const normalized = normalizeVoiceText(transcript);
+  for (const phrase of phrases) {
+    const index = normalized.indexOf(phrase);
+    if (index === -1) continue;
+    return normalized.slice(index + phrase.length).trim();
+  }
+  return null;
+};
+
+const hasWakePhrase = (transcript: string, phrases: string[]): boolean =>
+  extractCommandAfterWake(transcript, phrases) !== null;
+
 export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps) => {
   const [recent, setRecent] = useState<BrainNote[]>([]);
   const [results, setResults] = useState<BrainNote[] | null>(null);
@@ -44,6 +141,18 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [capturing, setCapturing] = useState(false);
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<{ title: string; content: string } | null>(null);
+  const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
+  const [voiceModel, setVoiceModel] = useState<string | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState("Voice idle");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [isWakeArmed, setIsWakeArmed] = useState(false);
+  const [isRecordingCommand, setIsRecordingCommand] = useState(false);
+  const [lastVoiceTranscript, setLastVoiceTranscript] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadRecent = useCallback(async () => {
@@ -83,6 +192,36 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       }
     })();
   }, [loadRecent]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(buildVoiceConfigUrl(), { headers: { Accept: "application/json" } });
+        if (!res.ok) return;
+        const config = (await res.json()) as VoiceConfig;
+        setVoiceConfig(config);
+        setVoiceModel(config.transcription.defaultModel);
+      } catch {
+        setVoiceError("Voice config unavailable");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      if (recordingTimerRef.current !== null) {
+        window.clearTimeout(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      for (const track of mediaStreamRef.current?.getTracks() ?? []) {
+        track.stop();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -131,6 +270,237 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       setCapturing(false);
     }
   }, [capture, loadRecent]);
+
+  const speakJarvis = useCallback(
+    async (text: string) => {
+      if (voiceConfig?.tts.configured) {
+        try {
+          const response = await fetch(buildVoiceSpeakUrl(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          if (response.ok) {
+            const objectUrl = URL.createObjectURL(await response.blob());
+            const audio = new Audio(objectUrl);
+            audio.addEventListener("ended", () => URL.revokeObjectURL(objectUrl), { once: true });
+            void audio.play().catch(() => URL.revokeObjectURL(objectUrl));
+            return;
+          }
+        } catch {
+          // Fall back to browser speech synthesis below.
+        }
+      }
+
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+      }
+    },
+    [voiceConfig],
+  );
+
+  const runVoiceIntent = useCallback(
+    async (transcript: string) => {
+      setVoiceError(null);
+      setLastVoiceTranscript(transcript);
+      const intentResponse = await fetch(buildVoiceIntentUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript }),
+      });
+      if (!intentResponse.ok) {
+        setVoiceError("Unable to resolve command");
+        return;
+      }
+      const resolution = (await intentResponse.json()) as JarvisIntentResolution;
+      const intent = resolution.intent;
+
+      if (intent.type === "navigate") {
+        onNavigate(voiceNavTargets[intent.target]);
+        setVoiceStatus(`Opened ${intent.target}`);
+        await speakJarvis(`Opening ${intent.target}.`);
+        return;
+      }
+
+      if (intent.type === "brain-search") {
+        setQuery(intent.query);
+        setVoiceStatus("Searching brain");
+        await speakJarvis("Searching your brain.");
+        return;
+      }
+
+      if (intent.type === "brain-capture") {
+        const response = await fetch(buildBrainCaptureUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: intent.text }),
+        });
+        if (!response.ok) {
+          setVoiceError("Capture failed");
+          return;
+        }
+        setCaptureMsg("Captured to Inbox");
+        void loadRecent();
+        setVoiceStatus("Captured");
+        await speakJarvis("Captured.");
+        return;
+      }
+
+      if (intent.type === "create-terminal") {
+        const response = await fetch("/api/terminals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceMode: intent.workspaceMode,
+            tentacleId: "octoboss",
+          }),
+        });
+        if (!response.ok) {
+          setVoiceError("Unable to create agent");
+          return;
+        }
+        onNavigate(1);
+        setVoiceStatus("Agent created");
+        await speakJarvis("Agent created.");
+        return;
+      }
+
+      setVoiceStatus("Command captured");
+      setVoiceError(intent.text ? `No action matched: ${intent.text}` : "No action matched");
+      await speakJarvis("I heard you, but I do not have that command wired yet.");
+    },
+    [loadRecent, onNavigate, speakJarvis],
+  );
+
+  const transcribeCommandAudio = useCallback(
+    async (audio: Blob) => {
+      const model = voiceModel ?? voiceConfig?.transcription.defaultModel ?? null;
+      if (!voiceConfig?.transcription.configured) {
+        setVoiceError("Set OPENAI_API_KEY to enable Whisper transcription");
+        setVoiceStatus("Transcription unavailable");
+        return;
+      }
+      setVoiceStatus("Transcribing");
+      const response = await fetch(buildVoiceTranscribeUrl(model), {
+        method: "POST",
+        headers: { "Content-Type": audio.type || "audio/webm" },
+        body: audio,
+      });
+      if (!response.ok) {
+        setVoiceError("Transcription failed");
+        setVoiceStatus("Voice idle");
+        return;
+      }
+      const result = (await response.json()) as { text?: string };
+      const transcript = result.text?.trim();
+      if (!transcript) {
+        setVoiceError("No speech detected");
+        setVoiceStatus("Voice idle");
+        return;
+      }
+      setVoiceStatus("Command received");
+      await runVoiceIntent(transcript);
+    },
+    [runVoiceIntent, voiceConfig, voiceModel],
+  );
+
+  const stopCommandRecording = useCallback(() => {
+    if (recordingTimerRef.current !== null) {
+      window.clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  const startCommandRecording = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceError("Microphone capture is unavailable in this browser");
+      return;
+    }
+    setVoiceError(null);
+    setVoiceStatus("Listening for command");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaStreamRef.current = stream;
+    const recorder = new MediaRecorder(stream);
+    audioChunksRef.current = [];
+    mediaRecorderRef.current = recorder;
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    });
+    recorder.addEventListener("stop", () => {
+      setIsRecordingCommand(false);
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+      mediaStreamRef.current = null;
+      const audio = new Blob(audioChunksRef.current, {
+        type: recorder.mimeType || "audio/webm",
+      });
+      void transcribeCommandAudio(audio);
+    });
+    setIsRecordingCommand(true);
+    recorder.start();
+    recordingTimerRef.current = window.setTimeout(() => {
+      stopCommandRecording();
+    }, 7000);
+  }, [stopCommandRecording, transcribeCommandAudio]);
+
+  const stopWakeListening = useCallback(() => {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setIsWakeArmed(false);
+    setVoiceStatus("Voice idle");
+  }, []);
+
+  const startWakeListening = useCallback(() => {
+    const Recognition = getSpeechRecognitionConstructor();
+    if (!Recognition) {
+      setVoiceError("Wake phrase detection is unavailable in this browser");
+      return;
+    }
+    setVoiceError(null);
+    const recognition = new Recognition();
+    const phrases = voiceConfig?.wake.phrases ?? ["jarvis", "yo jarvis", "heyo jarvis"];
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      const transcripts: string[] = [];
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript;
+        if (transcript) transcripts.push(transcript);
+      }
+      const transcript = transcripts.join(" ");
+      setLastVoiceTranscript(transcript);
+      if (!hasWakePhrase(transcript, phrases)) return;
+
+      const commandAfterWake = extractCommandAfterWake(transcript, phrases);
+      recognition.stop();
+      setIsWakeArmed(false);
+      if (commandAfterWake && commandAfterWake.split(/\s+/).length >= 2) {
+        void runVoiceIntent(commandAfterWake);
+        return;
+      }
+      void startCommandRecording();
+    };
+    recognition.onerror = (event) => {
+      setVoiceError(event.error ?? "Wake listener error");
+      setIsWakeArmed(false);
+    };
+    recognition.onend = () => {
+      setIsWakeArmed(false);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsWakeArmed(true);
+    setVoiceStatus("Wake armed");
+  }, [runVoiceIntent, startCommandRecording, voiceConfig]);
 
   const openNoteByPath = useCallback(async (path: string) => {
     try {
@@ -246,6 +616,73 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
               {captureMsg && <p className="jarvis-empty">{captureMsg}</p>}
             </>
           )}
+        </section>
+
+        <section className="jarvis-panel jarvis-voice" aria-label="Jarvis voice control">
+          <div className="jarvis-voice-header">
+            <p className="jarvis-panel-title">Voice</p>
+            <span className="jarvis-voice-status">{voiceStatus}</span>
+          </div>
+
+          <div className="jarvis-voice-controls">
+            <button
+              type="button"
+              className="jarvis-btn"
+              onClick={isWakeArmed ? stopWakeListening : startWakeListening}
+              disabled={isRecordingCommand}
+            >
+              {isWakeArmed ? "Disarm" : "Arm Wake"}
+            </button>
+            <button
+              type="button"
+              className="jarvis-btn jarvis-btn--secondary"
+              onClick={() => void startCommandRecording()}
+              disabled={isRecordingCommand}
+            >
+              Command
+            </button>
+            <button
+              type="button"
+              className="jarvis-btn jarvis-btn--secondary"
+              onClick={stopCommandRecording}
+              disabled={!isRecordingCommand}
+            >
+              Stop
+            </button>
+            <select
+              className="jarvis-select"
+              value={voiceModel ?? ""}
+              onChange={(event) => setVoiceModel(event.target.value)}
+              aria-label="Transcription model"
+            >
+              {(voiceConfig?.transcription.models ?? ["gpt-4o-mini-transcribe", "whisper-1"]).map(
+                (model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+          <div className="jarvis-voice-grid">
+            <span>
+              Wake:{" "}
+              {getSpeechRecognitionConstructor()
+                ? (voiceConfig?.wake.phrases ?? ["jarvis"]).join(", ")
+                : "unavailable"}
+            </span>
+            <span>
+              STT:{" "}
+              {voiceConfig?.transcription.configured
+                ? `ready (${voiceModel ?? voiceConfig.transcription.defaultModel})`
+                : "needs OPENAI_API_KEY"}
+            </span>
+            <span>TTS: {voiceConfig?.tts.configured ? "ElevenLabs" : "browser fallback"}</span>
+          </div>
+
+          {lastVoiceTranscript && <p className="jarvis-voice-transcript">{lastVoiceTranscript}</p>}
+          {voiceError && <p className="jarvis-empty">{voiceError}</p>}
         </section>
 
         <section className="jarvis-tiles" aria-label="Command tiles">

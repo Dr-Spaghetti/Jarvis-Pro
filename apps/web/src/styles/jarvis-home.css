@@ -213,6 +213,70 @@
   cursor: default;
   box-shadow: none;
 }
+.jarvis-btn--secondary {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border-hot);
+  color: var(--gold);
+}
+
+.jarvis-voice {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.jarvis-voice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.jarvis-voice-header .jarvis-panel-title {
+  margin: 0;
+}
+.jarvis-voice-status {
+  color: var(--term-green);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.jarvis-voice-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, auto)) minmax(220px, 1fr);
+  gap: 10px;
+}
+.jarvis-select {
+  min-width: 0;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  padding: 10px 12px;
+  outline: none;
+}
+.jarvis-select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+.jarvis-voice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.jarvis-voice-grid span,
+.jarvis-voice-transcript {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+.jarvis-voice-transcript {
+  margin: 0;
+  color: var(--text-primary);
+}
 
 /* Stat tiles */
 .jarvis-tiles {
@@ -262,6 +326,10 @@
 }
 @media (max-width: 860px) {
   .jarvis-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .jarvis-voice-controls,
+  .jarvis-voice-grid {
     grid-template-columns: 1fr;
   }
 }
