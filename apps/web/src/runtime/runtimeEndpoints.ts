@@ -326,6 +326,9 @@ export const buildBrainMemoryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
 export const buildBrainRememberUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/brain/remember", runtimeBaseUrl);
 
+export const buildBrainDigestUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/brain/digest", runtimeBaseUrl);
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PrimaryNavIndex } from "../app/constants";
 import {
   buildBrainCaptureUrl,
+  buildBrainDigestUrl,
   buildBrainJournalUrl,
   buildBrainMemoryUrl,
   buildBrainNoteUrl,
@@ -163,6 +164,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [openNote, setOpenNote] = useState<{ title: string; content: string } | null>(null);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [memoryCount, setMemoryCount] = useState<number | null>(null);
+  const [openTaskCount, setOpenTaskCount] = useState<number | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
   const [voiceStatus, setVoiceStatus] = useState("Voice idle");
@@ -230,6 +232,17 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         if (res.ok) {
           const data = (await res.json()) as { items?: unknown };
           if (Array.isArray(data.items)) setMemoryCount(data.items.length);
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const res = await fetch(buildBrainDigestUrl(), {
+          headers: { Accept: "application/json" },
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { tasks?: { openCount?: unknown } };
+          if (typeof data.tasks?.openCount === "number") setOpenTaskCount(data.tasks.openCount);
         }
       } catch {
         /* ignore */
@@ -765,8 +778,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           </button>
           <button type="button" className="jarvis-tile" onClick={() => onNavigate(2)}>
             <div className="jarvis-tile-label">Daily Brief</div>
-            <div className="jarvis-tile-value">▸</div>
-            <div className="jarvis-tile-sub">Run today's brief</div>
+            <div className="jarvis-tile-value">{openTaskCount ?? "▸"}</div>
+            <div className="jarvis-tile-sub">
+              {openTaskCount === null ? "Run today's brief" : `${openTaskCount} open tasks →`}
+            </div>
           </button>
           <button type="button" className="jarvis-tile" onClick={() => onNavigate(3)}>
             <div className="jarvis-tile-label">Activity</div>

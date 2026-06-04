@@ -12,6 +12,7 @@ import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
 import {
   handleBrainCaptureRoute,
+  handleBrainDigestRoute,
   handleBrainJournalRoute,
   handleBrainMemoryRoute,
   handleBrainNoteRoute,
@@ -133,6 +134,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainJournalRoute,
       handleBrainMemoryRoute,
       handleBrainRememberRoute,
+      handleBrainDigestRoute,
     ],
   ],
   ["channels", [handleChannelMessagesRoute]],

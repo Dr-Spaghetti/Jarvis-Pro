@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   handleBrainCaptureRoute,
+  handleBrainDigestRoute,
   handleBrainJournalRoute,
   handleBrainMemoryRoute,
   handleBrainNoteRoute,
@@ -206,5 +207,35 @@ describe("brainRoutes", () => {
     const res = await call(handleBrainMemoryRoute, "GET", "/api/brain/memory");
     expect(res.status).toBe(200);
     expect(res.json).toEqual({ configured: false, content: "", items: [] });
+  });
+
+  it("digest assembles open tasks, recent notes, and counts without an agent", async () => {
+    writeFileSync(
+      join(vault, "Tasks.md"),
+      "# Tasks\n\n- [ ] Email Rachel at the Venue\n- [x] done thing\n- [ ] Invoice Park Place\n",
+    );
+    await call(handleBrainRememberRoute, "POST", "/api/brain/remember", { text: "email-only" });
+    await call(handleBrainJournalRoute, "POST", "/api/brain/journal", {
+      action: "ran digest test",
+    });
+
+    const res = await call(handleBrainDigestRoute, "GET", "/api/brain/digest");
+    expect(res.status).toBe(200);
+    expect(res.json.configured).toBe(true);
+    expect(res.json.tasks.open).toContain("Email Rachel at the Venue");
+    expect(res.json.tasks.open).toContain("Invoice Park Place");
+    // completed tasks are excluded
+    expect(res.json.tasks.open.some((t: string) => t.includes("done thing"))).toBe(false);
+    expect(res.json.memory.factCount).toBeGreaterThanOrEqual(1);
+    expect(res.json.journal.length).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(res.json.recentNotes)).toBe(true);
+  });
+
+  it("digest reports unconfigured (with today's date) when no vault is set", async () => {
+    Reflect.deleteProperty(process.env, "OBSIDIAN_VAULT_PATH");
+    const res = await call(handleBrainDigestRoute, "GET", "/api/brain/digest");
+    expect(res.status).toBe(200);
+    expect(res.json.configured).toBe(false);
+    expect(res.json.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
