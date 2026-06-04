@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  handleBrainAskRoute,
   handleBrainCaptureRoute,
   handleBrainDigestRoute,
   handleBrainJournalRoute,
@@ -238,6 +239,29 @@ describe("brainRoutes", () => {
     expect(res.status).toBe(200);
     expect(res.json.configured).toBe(false);
     expect(res.json.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("ask returns available:false with retrieved sources when no chat model is reachable", async () => {
+    const previousHost = process.env.OLLAMA_HOST;
+    process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+    try {
+      const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+        question: "What did I write about the Venue?",
+      });
+      expect(res.status).toBe(200);
+      expect(res.json.available).toBe(false);
+      expect(res.json.reason).toBe("no-chat-model");
+      // retrieval still ran (lexical fallback) and surfaced a source
+      expect(res.json.sources.some((s: { title: string }) => s.title === "Daily Log")).toBe(true);
+    } finally {
+      if (previousHost === undefined) Reflect.deleteProperty(process.env, "OLLAMA_HOST");
+      else process.env.OLLAMA_HOST = previousHost;
+    }
+  });
+
+  it("ask requires a question", async () => {
+    const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {});
+    expect(res.status).toBe(400);
   });
 
   it("semantic search falls back to lexical when Ollama is unreachable", async () => {

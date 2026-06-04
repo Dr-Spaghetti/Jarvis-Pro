@@ -318,6 +318,51 @@
   margin-top: 6px;
 }
 
+/* Ask Jarvis (local RAG) */
+.jarvis-ask {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.jarvis-ask-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+.jarvis-answer {
+  border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  background: var(--glass-bg);
+  padding: 12px 14px;
+}
+.jarvis-answer-text {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.jarvis-answer-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.jarvis-answer-source {
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+  color: var(--gold);
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.jarvis-answer-source:hover {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
 /* Activity (journal) */
 .jarvis-activity-list {
   list-style: none;

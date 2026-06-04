@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
+import { chatViaOllama } from "./ollamaChat";
 import { cosineSimilarity, embedViaOllama } from "./ollamaEmbed";
 import type { ApiRouteHandler } from "./routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
@@ -776,5 +777,128 @@ export const handleBrainDigestRoute: ApiRouteHandler = async ({
     },
     corsOrigin,
   );
+  return true;
+};
+
+// ── Ask Jarvis: local RAG over the brain (free, via Ollama chat) ────────────
+const readMemoryFacts = (vaultDir: string, limit: number): string[] => {
+  const file = join(vaultDir, MEMORY_PATH);
+  if (!existsSync(file)) return [];
+  try {
+    return readFileSync(file, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trimStart())
+      .filter((line) => line.startsWith("- "))
+      .map((line) => line.slice(2).trim())
+      .filter((line) => line.length > 0)
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
+};
+
+// Read-only retrieval for context: semantic (using the existing index) when
+// embeddings are available, else lexical. Does not rebuild the index.
+const retrieveContext = async (
+  vaultDir: string,
+  query: string,
+  limit: number,
+): Promise<Array<{ rel: string; title: string; body: string }>> => {
+  let paths: string[] = [];
+  const queryVector = await embedViaOllama(query);
+  if (queryVector) {
+    const index = loadSemanticIndex(vaultDir);
+    const entries = Object.entries(index);
+    if (entries.length > 0) {
+      paths = entries
+        .map(([rel, entry]) => ({ rel, score: cosineSimilarity(queryVector, entry.vector) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map((ranked) => ranked.rel);
+    }
+  }
+  if (paths.length === 0) {
+    paths = lexicalSearchNotes(vaultDir, query, limit).map((note) => note.path);
+  }
+  const out: Array<{ rel: string; title: string; body: string }> = [];
+  for (const rel of paths) {
+    try {
+      const content = readFileSync(join(vaultDir, rel), "utf8");
+      out.push({
+        rel,
+        title: deriveTitle(content, rel),
+        body: stripFrontmatter(content).slice(0, 1200),
+      });
+    } catch {
+      // skip
+    }
+  }
+  return out;
+};
+
+const ASK_SYSTEM_PROMPT =
+  "You are Jarvis, Nick's personal assistant. Answer the QUESTION using ONLY the " +
+  "MEMORY and CONTEXT (his own notes) provided. Be direct and concise — Nick wants " +
+  "no fluff, just the answer. Cite the note titles you used in brackets like " +
+  "[Note Title]. If the answer is not in the provided material, say so plainly and " +
+  "suggest where he might look. Never invent facts.";
+
+export const handleBrainAskRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
+  if (requestUrl.pathname !== "/api/brain/ask") return false;
+  if (request.method !== "POST") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+  const vaultDir = resolveVaultDir();
+  if (!vaultDir) {
+    writeJson(
+      response,
+      400,
+      { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." },
+      corsOrigin,
+    );
+    return true;
+  }
+  const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
+  if (!body.ok) return true;
+  const payload = asRecord(body.payload);
+  const question = typeof payload.question === "string" ? oneLine(payload.question) : "";
+  if (question.length === 0) {
+    writeJson(response, 400, { error: "question (non-empty string) is required" }, corsOrigin);
+    return true;
+  }
+
+  const notes = await retrieveContext(vaultDir, question, 6);
+  const facts = readMemoryFacts(vaultDir, 20);
+  const sources = notes.map((note) => ({ title: note.title, path: note.rel }));
+
+  const memoryBlock = facts.length > 0 ? facts.map((fact) => `- ${fact}`).join("\n") : "(none)";
+  const contextBlock =
+    notes.length > 0
+      ? notes.map((note) => `### ${note.title} (${note.rel})\n${note.body}`).join("\n\n")
+      : "(no matching notes)";
+  const prompt = `MEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
+
+  const answer = await chatViaOllama(prompt, { system: ASK_SYSTEM_PROMPT });
+  if (!answer) {
+    writeJson(
+      response,
+      200,
+      {
+        available: false,
+        reason: "no-chat-model",
+        hint: "Start Ollama and pull a chat model (e.g. `ollama pull qwen2.5:7b`), or set OLLAMA_CHAT_MODEL.",
+        sources,
+      },
+      corsOrigin,
+    );
+    return true;
+  }
+  writeJson(response, 200, { available: true, answer, sources }, corsOrigin);
   return true;
 };

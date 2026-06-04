@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
 import {
+  buildBrainAskUrl,
   buildBrainCaptureUrl,
   buildBrainDigestUrl,
   buildBrainJournalUrl,
@@ -165,6 +166,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [memoryCount, setMemoryCount] = useState<number | null>(null);
   const [openTaskCount, setOpenTaskCount] = useState<number | null>(null);
+  const [ask, setAsk] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
+  const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
   const [voiceStatus, setVoiceStatus] = useState("Voice idle");
@@ -327,6 +333,44 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       setCapturing(false);
     }
   }, [capture, loadRecent]);
+
+  const submitAsk = useCallback(async () => {
+    const question = ask.trim();
+    if (question.length === 0) return;
+    setAsking(true);
+    setAnswer(null);
+    setAnswerSources([]);
+    setAskNote(null);
+    try {
+      const res = await fetch(buildBrainAskUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      if (!res.ok) {
+        setAskNote("Ask failed");
+        return;
+      }
+      const data = (await res.json()) as {
+        available?: boolean;
+        answer?: string;
+        hint?: string;
+        sources?: { title: string; path: string }[];
+      };
+      if (data.available && typeof data.answer === "string") {
+        setAnswer(data.answer);
+        setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+      } else {
+        setAskNote(
+          data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
+        );
+      }
+    } catch {
+      setAskNote("Ask failed");
+    } finally {
+      setAsking(false);
+    }
+  }, [ask]);
 
   const speakJarvis = useCallback(
     async (text: string) => {
@@ -611,6 +655,50 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             </>
           ) : (
             <>
+              <div className="jarvis-ask">
+                <div className="jarvis-ask-row">
+                  <input
+                    className="jarvis-search"
+                    type="text"
+                    placeholder="Ask Jarvis anything about your brain…"
+                    value={ask}
+                    onChange={(e) => setAsk(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void submitAsk();
+                    }}
+                    aria-label="Ask Jarvis"
+                  />
+                  <button
+                    type="button"
+                    className="jarvis-btn"
+                    onClick={() => void submitAsk()}
+                    disabled={asking || ask.trim().length === 0}
+                  >
+                    {asking ? "Thinking…" : "Ask"}
+                  </button>
+                </div>
+                {answer && (
+                  <div className="jarvis-answer">
+                    <p className="jarvis-answer-text">{answer}</p>
+                    {answerSources.length > 0 && (
+                      <div className="jarvis-answer-sources">
+                        {answerSources.map((source) => (
+                          <button
+                            type="button"
+                            className="jarvis-answer-source"
+                            key={source.path}
+                            onClick={() => void openNoteByPath(source.path)}
+                          >
+                            {source.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {askNote && <p className="jarvis-empty">{askNote}</p>}
+              </div>
+
               <div className="jarvis-search-row">
                 <input
                   className="jarvis-search"

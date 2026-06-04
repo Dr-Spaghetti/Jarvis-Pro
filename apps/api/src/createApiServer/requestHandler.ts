@@ -11,6 +11,7 @@ import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
 import {
+  handleBrainAskRoute,
   handleBrainCaptureRoute,
   handleBrainDigestRoute,
   handleBrainJournalRoute,
@@ -137,6 +138,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainRememberRoute,
       handleBrainDigestRoute,
       handleBrainSemanticRoute,
+      handleBrainAskRoute,
     ],
   ],
   ["channels", [handleChannelMessagesRoute]],
