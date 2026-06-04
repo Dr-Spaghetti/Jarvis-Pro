@@ -178,7 +178,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
-  const [ttsProvider, setTtsProvider] = useState<string>("browser");
+  const [ttsProvider, setTtsProvider] = useState<string>(() => {
+    try {
+      return window.localStorage.getItem("jarvis.ttsProvider") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [voiceStatus, setVoiceStatus] = useState("Voice idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isWakeArmed, setIsWakeArmed] = useState(false);
@@ -270,7 +276,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         const config = (await res.json()) as VoiceConfig;
         setVoiceConfig(config);
         setVoiceModel(config.transcription.defaultModel);
-        setTtsProvider(config.tts.recommended ?? "browser");
+        // Keep a saved choice; otherwise default to the recommended provider.
+        setTtsProvider((prev) => prev || config.tts.recommended || "browser");
       } catch {
         setVoiceError("Voice config unavailable");
       }
@@ -818,7 +825,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             <select
               className="jarvis-select"
               value={ttsProvider}
-              onChange={(event) => setTtsProvider(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setTtsProvider(value);
+                try {
+                  window.localStorage.setItem("jarvis.ttsProvider", value);
+                } catch {
+                  /* ignore */
+                }
+              }}
               aria-label="Voice output"
             >
               {(voiceConfig?.tts.providers ?? ["browser"]).map((provider) => (
