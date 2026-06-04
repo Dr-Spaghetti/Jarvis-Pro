@@ -14,6 +14,7 @@ import {
   handleBrainRecentRoute,
   handleBrainRememberRoute,
   handleBrainSearchRoute,
+  handleBrainSemanticRoute,
 } from "../src/createApiServer/brainRoutes";
 import type {
   RouteHandlerContext,
@@ -237,5 +238,23 @@ describe("brainRoutes", () => {
     expect(res.status).toBe(200);
     expect(res.json.configured).toBe(false);
     expect(res.json.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("semantic search falls back to lexical when Ollama is unreachable", async () => {
+    // Force the embedder to fail so the test is deterministic with or without
+    // a local Ollama install.
+    const previousHost = process.env.OLLAMA_HOST;
+    process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+    try {
+      const res = await call(handleBrainSemanticRoute, "GET", "/api/brain/semantic?q=Venue");
+      expect(res.status).toBe(200);
+      expect(res.json.configured).toBe(true);
+      expect(res.json.semantic).toBe(false);
+      // lexical fallback still surfaces the matching note
+      expect(res.json.notes.some((n: { title: string }) => n.title === "Daily Log")).toBe(true);
+    } finally {
+      if (previousHost === undefined) Reflect.deleteProperty(process.env, "OLLAMA_HOST");
+      else process.env.OLLAMA_HOST = previousHost;
+    }
   });
 });

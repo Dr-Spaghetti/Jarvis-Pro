@@ -19,6 +19,7 @@ import {
   handleBrainRecentRoute,
   handleBrainRememberRoute,
   handleBrainSearchRoute,
+  handleBrainSemanticRoute,
 } from "./brainRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
@@ -135,6 +136,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainMemoryRoute,
       handleBrainRememberRoute,
       handleBrainDigestRoute,
+      handleBrainSemanticRoute,
     ],
   ],
   ["channels", [handleChannelMessagesRoute]],

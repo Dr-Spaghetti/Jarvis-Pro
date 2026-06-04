@@ -8,7 +8,7 @@ import {
   buildBrainMemoryUrl,
   buildBrainNoteUrl,
   buildBrainRecentUrl,
-  buildBrainSearchUrl,
+  buildBrainSemanticUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
   buildVoiceConfigUrl,
@@ -289,7 +289,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
     searchTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch(buildBrainSearchUrl(q), {
+        const res = await fetch(buildBrainSemanticUrl(q), {
           headers: { Accept: "application/json" },
         });
         if (!res.ok) return;

@@ -329,6 +329,9 @@ export const buildBrainRememberUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
 export const buildBrainDigestUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/brain/digest", runtimeBaseUrl);
 
+export const buildBrainSemanticUrl = (query: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brain/semantic?q=${encodeURIComponent(query)}`, runtimeBaseUrl);
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 
