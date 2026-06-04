@@ -36,16 +36,16 @@ export const DeleteTentacleDialog = ({
     <ConfirmationDialog
       title={
         isCleanupIntent
-          ? "Cleanup Worktree Tentacle"
+          ? "Cleanup Worktree Agent"
           : isCloseIntent
             ? "Close Terminal"
-            : "Delete Tentacle"
+            : "Delete Agent"
       }
       ariaLabel={`${isCloseIntent ? "Close" : "Delete"} confirmation for ${pendingDeleteTerminal.terminalId}`}
       message={
         isCleanupIntent ? (
           <>
-            Cleanup <strong>{pendingDeleteTerminal.tentacleName}</strong> and delete the tentacle
+            Cleanup <strong>{pendingDeleteTerminal.tentacleName}</strong> and delete the agent
             session metadata.
           </>
         ) : isCloseIntent ? (
@@ -98,9 +98,9 @@ export const DeleteTentacleDialog = ({
       </dl>
       {isCleanupIntent && (
         <div className="delete-confirm-typed-check">
-          <label htmlFor="cleanup-confirm-id-input">Type tentacle ID to confirm cleanup</label>
+          <label htmlFor="cleanup-confirm-id-input">Type agent ID to confirm cleanup</label>
           <input
-            aria-label="Type tentacle ID to confirm cleanup"
+            aria-label="Type agent ID to confirm cleanup"
             id="cleanup-confirm-id-input"
             onChange={(event) => setCleanupConfirmationInput(event.target.value)}
             type="text"

@@ -119,7 +119,7 @@ export const AddTentacleForm = ({
         <button type="button" className="deck-add-form-back" onClick={onCancel}>
           ← Back
         </button>
-        <span className="deck-add-form-title">New Tentacle</span>
+        <span className="deck-add-form-title">New Agent</span>
       </div>
 
       <div className="deck-add-form-body">
@@ -152,7 +152,7 @@ export const AddTentacleForm = ({
             className="deck-add-form-textarea"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What this tentacle is responsible for..."
+            placeholder="What this agent is responsible for..."
             rows={3}
           />
         </label>
@@ -271,7 +271,7 @@ export const AddTentacleForm = ({
           className="deck-add-form-submit"
           disabled={isSubmitting || name.trim().length === 0}
         >
-          {isSubmitting ? "Creating..." : "Create Tentacle"}
+          {isSubmitting ? "Creating..." : "Create Agent"}
         </button>
       </div>
     </form>

@@ -174,7 +174,7 @@ export const TentaclePod = ({
             type="button"
             className="deck-pod-btn deck-pod-btn--delete"
             onClick={() => setConfirmingDelete(true)}
-            aria-label="Delete tentacle"
+            aria-label="Delete agent"
           >
             <svg className="deck-pod-btn-icon" viewBox="0 0 16 16" aria-hidden="true">
               <path
@@ -236,7 +236,7 @@ export const TentaclePod = ({
                           )}
                           {!skill && (
                             <span className="deck-pod-skill-desc">
-                              Stored on this tentacle, but not available right now.
+                              Stored on this agent, but not available right now.
                             </span>
                           )}
                         </span>

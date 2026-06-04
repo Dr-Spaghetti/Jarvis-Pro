@@ -388,7 +388,7 @@ describe("CanvasPrimaryView", () => {
     fireEvent.contextMenu(tentacleNode as Element, { clientX: 160, clientY: 120 });
 
     expect(await screen.findByRole("button", { name: "Update To-Do List" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Update Tentacle" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update Agent" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Update To-Do List" }));
 

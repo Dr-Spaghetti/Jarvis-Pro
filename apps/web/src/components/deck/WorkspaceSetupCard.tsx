@@ -14,7 +14,7 @@ type WorkspaceSetupCardProps = {
 
 const buildStepSummary = (stepId: WorkspaceSetupStepId, description: string) => {
   if (stepId === "create-tentacles") {
-    return "Launch Claude Code so it can plan and create the first tentacles.";
+    return "Launch Claude Code so it can plan and create the first agents.";
   }
 
   return description;

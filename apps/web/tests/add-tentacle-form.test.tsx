@@ -30,7 +30,7 @@ describe("AddTentacleForm", () => {
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "docs" } });
     fireEvent.click(screen.getByLabelText(/docs-writer/i));
-    fireEvent.click(screen.getByRole("button", { name: /create tentacle/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create agent/i }));
 
     expect(onSubmit).toHaveBeenCalledWith(
       "docs",

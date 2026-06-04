@@ -1120,7 +1120,7 @@ export const CanvasPrimaryView = ({
             <span className="canvas-toolbar-icon">
               <Hexagon size={14} />
             </span>
-            <span className="canvas-toolbar-label">Tentacle</span>
+            <span className="canvas-toolbar-label">Agent</span>
           </button>
           <div className="canvas-toolbar-separator" />
           <button type="button" className="canvas-toolbar-btn" onClick={handleFitView}>
@@ -1437,7 +1437,7 @@ export const CanvasPrimaryView = ({
                   <span className="canvas-context-menu-icon">
                     <Hexagon size={14} />
                   </span>
-                  Update Tentacle
+                  Update Agent
                 </button>
                 <button
                   type="button"
@@ -1481,7 +1481,7 @@ export const CanvasPrimaryView = ({
                   <span className="canvas-context-menu-icon">
                     <Hexagon size={14} />
                   </span>
-                  Reorganize Tentacles
+                  Reorganize Agents
                 </button>
                 <button
                   type="button"
@@ -1491,7 +1491,7 @@ export const CanvasPrimaryView = ({
                   <span className="canvas-context-menu-icon">
                     <Sparkles size={14} />
                   </span>
-                  Clean Tentacle Contexts
+                  Clean Agent Contexts
                 </button>
               </>
             )}

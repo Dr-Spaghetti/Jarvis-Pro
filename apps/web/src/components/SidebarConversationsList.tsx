@@ -266,7 +266,7 @@ export const SidebarConversationsList = ({
                   type="button"
                 >
                   <strong>{getSessionTitle(session)}</strong>
-                  <span>{`Tentacle ${session.tentacleId ?? "--"}`}</span>
+                  <span>{`Agent ${session.tentacleId ?? "--"}`}</span>
                   <span>{`${session.turnCount} turns`}</span>
                 </button>
               </li>

@@ -43,9 +43,9 @@ export const ActionCards = ({
         />
       </div>
       <div className="deck-empty-card-text">
-        <span className="deck-empty-card-title">Create First Tentacle</span>
+        <span className="deck-empty-card-title">Create First Agent</span>
         <span className="deck-empty-card-desc">
-          Start the deck by creating a tentacle for your codebase
+          Start the deck by creating an agent for your codebase
         </span>
       </div>
     </button>
@@ -109,9 +109,9 @@ export const ActionCards = ({
     <button type="button" className="deck-empty-card" onClick={onAddManually}>
       <span className="deck-empty-card-icon deck-empty-card-icon--terminal">+</span>
       <div className="deck-empty-card-text">
-        <span className="deck-empty-card-title">Add Tentacle Manually</span>
+        <span className="deck-empty-card-title">Add Agent Manually</span>
         <span className="deck-empty-card-desc">
-          Create a custom tentacle with your own configuration
+          Create a custom agent with your own configuration
         </span>
       </div>
     </button>

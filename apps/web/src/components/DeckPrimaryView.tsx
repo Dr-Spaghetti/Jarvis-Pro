@@ -228,7 +228,7 @@ export const DeckPrimaryView = ({
       if (!response.ok) return;
       const data = await response.json();
       const agentId = (data.terminalId ?? data.tentacleId) as string;
-      setFocus({ type: "terminal", agentId, terminalLabel: "Tentacle Planner" });
+      setFocus({ type: "terminal", agentId, terminalLabel: "Agent Planner" });
       await fetchTentacles();
     } catch {
       // silently ignore
@@ -281,7 +281,7 @@ export const DeckPrimaryView = ({
           const msg =
             body && typeof body === "object" && "error" in body && typeof body.error === "string"
               ? body.error
-              : "Failed to create tentacle";
+              : "Failed to create agent";
           setCreateError(msg);
           return;
         }
