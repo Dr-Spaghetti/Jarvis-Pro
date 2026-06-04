@@ -506,6 +506,9 @@ describe("createApiServer", () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     vi.stubEnv("ELEVENLABS_API_KEY", "");
     vi.stubEnv("ELEVENLABS_VOICE_ID", "");
+    vi.stubEnv("DEEPGRAM_API_KEY", "");
+    vi.stubEnv("PIPER_BIN", "");
+    vi.stubEnv("PIPER_MODEL", "");
     const baseUrl = await startServer();
 
     try {
@@ -536,9 +539,6 @@ describe("createApiServer", () => {
           configured: false,
           providers: ["browser"],
           recommended: "browser",
-          openaiConfigured: false,
-          openaiVoice: "alloy",
-          elevenlabsConfigured: false,
           fallback: "browser-speech-synthesis",
         },
       });

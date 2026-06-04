@@ -825,9 +825,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 <option key={provider} value={provider}>
                   {provider === "openai"
                     ? "OpenAI voice"
-                    : provider === "elevenlabs"
-                      ? "ElevenLabs voice"
-                      : "Browser voice"}
+                    : provider === "deepgram"
+                      ? "Deepgram voice"
+                      : provider === "elevenlabs"
+                        ? "ElevenLabs voice"
+                        : provider === "piper"
+                          ? "Piper (local)"
+                          : "Browser voice"}
                 </option>
               ))}
             </select>

@@ -1,4 +1,9 @@
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import type { IncomingMessage } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { getJarvisWakePhrases, resolveJarvisVoiceIntent } from "../voiceIntent";
 import type { ApiRouteHandler } from "./routeHelpers";
@@ -54,12 +59,74 @@ const getElevenLabsVoiceId = (): string | null => {
 const getOpenAiTtsModel = (): string => process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";
 const getOpenAiTtsVoice = (): string => process.env.OPENAI_TTS_VOICE?.trim() || "alloy";
 
+const getDeepgramApiKey = (): string | null => {
+  const value = process.env.DEEPGRAM_API_KEY?.trim();
+  return value && value.length > 0 ? value : null;
+};
+const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-thalia-en";
+
+const getPiperConfig = (): { bin: string; model: string } | null => {
+  const bin = process.env.PIPER_BIN?.trim();
+  const model = process.env.PIPER_MODEL?.trim();
+  return bin && model && existsSync(bin) && existsSync(model) ? { bin, model } : null;
+};
+
+// Synthesize WAV locally via the Piper binary (free, offline). Resolves null on
+// any failure (missing binary/model, non-zero exit, timeout) so callers fall back.
+const synthesizeWithPiper = (text: string): Promise<Buffer | null> =>
+  new Promise((resolve) => {
+    const config = getPiperConfig();
+    if (!config) {
+      resolve(null);
+      return;
+    }
+    const outFile = join(tmpdir(), `jarvis-piper-${randomUUID()}.wav`);
+    let settled = false;
+    const finish = (value: Buffer | null) => {
+      if (settled) return;
+      settled = true;
+      try {
+        if (existsSync(outFile)) rmSync(outFile, { force: true });
+      } catch {
+        // ignore cleanup failure
+      }
+      resolve(value);
+    };
+    try {
+      const proc = spawn(config.bin, ["-m", config.model, "-f", outFile]);
+      const timer = setTimeout(() => finish(null), 30000);
+      proc.on("error", () => {
+        clearTimeout(timer);
+        finish(null);
+      });
+      proc.stdin.on("error", () => {});
+      proc.on("close", (code) => {
+        clearTimeout(timer);
+        try {
+          if (code === 0 && existsSync(outFile)) {
+            finish(readFileSync(outFile));
+            return;
+          }
+        } catch {
+          // fall through
+        }
+        finish(null);
+      });
+      proc.stdin.write(text);
+      proc.stdin.end();
+    } catch {
+      finish(null);
+    }
+  });
+
 // Available server-side TTS providers, best-first. The frontend offers these
 // (plus always-available "browser") and falls back to browser speech on failure.
 const availableTtsProviders = (): string[] => {
   const providers: string[] = [];
   if (getOpenAiApiKey()) providers.push("openai");
+  if (getDeepgramApiKey()) providers.push("deepgram");
   if (getElevenLabsApiKey() && getElevenLabsVoiceId()) providers.push("elevenlabs");
+  if (getPiperConfig()) providers.push("piper");
   providers.push("browser");
   return providers;
 };
@@ -116,7 +183,7 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const elevenLabsVoiceId = getElevenLabsVoiceId();
+  const ttsProviders = availableTtsProviders();
   writeJson(
     response,
     200,
@@ -132,19 +199,13 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
         models: TRANSCRIPTION_MODELS,
         whisperSupported: true,
       },
-      tts: (() => {
-        const providers = availableTtsProviders();
-        return {
-          // `configured` = a server (non-browser) provider is available.
-          configured: providers.some((provider) => provider !== "browser"),
-          providers,
-          recommended: providers[0],
-          openaiConfigured: getOpenAiApiKey() !== null,
-          openaiVoice: getOpenAiTtsVoice(),
-          elevenlabsConfigured: getElevenLabsApiKey() !== null && elevenLabsVoiceId !== null,
-          fallback: "browser-speech-synthesis",
-        };
-      })(),
+      tts: {
+        // `configured` = a server (non-browser) provider is available.
+        configured: ttsProviders.some((provider) => provider !== "browser"),
+        providers: ttsProviders,
+        recommended: ttsProviders[0],
+        fallback: "browser-speech-synthesis",
+      },
     },
     corsOrigin,
   );
@@ -277,13 +338,18 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
   const openAiKey = getOpenAiApiKey();
   const elevenLabsKey = getElevenLabsApiKey();
   const elevenLabsVoiceId = getElevenLabsVoiceId();
+  const deepgramKey = getDeepgramApiKey();
 
-  // Resolve provider: explicit request wins, else best available (openai > elevenlabs).
+  // Resolve provider: explicit request wins, else first available from the list.
   const requested = readString(payload.provider);
-  let provider: "openai" | "elevenlabs" | null =
-    requested === "openai" || requested === "elevenlabs" ? requested : null;
+  const known = ["openai", "deepgram", "elevenlabs", "piper"] as const;
+  type TtsProvider = (typeof known)[number];
+  let provider: TtsProvider | null = (known as readonly string[]).includes(requested ?? "")
+    ? (requested as TtsProvider)
+    : null;
   if (!provider) {
-    provider = openAiKey ? "openai" : elevenLabsKey && elevenLabsVoiceId ? "elevenlabs" : null;
+    const firstServer = availableTtsProviders().find((entry) => entry !== "browser");
+    provider = (firstServer as TtsProvider | undefined) ?? null;
   }
   if (!provider) {
     writeJson(
@@ -291,10 +357,59 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       400,
       {
         error:
-          "No server TTS provider configured (set OPENAI_API_KEY, or ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID).",
+          "No server TTS provider configured (set OPENAI_API_KEY, DEEPGRAM_API_KEY, ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID, or PIPER_BIN + PIPER_MODEL).",
       },
       corsOrigin,
     );
+    return true;
+  }
+
+  if (provider === "deepgram") {
+    if (!deepgramKey) {
+      writeJson(response, 400, { error: "DEEPGRAM_API_KEY is not configured." }, corsOrigin);
+      return true;
+    }
+    const upstreamResponse = await fetch(
+      `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(getDeepgramModel())}&encoding=mp3`,
+      {
+        method: "POST",
+        headers: { Authorization: `Token ${deepgramKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      },
+    );
+    if (!upstreamResponse.ok) {
+      const errorText = await upstreamResponse.text();
+      writeJson(
+        response,
+        upstreamResponse.status,
+        {
+          error: "Speech synthesis failed.",
+          provider: "deepgram",
+          detail: errorText.slice(0, 500),
+        },
+        corsOrigin,
+      );
+      return true;
+    }
+    const audio = Buffer.from(await upstreamResponse.arrayBuffer());
+    response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
+    response.end(audio);
+    return true;
+  }
+
+  if (provider === "piper") {
+    const audio = await synthesizeWithPiper(text);
+    if (!audio) {
+      writeJson(
+        response,
+        400,
+        { error: "Piper is not configured or failed (set PIPER_BIN + PIPER_MODEL)." },
+        corsOrigin,
+      );
+      return true;
+    }
+    response.writeHead(200, withCors({ "Content-Type": "audio/wav" }, corsOrigin));
+    response.end(audio);
     return true;
   }
 
