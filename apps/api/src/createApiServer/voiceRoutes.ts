@@ -268,18 +268,21 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
 
   const voiceId = readString(payload.voiceId) ?? defaultVoiceId;
   const modelId = readString(payload.modelId) ?? "eleven_flash_v2_5";
-  const upstreamResponse = await fetch(`${ELEVENLABS_TTS_URL_PREFIX}/${voiceId}`, {
-    method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-      "Content-Type": "application/json",
+  const upstreamResponse = await fetch(
+    `${ELEVENLABS_TTS_URL_PREFIX}/${encodeURIComponent(voiceId)}`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: modelId,
+        output_format: "mp3_44100_128",
+      }),
     },
-    body: JSON.stringify({
-      text,
-      model_id: modelId,
-      output_format: "mp3_44100_128",
-    }),
-  });
+  );
 
   if (!upstreamResponse.ok) {
     const errorText = await upstreamResponse.text();
