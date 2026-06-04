@@ -80,4 +80,49 @@ describe("bundled skills catalog integrity", () => {
       names.add(skill.name);
     }
   });
+
+  it("every loaded skill is registered in catalog.json (no orphan skills)", () => {
+    // Folder -> manifest direction. A skill with a folder + SKILL.md but no
+    // catalog.json entry silently loses its requiredEnv/runtime/setup metadata,
+    // so it can appear in the deck while being impossible to configure.
+    const manifestKeys = new Set(Object.keys(readCatalogManifest(catalogDir)));
+    for (const skill of listCatalogSkills()) {
+      expect(
+        manifestKeys.has(skill.name),
+        `skill "${skill.name}" has a folder + SKILL.md but no catalog.json entry (add one so its env/runtime/setup metadata is surfaced)`,
+      ).toBe(true);
+    }
+  });
+
+  it("every skill has a substantive description (>= 40 chars) for reliable triggering", () => {
+    // Thin descriptions are the #1 cause of a skill never triggering when the
+    // user actually needs it. Enforce a floor so new skills are discoverable.
+    for (const skill of listCatalogSkills()) {
+      const length = skill.description.trim().length;
+      expect(
+        length,
+        `${skill.name}: description is too thin (${length} chars) — weak descriptions hurt triggering`,
+      ).toBeGreaterThanOrEqual(40);
+    }
+  });
+
+  it("code-bearing skills: every skill-local scripts/<file> reference resolves", () => {
+    // Scope to skills that actually ship a scripts/ directory — those are the
+    // ones whose SKILL.md "scripts/foo.py" references are skill-local helpers.
+    // (Skills without a scripts/ dir may mention repo-level scripts in prose;
+    // policing those would be false positives.)
+    const scriptRef = /scripts\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
+    for (const skill of listCatalogSkills()) {
+      const skillDir = join(catalogDir, skill.folder);
+      if (!existsSync(join(skillDir, "scripts"))) continue;
+      const body = readFileSync(join(skillDir, "SKILL.md"), "utf8");
+      for (const ref of new Set(body.match(scriptRef) ?? [])) {
+        const clean = ref.replace(/[.)\]]+$/, "");
+        expect(
+          existsSync(join(skillDir, clean)),
+          `${skill.name}: SKILL.md references "${clean}" but that file does not exist`,
+        ).toBe(true);
+      }
+    }
+  });
 });
