@@ -12,8 +12,11 @@ import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
 import {
   handleBrainCaptureRoute,
+  handleBrainJournalRoute,
+  handleBrainMemoryRoute,
   handleBrainNoteRoute,
   handleBrainRecentRoute,
+  handleBrainRememberRoute,
   handleBrainSearchRoute,
 } from "./brainRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
@@ -122,7 +125,15 @@ type CreateApiRequestHandlerOptions = {
 const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   [
     "brain",
-    [handleBrainRecentRoute, handleBrainSearchRoute, handleBrainNoteRoute, handleBrainCaptureRoute],
+    [
+      handleBrainRecentRoute,
+      handleBrainSearchRoute,
+      handleBrainNoteRoute,
+      handleBrainCaptureRoute,
+      handleBrainJournalRoute,
+      handleBrainMemoryRoute,
+      handleBrainRememberRoute,
+    ],
   ],
   ["channels", [handleChannelMessagesRoute]],
   ["hooks", [handleHookRoute]],
