@@ -26,8 +26,18 @@ the **pipeline**, not the removal (fulfillment is delegated to the $300
 pay-on-success guy or done legitimately). Honest + compliant always.
 
 Load first: the playbook in `Areas/Freelance/Review-Outreach/` (Offer, Email
-Sequence, Target Criteria + contact-routing rule, Fulfillment SOP) and `Profile.md`
-(goals, voice, current channel preference — **email-only for now**).
+Sequence, Target Criteria + contact-routing rule, Fulfillment SOP), `Profile.md`
+(goals, voice, current channel preference — **email-only for now**), and
+`Jarvis/Memory.md` for durable context.
+
+## Memory & journal (Jarvis shared protocol)
+
+- **Read memory first:** `Jarvis/Memory.md` (durable facts/preferences) alongside the playbook.
+- **Log when done:** append one line to `Journal/Activity Log.md` (create with a
+  `# Jarvis Activity Log` header if missing), exactly:
+  `- [<ISO-8601 timestamp>] [ok|warn|error] (review-repair-outreach) <what you did> — <short detail>`
+  Use `warn`/`error` when a run is blocked (e.g. no leads found, API limit) so it's visible on the home.
+- **Remember durable facts** (e.g. a target vertical that converts) under `## Facts` in `Jarvis/Memory.md`.
 
 ## Automated pipeline (this is how to run it)
 1. **Discover + rank — FREE, no browser.** For each target (or a vertical+area),

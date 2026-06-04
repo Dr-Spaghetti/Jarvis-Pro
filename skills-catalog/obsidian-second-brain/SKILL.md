@@ -25,6 +25,21 @@ assistant. The vault is the single source of truth for what the user knows,
 decides, and wants to remember. Treat it with the care of someone's actual
 brain: additive by default, never destructive.
 
+## Memory & activity journal (the Jarvis substrate)
+
+Two special files back the Jarvis home — keep them current; this is the canonical
+protocol every Jarvis skill follows:
+
+- **`Jarvis/Memory.md`** — long-lived facts/preferences about Nick (durable
+  context, not daily noise). Read it at the start of any task that benefits from
+  context. When you learn a lasting fact, append it as a `- ` bullet under
+  `## Facts`. The web "remember" action and `POST /api/brain/remember` write here too.
+- **`Journal/Activity Log.md`** — an append-only record of what Jarvis did. After a
+  meaningful action, append exactly one line (create the file with a
+  `# Jarvis Activity Log` header if missing):
+  `- [<ISO-8601 timestamp>] [ok|warn|error] (<skill-name>) <what you did> — <short detail>`
+  The home Activity panel parses this exact format, so match it precisely.
+
 ## Choosing how to access the vault
 
 Check, in this order:

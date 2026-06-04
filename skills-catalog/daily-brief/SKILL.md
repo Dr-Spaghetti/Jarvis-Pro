@@ -18,6 +18,18 @@ compatibility: >
 One command, one clear picture of the day. Pull from each available source, keep
 it tight, and write it where the day lives — today's daily note.
 
+## Memory & journal (Jarvis shared protocol)
+
+- **Read memory first:** check `Jarvis/Memory.md` (durable facts/preferences about
+  Nick) alongside `Profile.md`, so the brief reflects lasting context. Skip silently
+  if it doesn't exist yet.
+- **Log the outcome when done:** append one line to `Journal/Activity Log.md`
+  (create it with a `# Jarvis Activity Log` header if missing), in this exact format
+  so the home Activity panel can parse it:
+  `- [<ISO-8601 timestamp>] [ok|warn|error] (daily-brief) <what you did> — <short detail>`
+- **Remember durable facts:** if you learn a lasting fact worth keeping (not daily
+  noise), append it as a `- ` bullet under `## Facts` in `Jarvis/Memory.md`.
+
 ## Gather (use what's connected; skip what isn't)
 
 First, read `Profile.md` (if present) for the user's current priorities and

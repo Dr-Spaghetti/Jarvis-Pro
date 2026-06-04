@@ -18,6 +18,15 @@ The keystone hygiene ritual — adapted from GTD/PARA — that keeps the second 
 trustworthy. Walk the user through it interactively: do the mechanical work, ask
 only where judgment is needed, propose a default for every decision.
 
+## Memory & journal (Jarvis shared protocol)
+
+- **Read memory first:** check `Jarvis/Memory.md` for durable context before reviewing.
+- **Log when done:** append one line to `Journal/Activity Log.md` (create with a
+  `# Jarvis Activity Log` header if missing), exactly:
+  `- [<ISO-8601 timestamp>] [ok|warn|error] (weekly-review) <what you did> — <short detail>`
+- **Promote durable takeaways** from the week into `## Facts` in `Jarvis/Memory.md`
+  (lasting facts only, not weekly noise).
+
 ## The review, step by step
 
 ### 1. Clear the Inbox to zero
