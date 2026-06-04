@@ -11,6 +11,7 @@ import {
 import { withCors } from "./security";
 
 const OPENAI_TRANSCRIPTIONS_URL = "https://api.openai.com/v1/audio/transcriptions";
+const OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/speech";
 const ELEVENLABS_TTS_URL_PREFIX = "https://api.elevenlabs.io/v1/text-to-speech";
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 const TRANSCRIPTION_MODELS = [
@@ -48,6 +49,19 @@ const getElevenLabsApiKey = (): string | null => {
 const getElevenLabsVoiceId = (): string | null => {
   const value = process.env.ELEVENLABS_VOICE_ID?.trim();
   return value && value.length > 0 ? value : null;
+};
+
+const getOpenAiTtsModel = (): string => process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";
+const getOpenAiTtsVoice = (): string => process.env.OPENAI_TTS_VOICE?.trim() || "alloy";
+
+// Available server-side TTS providers, best-first. The frontend offers these
+// (plus always-available "browser") and falls back to browser speech on failure.
+const availableTtsProviders = (): string[] => {
+  const providers: string[] = [];
+  if (getOpenAiApiKey()) providers.push("openai");
+  if (getElevenLabsApiKey() && getElevenLabsVoiceId()) providers.push("elevenlabs");
+  providers.push("browser");
+  return providers;
 };
 
 const readRawBody = async (request: IncomingMessage, maxBytes: number): Promise<Buffer> => {
@@ -118,12 +132,19 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
         models: TRANSCRIPTION_MODELS,
         whisperSupported: true,
       },
-      tts: {
-        provider: "elevenlabs",
-        configured: getElevenLabsApiKey() !== null && elevenLabsVoiceId !== null,
-        voiceIdConfigured: elevenLabsVoiceId !== null,
-        fallback: "browser-speech-synthesis",
-      },
+      tts: (() => {
+        const providers = availableTtsProviders();
+        return {
+          // `configured` = a server (non-browser) provider is available.
+          configured: providers.some((provider) => provider !== "browser"),
+          providers,
+          recommended: providers[0],
+          openaiConfigured: getOpenAiApiKey() !== null,
+          openaiVoice: getOpenAiTtsVoice(),
+          elevenlabsConfigured: getElevenLabsApiKey() !== null && elevenLabsVoiceId !== null,
+          fallback: "browser-speech-synthesis",
+        };
+      })(),
     },
     corsOrigin,
   );
@@ -244,9 +265,72 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const apiKey = getElevenLabsApiKey();
-  const defaultVoiceId = getElevenLabsVoiceId();
-  if (!apiKey || !defaultVoiceId) {
+  const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
+  if (!body.ok) return true;
+  const payload = readJsonPayload(body.payload);
+  const text = readString(payload.text);
+  if (!text) {
+    writeJson(response, 400, { error: "text is required." }, corsOrigin);
+    return true;
+  }
+
+  const openAiKey = getOpenAiApiKey();
+  const elevenLabsKey = getElevenLabsApiKey();
+  const elevenLabsVoiceId = getElevenLabsVoiceId();
+
+  // Resolve provider: explicit request wins, else best available (openai > elevenlabs).
+  const requested = readString(payload.provider);
+  let provider: "openai" | "elevenlabs" | null =
+    requested === "openai" || requested === "elevenlabs" ? requested : null;
+  if (!provider) {
+    provider = openAiKey ? "openai" : elevenLabsKey && elevenLabsVoiceId ? "elevenlabs" : null;
+  }
+  if (!provider) {
+    writeJson(
+      response,
+      400,
+      {
+        error:
+          "No server TTS provider configured (set OPENAI_API_KEY, or ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID).",
+      },
+      corsOrigin,
+    );
+    return true;
+  }
+
+  if (provider === "openai") {
+    if (!openAiKey) {
+      writeJson(response, 400, { error: "OPENAI_API_KEY is not configured." }, corsOrigin);
+      return true;
+    }
+    const upstreamResponse = await fetch(OPENAI_SPEECH_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: getOpenAiTtsModel(),
+        voice: readString(payload.voice) ?? getOpenAiTtsVoice(),
+        input: text,
+        response_format: "mp3",
+      }),
+    });
+    if (!upstreamResponse.ok) {
+      const errorText = await upstreamResponse.text();
+      writeJson(
+        response,
+        upstreamResponse.status,
+        { error: "Speech synthesis failed.", provider: "openai", detail: errorText.slice(0, 500) },
+        corsOrigin,
+      );
+      return true;
+    }
+    const audio = Buffer.from(await upstreamResponse.arrayBuffer());
+    response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
+    response.end(audio);
+    return true;
+  }
+
+  // provider === "elevenlabs"
+  if (!elevenLabsKey || !elevenLabsVoiceId) {
     writeJson(
       response,
       400,
@@ -255,46 +339,30 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
     );
     return true;
   }
-
-  const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
-  if (!body.ok) return true;
-
-  const payload = readJsonPayload(body.payload);
-  const text = readString(payload.text);
-  if (!text) {
-    writeJson(response, 400, { error: "text is required." }, corsOrigin);
-    return true;
-  }
-
-  const voiceId = readString(payload.voiceId) ?? defaultVoiceId;
+  const voiceId = readString(payload.voiceId) ?? elevenLabsVoiceId;
   const modelId = readString(payload.modelId) ?? "eleven_flash_v2_5";
   const upstreamResponse = await fetch(
     `${ELEVENLABS_TTS_URL_PREFIX}/${encodeURIComponent(voiceId)}`,
     {
       method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: modelId,
-        output_format: "mp3_44100_128",
-      }),
+      headers: { "xi-api-key": elevenLabsKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ text, model_id: modelId, output_format: "mp3_44100_128" }),
     },
   );
-
   if (!upstreamResponse.ok) {
     const errorText = await upstreamResponse.text();
     writeJson(
       response,
       upstreamResponse.status,
-      { error: "Speech synthesis failed.", detail: errorText.slice(0, 500) },
+      {
+        error: "Speech synthesis failed.",
+        provider: "elevenlabs",
+        detail: errorText.slice(0, 500),
+      },
       corsOrigin,
     );
     return true;
   }
-
   const audio = Buffer.from(await upstreamResponse.arrayBuffer());
   response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
   response.end(audio);

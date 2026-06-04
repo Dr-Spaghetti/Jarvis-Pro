@@ -533,9 +533,12 @@ describe("createApiServer", () => {
           whisperSupported: true,
         },
         tts: {
-          provider: "elevenlabs",
           configured: false,
-          voiceIdConfigured: false,
+          providers: ["browser"],
+          recommended: "browser",
+          openaiConfigured: false,
+          openaiVoice: "alloy",
+          elevenlabsConfigured: false,
           fallback: "browser-speech-synthesis",
         },
       });

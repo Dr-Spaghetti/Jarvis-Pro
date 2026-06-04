@@ -34,7 +34,12 @@ type VoiceConfig = {
     models: string[];
     whisperSupported: boolean;
   };
-  tts: { configured: boolean; fallback: string };
+  tts: {
+    configured: boolean;
+    fallback: string;
+    providers?: string[];
+    recommended?: string;
+  };
 };
 type JarvisIntentResolution = {
   transcript: string;
@@ -173,6 +178,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
+  const [ttsProvider, setTtsProvider] = useState<string>("browser");
   const [voiceStatus, setVoiceStatus] = useState("Voice idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isWakeArmed, setIsWakeArmed] = useState(false);
@@ -264,6 +270,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         const config = (await res.json()) as VoiceConfig;
         setVoiceConfig(config);
         setVoiceModel(config.transcription.defaultModel);
+        setTtsProvider(config.tts.recommended ?? "browser");
       } catch {
         setVoiceError("Voice config unavailable");
       }
@@ -374,12 +381,12 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   const speakJarvis = useCallback(
     async (text: string) => {
-      if (voiceConfig?.tts.configured) {
+      if (ttsProvider !== "browser") {
         try {
           const response = await fetch(buildVoiceSpeakUrl(), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ text, provider: ttsProvider }),
           });
           if (response.ok) {
             const objectUrl = URL.createObjectURL(await response.blob());
@@ -398,7 +405,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
       }
     },
-    [voiceConfig],
+    [ttsProvider],
   );
 
   const runVoiceIntent = useCallback(
@@ -807,6 +814,22 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                   </option>
                 ),
               )}
+            </select>
+            <select
+              className="jarvis-select"
+              value={ttsProvider}
+              onChange={(event) => setTtsProvider(event.target.value)}
+              aria-label="Voice output"
+            >
+              {(voiceConfig?.tts.providers ?? ["browser"]).map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider === "openai"
+                    ? "OpenAI voice"
+                    : provider === "elevenlabs"
+                      ? "ElevenLabs voice"
+                      : "Browser voice"}
+                </option>
+              ))}
             </select>
           </div>
 
