@@ -452,3 +452,16 @@
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
+
+@media (max-width: 700px) {
+  /* At phone width the two sparkline labels collide into unreadable text —
+     drop the chart cluster; the underlying data lives in Activity/usage. */
+  .console-status-charts {
+    display: none;
+  }
+
+  /* Keyboard hint is meaningless on touch screens and steals nav space. */
+  .console-primary-nav-hint {
+    display: none;
+  }
+}
