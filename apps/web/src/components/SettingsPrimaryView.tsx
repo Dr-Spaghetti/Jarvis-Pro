@@ -2,6 +2,7 @@ import {
   TERMINAL_COMPLETION_SOUND_OPTIONS,
   type TerminalCompletionSoundId,
 } from "../app/notificationSounds";
+import { buildSettingsExportUrl } from "../runtime/runtimeEndpoints";
 import { ActionButton } from "./ui/ActionButton";
 import { SettingsToggle } from "./ui/SettingsToggle";
 
@@ -86,6 +87,23 @@ export const SettingsPrimaryView = ({
           checked={isRuntimeStatusStripVisible}
           onChange={onRuntimeStatusStripVisibilityChange}
         />
+      </div>
+    </section>
+    <section className="settings-panel" aria-label="Backup and export settings">
+      <header className="settings-panel-header">
+        <h2>Backup &amp; export</h2>
+        <p>Download a snapshot of your workspace settings, terminals, and UI preferences.</p>
+      </header>
+      <div className="settings-panel-actions">
+        <a
+          href={buildSettingsExportUrl()}
+          download="octogent-settings.json"
+          className="settings-export-link"
+        >
+          <ActionButton size="dense" variant="accent" aria-label="Download settings backup">
+            Download backup
+          </ActionButton>
+        </a>
       </div>
     </section>
   </section>

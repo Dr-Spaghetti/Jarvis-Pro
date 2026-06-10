@@ -264,6 +264,32 @@ export const handlePromptItemRoute: ApiRouteHandler = async (
   return true;
 };
 
+export const handleSettingsExportRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { runtime },
+) => {
+  if (requestUrl.pathname !== "/api/settings/export") {
+    return false;
+  }
+
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const payload = `${JSON.stringify(runtime.exportSettings(), null, 2)}\n`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Content-Disposition": 'attachment; filename="octogent-settings.json"',
+  };
+  if (corsOrigin) {
+    headers["Access-Control-Allow-Origin"] = corsOrigin;
+  }
+  response.writeHead(200, headers);
+  response.end(payload);
+  return true;
+};
+
 // ─── Channel routes ───────────────────────────────────────────────────────
 
 const CHANNEL_MESSAGES_PATH_PATTERN = /^\/api\/channels\/([^/]+)\/messages$/;

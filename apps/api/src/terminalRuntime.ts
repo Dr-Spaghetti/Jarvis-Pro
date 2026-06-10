@@ -621,6 +621,15 @@ export const createTerminalRuntime = ({
       return readUiState();
     },
 
+    exportSettings() {
+      return {
+        version: 3 as const,
+        exportedAt: new Date().toISOString(),
+        uiState: readUiState(),
+        terminals: [...terminals.values()],
+      };
+    },
+
     ...gitOps,
 
     createTerminal,

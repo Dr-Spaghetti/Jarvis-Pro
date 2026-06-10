@@ -108,6 +108,14 @@ export const buildUiStateUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/ui-state");
 };
 
+export const buildSettingsExportUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/settings/export";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/settings/export");
+};
+
 export const buildWorkspaceSetupUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/setup";
