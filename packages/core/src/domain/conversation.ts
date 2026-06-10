@@ -27,6 +27,8 @@ export type ConversationSessionSummary = {
   firstUserTurnPreview: string | null;
   lastUserTurnPreview: string | null;
   lastAssistantTurnPreview: string | null;
+  tags?: string[];
+  pinned?: boolean;
 };
 
 export type ConversationSessionDetail = ConversationSessionSummary & {
