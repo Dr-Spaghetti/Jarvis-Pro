@@ -2,6 +2,7 @@ import type { ComponentProps } from "react";
 
 import { GitHubPrimaryView } from "./GitHubPrimaryView";
 import { UsageBarChart } from "./UsageHeatmap";
+import { JournalTimeline } from "./activity/JournalTimeline";
 
 type ActivityPrimaryViewProps = {
   usageChartProps: ComponentProps<typeof UsageBarChart>;
@@ -14,6 +15,7 @@ export const ActivityPrimaryView = ({
 }: ActivityPrimaryViewProps) => {
   return (
     <section className="activity-view" aria-label="Activity primary view">
+      <JournalTimeline />
       <UsageBarChart {...usageChartProps} />
       <GitHubPrimaryView {...githubPrimaryViewProps} />
     </section>
