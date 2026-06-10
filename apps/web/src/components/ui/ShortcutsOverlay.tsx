@@ -32,6 +32,30 @@ export const ShortcutsOverlay = ({ onClose }: ShortcutsOverlayProps) => {
           if (event.key === "Escape") {
             event.preventDefault();
             onClose();
+            return;
+          }
+          // Keep keyboard focus inside the overlay while it is open. The static
+          // `open` attribute (used instead of showModal() for jsdom parity)
+          // does not trap focus natively, so aria-modal needs this to be true.
+          if (event.key === "Tab") {
+            const dialog = dialogRef.current;
+            if (!dialog) return;
+            const focusable = dialog.querySelectorAll<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            );
+            if (focusable.length === 0) return;
+            const first = focusable[0] as HTMLElement;
+            const last = focusable[focusable.length - 1] as HTMLElement;
+            const active = document.activeElement;
+            if (event.shiftKey) {
+              if (active === first || active === dialog) {
+                event.preventDefault();
+                last.focus();
+              }
+            } else if (active === last) {
+              event.preventDefault();
+              first.focus();
+            }
           }
         }}
       >

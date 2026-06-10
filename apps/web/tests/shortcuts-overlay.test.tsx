@@ -41,6 +41,21 @@ describe("ShortcutsOverlay", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("traps Tab focus inside the overlay", () => {
+    render(<ShortcutsOverlay onClose={vi.fn()} />);
+
+    const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+    const closeButton = screen.getByRole("button", { name: "Close shortcuts overlay" });
+
+    // Shift+Tab from the dialog itself wraps to the last focusable element.
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+    expect(closeButton).toHaveFocus();
+
+    // Tab from the last (only) focusable element wraps back to the first.
+    fireEvent.keyDown(closeButton, { key: "Tab" });
+    expect(closeButton).toHaveFocus();
+  });
+
   it("calls onClose when the backdrop is clicked but not when the dialog body is clicked", () => {
     const onClose = vi.fn();
     const { container } = render(<ShortcutsOverlay onClose={onClose} />);

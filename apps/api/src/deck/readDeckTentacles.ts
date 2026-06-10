@@ -676,7 +676,9 @@ export const recordDeckTentacleOpened = (
   tentacleId: string,
   projectStateDir?: string,
 ): DeckTentacleSummary | null => {
-  if (tentacleId.includes("..") || tentacleId.includes("/")) return null;
+  if (tentacleId.includes("..") || tentacleId.includes("/") || tentacleId.includes("\\")) {
+    return null;
+  }
 
   const tentacleDir = join(workspaceCwd, TENTACLES_DIR, tentacleId);
   if (!existsSync(tentacleDir)) return null;
@@ -703,7 +705,9 @@ export const setDeckTentaclePinned = (
   pinned: boolean,
   projectStateDir?: string,
 ): DeckTentacleSummary | null => {
-  if (tentacleId.includes("..") || tentacleId.includes("/")) return null;
+  if (tentacleId.includes("..") || tentacleId.includes("/") || tentacleId.includes("\\")) {
+    return null;
+  }
 
   const tentacleDir = join(workspaceCwd, TENTACLES_DIR, tentacleId);
   if (!existsSync(tentacleDir)) return null;
