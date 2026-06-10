@@ -10,6 +10,8 @@ import { useClickOutside } from "../app/hooks/useClickOutside";
 import type { TerminalAgentProvider } from "../app/types";
 import {
   buildDeckSkillsUrl,
+  buildDeckTentacleOpenedUrl,
+  buildDeckTentaclePinnedUrl,
   buildDeckTentacleSkillsUrl,
   buildDeckTentacleUrl,
   buildDeckTentaclesUrl,
@@ -23,6 +25,7 @@ import { ActionCards } from "./deck/ActionCards";
 import { AddTentacleForm } from "./deck/AddTentacleForm";
 import type { OctopusAppearancePayload } from "./deck/AddTentacleForm";
 import { DeckBottomActions } from "./deck/DeckBottomActions";
+import { RecentAgentsPanel } from "./deck/RecentAgentsPanel";
 import { TentaclePod } from "./deck/TentaclePod";
 import { WorkspaceSetupCard } from "./deck/WorkspaceSetupCard";
 import { type OctopusVisuals, deriveOctopusVisuals } from "./deck/octopusVisuals";
@@ -83,6 +86,8 @@ export const DeckPrimaryView = ({
   suppressWorkspaceSetupCard = false,
 }: DeckPrimaryViewProps) => {
   const [tentacles, setTentacles] = useState<DeckTentacleSummary[]>([]);
+  const [isLoadingTentacles, setIsLoadingTentacles] = useState(true);
+  const [tentaclesError, setTentaclesError] = useState<string | null>(null);
   const [focus, setFocus] = useState<FocusState | null>(null);
   const [vaultContent, setVaultContent] = useState<string | null>(null);
   const [loadingVault, setLoadingVault] = useState(false);
@@ -108,18 +113,49 @@ export const DeckPrimaryView = ({
 
   // Fetch tentacle list
   const fetchTentacles = useCallback(async () => {
+    setIsLoadingTentacles(true);
+    setTentaclesError(null);
     try {
       const response = await fetch(buildDeckTentaclesUrl(), {
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        setTentaclesError("Failed to load agents");
+        return;
+      }
       const data = await response.json();
       setTentacles(data);
       await onRefreshWorkspaceSetup();
     } catch {
-      // silently ignore
+      setTentaclesError("Network error");
+    } finally {
+      setIsLoadingTentacles(false);
     }
   }, [onRefreshWorkspaceSetup]);
+
+  // Record tentacle opened + optimistic merge (guard ref prevents double-fire)
+  const recordedOpenRef = useRef<string | null>(null);
+  useEffect(() => {
+    const tentacleId =
+      focus?.type === "vault" || focus?.type === "vault-browser" ? focus.tentacleId : null;
+    if (!tentacleId) {
+      recordedOpenRef.current = null;
+      return;
+    }
+    if (recordedOpenRef.current === tentacleId) return;
+    recordedOpenRef.current = tentacleId;
+    const record = async () => {
+      try {
+        const response = await fetch(buildDeckTentacleOpenedUrl(tentacleId), { method: "POST" });
+        if (!response.ok) return;
+        const updated = (await response.json()) as DeckTentacleSummary;
+        setTentacles((prev) => prev.map((t) => (t.tentacleId === tentacleId ? updated : t)));
+      } catch {
+        // ignore
+      }
+    };
+    void record();
+  }, [focus]);
 
   useEffect(() => {
     void fetchTentacles();
@@ -353,6 +389,21 @@ export const DeckPrimaryView = ({
     [fetchTentacles],
   );
 
+  const handleTogglePin = useCallback(async (tentacleId: string, newPinned: boolean) => {
+    try {
+      const response = await fetch(buildDeckTentaclePinnedUrl(tentacleId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: newPinned }),
+      });
+      if (!response.ok) return;
+      const updated = (await response.json()) as DeckTentacleSummary;
+      setTentacles((prev) => prev.map((t) => (t.tentacleId === tentacleId ? updated : t)));
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const focusedTentacle =
     focus?.type === "vault" || focus?.type === "vault-browser"
       ? tentacles.find((t) => t.tentacleId === focus.tentacleId)
@@ -431,6 +482,28 @@ export const DeckPrimaryView = ({
     return () => onSidebarContent?.(null);
   }, [onSidebarContent, sidebarContent]);
 
+  // ─── Loading / error state ───────────────────────────────────────────────────
+
+  if (isLoadingTentacles) {
+    return (
+      <section className="deck-view" data-mode="grid" aria-label="Deck">
+        <div className="deck-empty-state">
+          <span className="deck-detail-loading">Loading agents…</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (tentaclesError && tentacles.length === 0) {
+    return (
+      <section className="deck-view" data-mode="grid" aria-label="Deck">
+        <div className="deck-empty-state">
+          <span className="deck-detail-loading">{tentaclesError}</span>
+        </div>
+      </section>
+    );
+  }
+
   // ─── Empty state (no tentacles) ─────────────────────────────────────────────
 
   if (tentacles.length === 0 && focus?.type !== "terminal") {
@@ -503,6 +576,12 @@ export const DeckPrimaryView = ({
       data-has-pods={tentacles.length > 0}
       aria-label="Deck"
     >
+      <RecentAgentsPanel
+        tentacles={tentacles}
+        onOpenTentacle={(tentacleId) => setFocus({ type: "vault-browser", tentacleId })}
+        onPinToggle={handleTogglePin}
+      />
+
       <div className="deck-pods-container">
         {tentacles.map((t) => {
           const isThis =
