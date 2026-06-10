@@ -781,6 +781,108 @@ describe("createApiServer", () => {
     });
   });
 
+  it("PATCH /api/conversations/:id/meta pin round-trip and tags round-trip", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    const sessionId = "meta-session-1";
+    writeConversationTranscript(workspaceCwd, sessionId, [
+      {
+        type: "session_start",
+        eventId: `${sessionId}:1`,
+        sessionId,
+        tentacleId: "t1",
+        timestamp: "2026-03-05T13:00:00.000Z",
+      },
+    ]);
+    writeClaudeTurns(workspaceCwd, sessionId, [
+      {
+        turnId: "turn-1",
+        role: "user",
+        content: "hello",
+        startedAt: "2026-03-05T13:00:01.000Z",
+        endedAt: "2026-03-05T13:00:01.000Z",
+      },
+    ]);
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    // Pin the session
+    const pinRes = await fetch(`${baseUrl}/api/conversations/${sessionId}/meta`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: true }),
+    });
+    expect(pinRes.status).toBe(204);
+
+    // Verify pin is reflected in session list
+    const listRes = await fetch(`${baseUrl}/api/conversations`, {
+      headers: { Accept: "application/json" },
+    });
+    expect(listRes.status).toBe(200);
+    const sessions = (await listRes.json()) as { sessionId: string; pinned?: boolean }[];
+    expect(sessions.find((s) => s.sessionId === sessionId)?.pinned).toBe(true);
+
+    // Add tags
+    const tagRes = await fetch(`${baseUrl}/api/conversations/${sessionId}/meta`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags: ["work", "important"] }),
+    });
+    expect(tagRes.status).toBe(204);
+
+    // Verify tags are reflected (pin should still be set)
+    const listRes2 = await fetch(`${baseUrl}/api/conversations`, {
+      headers: { Accept: "application/json" },
+    });
+    const sessions2 = (await listRes2.json()) as {
+      sessionId: string;
+      pinned?: boolean;
+      tags?: string[];
+    }[];
+    const updated = sessions2.find((s) => s.sessionId === sessionId);
+    expect(updated?.pinned).toBe(true);
+    expect(updated?.tags).toEqual(["work", "important"]);
+  });
+
+  it("PATCH /api/conversations/:id/meta returns 400 for invalid body", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    const sessionId = "meta-session-bad";
+    writeConversationTranscript(workspaceCwd, sessionId, [
+      {
+        type: "session_start",
+        eventId: `${sessionId}:1`,
+        sessionId,
+        tentacleId: "t1",
+        timestamp: "2026-03-05T13:00:00.000Z",
+      },
+    ]);
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/conversations/${sessionId}/meta`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: "yes" }),
+    });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ error: expect.any(String) });
+  });
+
+  it("PATCH /api/conversations/:id/meta returns 404 for unknown session", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/conversations/no-such-session/meta`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: true }),
+    });
+    expect(res.status).toBe(404);
+  });
+
   it("rejects non-local browser origins for HTTP endpoints", async () => {
     const baseUrl = await startServer();
 

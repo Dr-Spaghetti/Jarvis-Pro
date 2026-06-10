@@ -14,6 +14,12 @@ import {
   TERMINAL_MAX_CONCURRENT_SESSIONS,
 } from "./terminalRuntime/constants";
 import {
+  type ConversationMetaPatch,
+  mergeConversationMeta,
+  patchConversationMetaInStore,
+  readConversationMetaStore,
+} from "./terminalRuntime/conversationMeta";
+import {
   conversationExportMarkdown,
   deleteAllConversations,
   deleteConversation,
@@ -527,11 +533,20 @@ export const createTerminalRuntime = ({
     },
 
     listConversationSessions() {
-      return listConversationSessions(transcriptDirectoryPath);
+      const sessions = listConversationSessions(transcriptDirectoryPath);
+      const metaStore = readConversationMetaStore(transcriptDirectoryPath);
+      return sessions.map((s) => mergeConversationMeta(s, metaStore));
     },
 
     readConversationSession(sessionId: string) {
-      return readConversationSession(transcriptDirectoryPath, sessionId);
+      const session = readConversationSession(transcriptDirectoryPath, sessionId);
+      if (!session) return null;
+      const metaStore = readConversationMetaStore(transcriptDirectoryPath);
+      return mergeConversationMeta(session, metaStore);
+    },
+
+    patchConversationMeta(sessionId: string, patch: ConversationMetaPatch): boolean {
+      return patchConversationMetaInStore(transcriptDirectoryPath, sessionId, patch);
     },
 
     exportConversationSession(sessionId: string, format: "json" | "md") {

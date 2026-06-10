@@ -4,6 +4,7 @@ import { writeJson, writeMethodNotAllowed, writeNoContent, writeText } from "./r
 const CONVERSATION_SEARCH_PATH = "/api/conversations/search";
 const CONVERSATION_ITEM_PATH_PATTERN = /^\/api\/conversations\/([^/]+)$/;
 const CONVERSATION_EXPORT_PATH_PATTERN = /^\/api\/conversations\/([^/]+)\/export$/;
+const CONVERSATION_META_PATH_PATTERN = /^\/api\/conversations\/([^/]+)\/meta$/;
 
 export const handleConversationsCollectionRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
@@ -124,5 +125,75 @@ export const handleConversationExportRoute: ApiRouteHandler = async (
   }
 
   writeText(response, 200, payload, "text/markdown; charset=utf-8", corsOrigin);
+  return true;
+};
+
+export const handleConversationMetaRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { runtime },
+) => {
+  const match = requestUrl.pathname.match(CONVERSATION_META_PATH_PATTERN);
+  if (!match) {
+    return false;
+  }
+
+  if (request.method !== "PATCH") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const sessionId = decodeURIComponent(match[1] ?? "");
+
+  let body: unknown;
+  try {
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolve, reject) => {
+      request.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      request.on("end", resolve);
+      request.on("error", reject);
+    });
+    body = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+  } catch {
+    writeJson(response, 400, { error: "Invalid JSON body." }, corsOrigin);
+    return true;
+  }
+
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    writeJson(response, 400, { error: "Body must be a JSON object." }, corsOrigin);
+    return true;
+  }
+
+  const rec = body as Record<string, unknown>;
+
+  const hasTags = "tags" in rec;
+  const hasPinned = "pinned" in rec;
+
+  if (
+    (hasTags &&
+      (!Array.isArray(rec.tags) || !(rec.tags as unknown[]).every((t) => typeof t === "string"))) ||
+    (hasPinned && typeof rec.pinned !== "boolean")
+  ) {
+    writeJson(
+      response,
+      400,
+      { error: "Invalid patch: tags must be string[] and pinned must be boolean." },
+      corsOrigin,
+    );
+    return true;
+  }
+
+  const patch: { tags?: string[]; pinned?: boolean } = {};
+  if (hasTags) patch.tags = rec.tags as string[];
+  if (hasPinned) patch.pinned = rec.pinned as boolean;
+
+  const ok = runtime.patchConversationMeta(sessionId, patch);
+  if (!ok) {
+    writeJson(response, 404, { error: "Conversation session not found." }, corsOrigin);
+    return true;
+  }
+
+  writeNoContent(response, 204, corsOrigin);
   return true;
 };
