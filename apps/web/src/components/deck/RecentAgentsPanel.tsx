@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type { DeckTentacleSummary } from "@octogent/core";
 import { formatRelativeTime } from "../../app/formatRelativeTime";
+import { PanelState } from "../ui/PanelState";
 import { STATUS_LABELS } from "./TentaclePod";
 
 // ─── Sort logic (exported for unit tests) ────────────────────────────────────
@@ -67,7 +68,7 @@ export const RecentAgentsPanel = ({
   if (agents.length === 0) {
     return (
       <section className="recent-agents-panel" aria-label="Recent Agents">
-        <span className="recent-agents-empty">No recently opened agents yet.</span>
+        <PanelState state="empty" message="No recently opened agents yet." />
       </section>
     );
   }

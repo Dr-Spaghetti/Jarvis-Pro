@@ -30,6 +30,8 @@ import { TentaclePod } from "./deck/TentaclePod";
 import { WorkspaceSetupCard } from "./deck/WorkspaceSetupCard";
 import { type OctopusVisuals, deriveOctopusVisuals } from "./deck/octopusVisuals";
 import { MarkdownContent } from "./ui/MarkdownContent";
+import { PanelState } from "./ui/PanelState";
+import { useToasts } from "./ui/ToastProvider";
 
 export type { OctopusAppearancePayload } from "./deck/AddTentacleForm";
 
@@ -85,6 +87,7 @@ export const DeckPrimaryView = ({
   onRunWorkspaceSetupStep,
   suppressWorkspaceSetupCard = false,
 }: DeckPrimaryViewProps) => {
+  const { showToast } = useToasts();
   const [tentacles, setTentacles] = useState<DeckTentacleSummary[]>([]);
   const [isLoadingTentacles, setIsLoadingTentacles] = useState(true);
   const [tentaclesError, setTentaclesError] = useState<string | null>(null);
@@ -342,16 +345,21 @@ export const DeckPrimaryView = ({
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ suggestedSkills }),
         });
-        if (!response.ok) return false;
+        if (!response.ok) {
+          showToast("Failed to save skills", "error");
+          return false;
+        }
         await fetchTentacles();
+        showToast("Skills saved", "ok");
         return true;
       } catch {
+        showToast("Failed to save skills", "error");
         return false;
       } finally {
         setSavingTentacleSkillsId((current) => (current === tentacleId ? null : current));
       }
     },
-    [fetchTentacles],
+    [fetchTentacles, showToast],
   );
 
   const [deletingTentacleId, setDeletingTentacleId] = useState<string | null>(null);
@@ -361,15 +369,18 @@ export const DeckPrimaryView = ({
       setDeletingTentacleId(tentacleId);
       try {
         const response = await fetch(buildDeckTentacleUrl(tentacleId), { method: "DELETE" });
-        if (!response.ok) return;
+        if (!response.ok) {
+          showToast("Failed to delete agent", "error");
+          return;
+        }
         await fetchTentacles();
       } catch {
-        // silently ignore
+        showToast("Failed to delete agent", "error");
       } finally {
         setDeletingTentacleId(null);
       }
     },
-    [fetchTentacles],
+    [fetchTentacles, showToast],
   );
 
   const handleTodoToggle = useCallback(
@@ -380,29 +391,38 @@ export const DeckPrimaryView = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemIndex, done }),
         });
-        if (!response.ok) return;
+        if (!response.ok) {
+          showToast("Failed to update todo", "error");
+          return;
+        }
         await fetchTentacles();
       } catch {
-        // silently ignore
+        showToast("Failed to update todo", "error");
       }
     },
-    [fetchTentacles],
+    [fetchTentacles, showToast],
   );
 
-  const handleTogglePin = useCallback(async (tentacleId: string, newPinned: boolean) => {
-    try {
-      const response = await fetch(buildDeckTentaclePinnedUrl(tentacleId), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: newPinned }),
-      });
-      if (!response.ok) return;
-      const updated = (await response.json()) as DeckTentacleSummary;
-      setTentacles((prev) => prev.map((t) => (t.tentacleId === tentacleId ? updated : t)));
-    } catch {
-      // ignore
-    }
-  }, []);
+  const handleTogglePin = useCallback(
+    async (tentacleId: string, newPinned: boolean) => {
+      try {
+        const response = await fetch(buildDeckTentaclePinnedUrl(tentacleId), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pinned: newPinned }),
+        });
+        if (!response.ok) {
+          showToast("Failed to update pin", "error");
+          return;
+        }
+        const updated = (await response.json()) as DeckTentacleSummary;
+        setTentacles((prev) => prev.map((t) => (t.tentacleId === tentacleId ? updated : t)));
+      } catch {
+        showToast("Failed to update pin", "error");
+      }
+    },
+    [showToast],
+  );
 
   const focusedTentacle =
     focus?.type === "vault" || focus?.type === "vault-browser"
@@ -488,7 +508,7 @@ export const DeckPrimaryView = ({
     return (
       <section className="deck-view" data-mode="grid" aria-label="Deck">
         <div className="deck-empty-state">
-          <span className="deck-detail-loading">Loading agents…</span>
+          <PanelState state="loading" message="Loading agents…" />
         </div>
       </section>
     );
@@ -498,7 +518,13 @@ export const DeckPrimaryView = ({
     return (
       <section className="deck-view" data-mode="grid" aria-label="Deck">
         <div className="deck-empty-state">
-          <span className="deck-detail-loading">{tentaclesError}</span>
+          <PanelState
+            state="error"
+            message={tentaclesError}
+            onRetry={() => {
+              void fetchTentacles();
+            }}
+          />
         </div>
       </section>
     );

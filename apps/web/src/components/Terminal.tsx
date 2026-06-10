@@ -476,6 +476,7 @@ export const Terminal = ({
               type="button"
               className="terminal-prompt-banner-close"
               aria-label="Dismiss prompt"
+              data-tooltip="Dismiss prompt"
               onClick={() => {
                 setIsPromptBannerDismissed(true);
               }}
