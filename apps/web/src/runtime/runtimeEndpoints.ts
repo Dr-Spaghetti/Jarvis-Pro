@@ -219,6 +219,19 @@ export const buildConversationExportUrl = (
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildConversationMetaUrl = (
+  sessionId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const encodedSessionId = encodeURIComponent(sessionId);
+  const path = `/api/conversations/${encodedSessionId}/meta`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildTentacleRenameUrl = (
   tentacleId: string,
   runtimeBaseUrl = readRuntimeBaseUrl(),

@@ -4,6 +4,7 @@ import {
   buildClaudeUsageUrl,
   buildCodexUsageUrl,
   buildConversationExportUrl,
+  buildConversationMetaUrl,
   buildConversationSessionUrl,
   buildConversationsUrl,
   buildDeckTentacleOpenedUrl,
@@ -102,6 +103,9 @@ describe("runtimeEndpoints", () => {
     expect(buildConversationExportUrl("tentacle-1-root", "md")).toBe(
       "/api/conversations/tentacle-1-root/export?format=md",
     );
+    expect(buildConversationMetaUrl("tentacle-1-root")).toBe(
+      "/api/conversations/tentacle-1-root/meta",
+    );
   });
 
   it("builds absolute conversations URLs when runtime base URL is configured", () => {
@@ -114,6 +118,9 @@ describe("runtimeEndpoints", () => {
     expect(
       buildConversationExportUrl("tentacle-1-root", "json", "https://runtime.example.com"),
     ).toBe("https://runtime.example.com/api/conversations/tentacle-1-root/export?format=json");
+    expect(buildConversationMetaUrl("tentacle-1-root", "https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/conversations/tentacle-1-root/meta",
+    );
   });
 
   it("builds absolute monitor URLs when runtime base URL is configured", () => {
