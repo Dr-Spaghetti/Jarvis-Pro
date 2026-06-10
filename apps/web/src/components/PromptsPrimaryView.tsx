@@ -5,6 +5,7 @@ import { SidebarPromptsList } from "./SidebarPromptsList";
 import { Terminal } from "./Terminal";
 import { ActionButton } from "./ui/ActionButton";
 import { MarkdownContent } from "./ui/MarkdownContent";
+import { useToasts } from "./ui/ToastProvider";
 
 type PromptsPrimaryViewProps = {
   enabled: boolean;
@@ -33,6 +34,7 @@ export const PromptsPrimaryView = ({ enabled, onSidebarContent }: PromptsPrimary
     setEditDraft: onSetEditDraft,
     submitEdit: onSubmitEdit,
   } = usePromptLibrary({ enabled });
+  const { showToast } = useToasts();
 
   const [promptEngineerTerminalId, setPromptEngineerTerminalId] = useState<string | null>(null);
   const [newPromptRequestCount, setNewPromptRequestCount] = useState(0);
@@ -99,11 +101,11 @@ export const PromptsPrimaryView = ({ enabled, onSidebarContent }: PromptsPrimary
       setShowTerminal(true);
       onTerminalIdChange(agentId);
     } catch {
-      // Silently fail — the user can retry
+      showToast("Failed to create terminal", "error");
     } finally {
       setIsCreatingTerminal(false);
     }
-  }, [onTerminalIdChange]);
+  }, [onTerminalIdChange, showToast]);
 
   useEffect(() => {
     if (newPromptRequestCount > 0) {

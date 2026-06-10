@@ -275,11 +275,11 @@ export const DeckPrimaryView = ({
       setFocus({ type: "terminal", agentId, terminalLabel: "Agent Planner" });
       await fetchTentacles();
     } catch {
-      // silently ignore
+      showToast("Failed to launch agent", "error");
     } finally {
       setIsLaunchingAgent(false);
     }
-  }, [selectedAgent, fetchTentacles]);
+  }, [selectedAgent, fetchTentacles, showToast]);
 
   const handleRunSetupStep = useCallback(
     async (

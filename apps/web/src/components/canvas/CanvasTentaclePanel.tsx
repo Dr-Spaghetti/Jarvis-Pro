@@ -17,6 +17,7 @@ import {
   type OctopusExpression,
   OctopusGlyph,
 } from "../EmptyOctopus";
+import { useToasts } from "../ui/ToastProvider";
 
 const OCTOPUS_COLORS = [
   "#ff6b2b",
@@ -120,6 +121,7 @@ export const CanvasTentaclePanel = ({
   onNavigateToConversation,
   onRefreshTentacleData,
 }: CanvasTentaclePanelProps) => {
+  const { showToast } = useToasts();
   const visuals = useMemo(() => (tentacle ? deriveVisuals(tentacle) : null), [tentacle]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
@@ -141,10 +143,10 @@ export const CanvasTentaclePanel = ({
         if (!response.ok) return;
         await refreshTentacleData();
       } catch {
-        // silent
+        showToast("Failed to update todo", "error");
       }
     },
-    [node.tentacleId, refreshTentacleData],
+    [node.tentacleId, refreshTentacleData, showToast],
   );
 
   const handleTodoEdit = useCallback(
@@ -160,10 +162,10 @@ export const CanvasTentaclePanel = ({
         setEditingIndex(null);
         await refreshTentacleData();
       } catch {
-        // silent
+        showToast("Failed to update todo", "error");
       }
     },
-    [node.tentacleId, refreshTentacleData],
+    [node.tentacleId, refreshTentacleData, showToast],
   );
 
   const handleTodoAdd = useCallback(
@@ -180,10 +182,10 @@ export const CanvasTentaclePanel = ({
         setAddText("");
         await refreshTentacleData();
       } catch {
-        // silent
+        showToast("Failed to add todo", "error");
       }
     },
-    [node.tentacleId, refreshTentacleData],
+    [node.tentacleId, refreshTentacleData, showToast],
   );
 
   const handleTodoDelete = useCallback(
@@ -197,10 +199,10 @@ export const CanvasTentaclePanel = ({
         if (!response.ok) return;
         await refreshTentacleData();
       } catch {
-        // silent
+        showToast("Failed to delete todo", "error");
       }
     },
-    [node.tentacleId, refreshTentacleData],
+    [node.tentacleId, refreshTentacleData, showToast],
   );
 
   const handleTodoSolve = useCallback(
@@ -215,12 +217,12 @@ export const CanvasTentaclePanel = ({
         if (!response.ok) return;
         onSolveTodoItem?.(node.tentacleId, itemIndex);
       } catch {
-        // silent
+        showToast("Failed to solve todo", "error");
       } finally {
         setSolvingTodoIndex((current) => (current === itemIndex ? null : current));
       }
     },
-    [node.tentacleId, onSolveTodoItem],
+    [node.tentacleId, onSolveTodoItem, showToast],
   );
 
   const progressPct =

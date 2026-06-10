@@ -2,6 +2,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CanvasTentaclePanel } from "../src/components/canvas/CanvasTentaclePanel";
+import { ToastProvider } from "../src/components/ui/ToastProvider";
+
+const renderWithToast = (ui: React.ReactElement) => render(ui, { wrapper: ToastProvider });
 
 const tentacle = {
   tentacleId: "docs-knowledge",
@@ -35,7 +38,7 @@ describe("CanvasTentaclePanel actions", () => {
   it("offers worktree and normal swarm options", async () => {
     const onSpawnSwarm = vi.fn();
 
-    render(
+    renderWithToast(
       <CanvasTentaclePanel
         node={{
           id: "docs-knowledge",
@@ -89,7 +92,7 @@ describe("CanvasTentaclePanel actions", () => {
       return new Response("not-found", { status: 404 });
     });
 
-    render(
+    renderWithToast(
       <CanvasTentaclePanel
         node={{
           id: "docs-knowledge",
@@ -137,7 +140,7 @@ describe("CanvasTentaclePanel actions", () => {
       return new Response("not-found", { status: 404 });
     });
 
-    render(
+    renderWithToast(
       <CanvasTentaclePanel
         node={{
           id: "docs-knowledge",
@@ -167,7 +170,7 @@ describe("CanvasTentaclePanel actions", () => {
   });
 
   it("shows suggested skills in the tentacle detail panel", async () => {
-    render(
+    renderWithToast(
       <CanvasTentaclePanel
         node={{
           id: "docs-knowledge",
