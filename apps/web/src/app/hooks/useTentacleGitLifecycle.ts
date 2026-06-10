@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 import {
   buildTentacleGitCommitUrl,
   buildTentacleGitPullRequestMergeUrl,
@@ -168,7 +170,7 @@ export const useTentacleGitLifecycle = ({
     }));
 
     try {
-      const response = await fetch(buildTentacleGitStatusUrl(tentacleId), {
+      const response = await apiFetch(buildTentacleGitStatusUrl(tentacleId), {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -207,7 +209,7 @@ export const useTentacleGitLifecycle = ({
     }));
 
     try {
-      const response = await fetch(buildTentacleGitPullRequestUrl(tentacleId), {
+      const response = await apiFetch(buildTentacleGitPullRequestUrl(tentacleId), {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -361,7 +363,7 @@ export const useTentacleGitLifecycle = ({
       setIsGitDialogMutating(true);
       setGitDialogError(null);
       try {
-        const response = await fetch(endpoint, {
+        const response = await apiFetch(endpoint, {
           method: "POST",
           headers: {
             Accept: "application/json",
@@ -411,7 +413,7 @@ export const useTentacleGitLifecycle = ({
       setIsGitDialogMutating(true);
       setGitDialogError(null);
       try {
-        const response = await fetch(endpoint, {
+        const response = await apiFetch(endpoint, {
           method: "POST",
           headers: {
             Accept: "application/json",

@@ -3,6 +3,11 @@ import {
   TERMINAL_COMPLETION_SOUND_OPTIONS,
   type TerminalCompletionSoundId,
 } from "../app/notificationSounds";
+import {
+  appendAuthTokenParam,
+  clearStoredAuthToken,
+  getStoredAuthToken,
+} from "../runtime/apiClient";
 import { buildSettingsExportUrl } from "../runtime/runtimeEndpoints";
 import { ActionButton } from "./ui/ActionButton";
 import { SettingsToggle } from "./ui/SettingsToggle";
@@ -135,6 +140,40 @@ export const SettingsPrimaryView = ({
         )}
       </div>
     </section>
+    <section className="settings-panel" aria-label="Remote access authentication settings">
+      <header className="settings-panel-header">
+        <h2>Remote access</h2>
+        <p>
+          API authentication is controlled by <code>OCTOGENT_AUTH_TOKEN</code> in <code>.env</code>{" "}
+          on the host machine — see <code>docs/remote-access.md</code> for exposing Jarvis outside
+          your network.
+        </p>
+      </header>
+      <div className="settings-panel-actions">
+        {getStoredAuthToken() ? (
+          <>
+            <span className="settings-saved-pill" aria-label="Access token saved on this device">
+              ✓ Access token saved on this device
+            </span>
+            <ActionButton
+              size="dense"
+              variant="danger"
+              aria-label="Forget access token on this device"
+              onClick={() => {
+                clearStoredAuthToken();
+                window.location.reload();
+              }}
+            >
+              Forget token
+            </ActionButton>
+          </>
+        ) : (
+          <span className="settings-saved-pill" aria-label="No access token saved">
+            No token saved — the server did not require one when this page loaded
+          </span>
+        )}
+      </div>
+    </section>
     <section className="settings-panel" aria-label="Backup and export settings">
       <header className="settings-panel-header">
         <h2>Backup &amp; export</h2>
@@ -142,7 +181,7 @@ export const SettingsPrimaryView = ({
       </header>
       <div className="settings-panel-actions">
         <a
-          href={buildSettingsExportUrl()}
+          href={appendAuthTokenParam(buildSettingsExportUrl())}
           download="octogent-settings.json"
           className="settings-export-link"
         >

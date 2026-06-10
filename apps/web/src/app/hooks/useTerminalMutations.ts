@@ -3,6 +3,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import type { TerminalAgentProvider, TerminalView, TerminalWorkspaceMode } from "../types";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 export type PendingDeleteTerminal = {
   terminalId: string;
   tentacleName: string;
@@ -90,7 +92,7 @@ export const useTerminalMutations = ({
       try {
         setLoadError(null);
         const encodedTerminalId = encodeURIComponent(terminalId);
-        const response = await fetch(`/api/terminals/${encodedTerminalId}`, {
+        const response = await apiFetch(`/api/terminals/${encodedTerminalId}`, {
           method: "PATCH",
           headers: {
             Accept: "application/json",
@@ -122,7 +124,7 @@ export const useTerminalMutations = ({
       try {
         setIsCreatingTerminal(true);
         setLoadError(null);
-        const response = await fetch("/api/terminals", {
+        const response = await apiFetch("/api/terminals", {
           method: "POST",
           headers: {
             Accept: "application/json",
@@ -201,7 +203,7 @@ export const useTerminalMutations = ({
       setLoadError(null);
       setIsDeletingTerminalId(terminalId);
       const encodedTerminalId = encodeURIComponent(terminalId);
-      const response = await fetch(`/api/terminals/${encodedTerminalId}`, {
+      const response = await apiFetch(`/api/terminals/${encodedTerminalId}`, {
         method: "DELETE",
         headers: {
           Accept: "application/json",

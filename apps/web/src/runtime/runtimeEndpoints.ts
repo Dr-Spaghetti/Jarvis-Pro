@@ -505,6 +505,16 @@ export const buildTerminalSocketUrl = (
   return buildAbsoluteUrl(webSocketBase, `/api/terminals/${encodedTentacleId}/ws`);
 };
 
+export const buildAuthStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/auth/status";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/auth/status");
+};
+
+export const buildAuthVerifyUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/auth/verify";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/auth/verify");
+};
+
 export const buildGmailStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/gmail/status";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/status");

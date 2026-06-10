@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { buildWorkspaceSetupStepUrl, buildWorkspaceSetupUrl } from "../../runtime/runtimeEndpoints";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type UseWorkspaceSetupResult = {
   workspaceSetup: WorkspaceSetupSnapshot | null;
   isWorkspaceSetupLoading: boolean;
@@ -28,7 +30,7 @@ export const useWorkspaceSetup = (): UseWorkspaceSetupResult => {
   const refreshWorkspaceSetup = useCallback(async () => {
     try {
       setWorkspaceSetupError(null);
-      const response = await fetch(buildWorkspaceSetupUrl(), {
+      const response = await apiFetch(buildWorkspaceSetupUrl(), {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) {
@@ -49,7 +51,7 @@ export const useWorkspaceSetup = (): UseWorkspaceSetupResult => {
   const runWorkspaceSetupStep = useCallback(async (stepId: WorkspaceSetupStepId) => {
     try {
       setWorkspaceSetupError(null);
-      const response = await fetch(buildWorkspaceSetupStepUrl(stepId), {
+      const response = await apiFetch(buildWorkspaceSetupStepUrl(stepId), {
         method: "POST",
         headers: { Accept: "application/json" },
       });

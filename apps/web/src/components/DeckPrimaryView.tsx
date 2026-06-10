@@ -34,6 +34,8 @@ import { MarkdownContent } from "./ui/MarkdownContent";
 import { PanelState } from "./ui/PanelState";
 import { useToasts } from "./ui/ToastProvider";
 
+import { apiFetch } from "../runtime/apiClient";
+
 export type { OctopusAppearancePayload } from "./deck/AddTentacleForm";
 
 const normalizeStringArray = (value: unknown): string[] | undefined =>
@@ -124,7 +126,7 @@ export const DeckPrimaryView = ({
     setIsLoadingTentacles(true);
     setTentaclesError(null);
     try {
-      const response = await fetch(buildDeckTentaclesUrl(), {
+      const response = await apiFetch(buildDeckTentaclesUrl(), {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) {
@@ -154,7 +156,7 @@ export const DeckPrimaryView = ({
     recordedOpenRef.current = tentacleId;
     const record = async () => {
       try {
-        const response = await fetch(buildDeckTentacleOpenedUrl(tentacleId), { method: "POST" });
+        const response = await apiFetch(buildDeckTentacleOpenedUrl(tentacleId), { method: "POST" });
         if (!response.ok) return;
         const updated = (await response.json()) as DeckTentacleSummary;
         setTentacles((prev) => prev.map((t) => (t.tentacleId === tentacleId ? updated : t)));
@@ -174,7 +176,7 @@ export const DeckPrimaryView = ({
 
     const fetchSkills = async () => {
       try {
-        const response = await fetch(buildDeckSkillsUrl(), {
+        const response = await apiFetch(buildDeckSkillsUrl(), {
           headers: { Accept: "application/json" },
         });
         if (!response.ok) return;
@@ -217,7 +219,7 @@ export const DeckPrimaryView = ({
     setLoadingVault(true);
     const fetchVault = async () => {
       try {
-        const response = await fetch(buildDeckVaultFileUrl(focus.tentacleId, focus.fileName), {
+        const response = await apiFetch(buildDeckVaultFileUrl(focus.tentacleId, focus.fileName), {
           headers: { Accept: "text/markdown" },
         });
         if (cancelled) return;
@@ -259,7 +261,7 @@ export const DeckPrimaryView = ({
   const handleLaunchAgent = useCallback(async () => {
     setIsLaunchingAgent(true);
     try {
-      const response = await fetch(buildTerminalsUrl(), {
+      const response = await apiFetch(buildTerminalsUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -315,7 +317,7 @@ export const DeckPrimaryView = ({
       setIsCreating(true);
       setCreateError(null);
       try {
-        const response = await fetch(buildDeckTentaclesUrl(), {
+        const response = await apiFetch(buildDeckTentaclesUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ name, description, color, octopus, suggestedSkills }),
@@ -345,7 +347,7 @@ export const DeckPrimaryView = ({
     async (tentacleId: string, suggestedSkills: string[]) => {
       setSavingTentacleSkillsId(tentacleId);
       try {
-        const response = await fetch(buildDeckTentacleSkillsUrl(tentacleId), {
+        const response = await apiFetch(buildDeckTentacleSkillsUrl(tentacleId), {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ suggestedSkills }),
@@ -373,7 +375,7 @@ export const DeckPrimaryView = ({
     async (tentacleId: string) => {
       setDeletingTentacleId(tentacleId);
       try {
-        const response = await fetch(buildDeckTentacleUrl(tentacleId), { method: "DELETE" });
+        const response = await apiFetch(buildDeckTentacleUrl(tentacleId), { method: "DELETE" });
         if (!response.ok) {
           showToast("Failed to delete agent", "error");
           return;
@@ -391,7 +393,7 @@ export const DeckPrimaryView = ({
   const handleTodoToggle = useCallback(
     async (tentacleId: string, itemIndex: number, done: boolean) => {
       try {
-        const response = await fetch(buildDeckTodoToggleUrl(tentacleId), {
+        const response = await apiFetch(buildDeckTodoToggleUrl(tentacleId), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemIndex, done }),
@@ -411,7 +413,7 @@ export const DeckPrimaryView = ({
   const handleTogglePin = useCallback(
     async (tentacleId: string, newPinned: boolean) => {
       try {
-        const response = await fetch(buildDeckTentaclePinnedUrl(tentacleId), {
+        const response = await apiFetch(buildDeckTentaclePinnedUrl(tentacleId), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pinned: newPinned }),
@@ -476,7 +478,7 @@ export const DeckPrimaryView = ({
               <DeckBottomActions
                 onClearAll={async () => {
                   for (const t of tentacles) {
-                    await fetch(buildDeckTentacleUrl(t.tentacleId), { method: "DELETE" });
+                    await apiFetch(buildDeckTentacleUrl(t.tentacleId), { method: "DELETE" });
                   }
                   await fetchTentacles();
                 }}

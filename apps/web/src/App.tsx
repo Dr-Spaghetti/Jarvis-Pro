@@ -35,6 +35,8 @@ import { TelemetryTape } from "./components/TelemetryTape";
 import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader";
+import { apiFetch, appendAuthTokenParam } from "./runtime/apiClient";
+
 import {
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
@@ -201,7 +203,7 @@ export const App = () => {
   }, []);
 
   useEffect(() => {
-    const socket = new WebSocket(buildTerminalEventsSocketUrl());
+    const socket = new WebSocket(appendAuthTokenParam(buildTerminalEventsSocketUrl()));
 
     socket.addEventListener("message", (event) => {
       if (typeof event.data !== "string") {
@@ -543,7 +545,7 @@ export const App = () => {
                 runningWorkspaceSetupStepId,
                 onRunWorkspaceSetupStep: handleRunWorkspaceSetupStep,
                 onLaunchWorkspaceSetupPlanner: async () => {
-                  const response = await fetch("/api/terminals", {
+                  const response = await apiFetch("/api/terminals", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -576,7 +578,7 @@ export const App = () => {
                   return await createTerminal("worktree", undefined, OCTOBOSS_ID);
                 },
                 onCreateTentacle: async () => {
-                  const response = await fetch("/api/deck/tentacles", {
+                  const response = await apiFetch("/api/deck/tentacles", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name: "", description: "" }),
@@ -585,7 +587,7 @@ export const App = () => {
                   await refreshColumns();
                 },
                 onSpawnSwarm: async (tentacleId, workspaceMode) => {
-                  const response = await fetch(
+                  const response = await apiFetch(
                     `/api/deck/tentacles/${encodeURIComponent(tentacleId)}/swarm`,
                     {
                       method: "POST",
@@ -596,7 +598,7 @@ export const App = () => {
                   if (!response.ok) return;
                 },
                 onOctobossAction: async (action) => {
-                  const response = await fetch("/api/terminals", {
+                  const response = await apiFetch("/api/terminals", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -611,7 +613,7 @@ export const App = () => {
                   return typeof snapshot.terminalId === "string" ? snapshot.terminalId : undefined;
                 },
                 onTentacleAction: async (tentacleId, action) => {
-                  const response = await fetch("/api/terminals", {
+                  const response = await apiFetch("/api/terminals", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

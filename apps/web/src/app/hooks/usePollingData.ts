@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type UsePollingDataOptions<T> = {
   fetchUrl: string;
   intervalMs: number;
@@ -33,7 +35,7 @@ export const usePollingData = <T>(options: UsePollingDataOptions<T>) => {
       isInFlightRef.current = true;
       setIsLoading(true);
       try {
-        const response = await fetch(fetchUrl, {
+        const response = await apiFetch(fetchUrl, {
           method: "GET",
           headers: { Accept: "application/json" },
           cache: "no-store",

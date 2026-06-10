@@ -4,6 +4,8 @@ import { formatRelativeTime } from "../../app/formatRelativeTime";
 import { buildBrainJournalUrl } from "../../runtime/runtimeEndpoints";
 import { PanelState } from "../ui/PanelState";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type JournalStatus = "ok" | "warn" | "error";
 
 type JournalEntry = {
@@ -53,7 +55,7 @@ export const JournalTimeline = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(buildBrainJournalUrl(JOURNAL_FETCH_LIMIT), {
+      const response = await apiFetch(buildBrainJournalUrl(JOURNAL_FETCH_LIMIT), {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) {

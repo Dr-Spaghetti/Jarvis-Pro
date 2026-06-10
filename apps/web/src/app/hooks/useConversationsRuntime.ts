@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 import {
   buildConversationExportUrl,
   buildConversationMetaUrl,
@@ -91,7 +93,7 @@ export const useConversationsRuntime = ({
 
     setIsLoadingSessions(true);
     try {
-      const response = await fetch(buildConversationsUrl(), {
+      const response = await apiFetch(buildConversationsUrl(), {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -131,7 +133,7 @@ export const useConversationsRuntime = ({
 
     setIsClearing(true);
     try {
-      const response = await fetch(buildConversationsUrl(), {
+      const response = await apiFetch(buildConversationsUrl(), {
         method: "DELETE",
       });
 
@@ -157,7 +159,7 @@ export const useConversationsRuntime = ({
       }
 
       try {
-        const response = await fetch(buildConversationSessionUrl(sessionId), {
+        const response = await apiFetch(buildConversationSessionUrl(sessionId), {
           method: "DELETE",
         });
 
@@ -204,7 +206,7 @@ export const useConversationsRuntime = ({
 
       setIsExporting(true);
       try {
-        const response = await fetch(buildConversationExportUrl(sessionId, format), {
+        const response = await apiFetch(buildConversationExportUrl(sessionId, format), {
           method: "GET",
           headers: {
             Accept: format === "json" ? "application/json" : "text/markdown",
@@ -259,7 +261,7 @@ export const useConversationsRuntime = ({
 
       setIsSearching(true);
       try {
-        const response = await fetch(buildConversationSearchUrl(trimmed), {
+        const response = await apiFetch(buildConversationSearchUrl(trimmed), {
           method: "GET",
           headers: { Accept: "application/json" },
         });
@@ -298,7 +300,7 @@ export const useConversationsRuntime = ({
       );
 
       try {
-        const response = await fetch(buildConversationMetaUrl(sessionId), {
+        const response = await apiFetch(buildConversationMetaUrl(sessionId), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
@@ -361,7 +363,7 @@ export const useConversationsRuntime = ({
 
     const loadSelectedSession = async () => {
       try {
-        const response = await fetch(buildConversationSessionUrl(selectedSessionId), {
+        const response = await apiFetch(buildConversationSessionUrl(selectedSessionId), {
           method: "GET",
           headers: {
             Accept: "application/json",

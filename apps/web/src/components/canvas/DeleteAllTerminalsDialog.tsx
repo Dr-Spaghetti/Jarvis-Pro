@@ -4,6 +4,8 @@ import type { GraphNode } from "../../app/canvas/types";
 import type { TerminalView } from "../../app/types";
 import { ActionButton } from "../ui/ActionButton";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type DeleteAllTerminalsDialogProps = {
   columns: TerminalView;
   nodes: GraphNode[];
@@ -59,10 +61,13 @@ export const DeleteAllTerminalsDialog = ({
 
     for (const terminal of activeTargets) {
       try {
-        const response = await fetch(`/api/terminals/${encodeURIComponent(terminal.terminalId)}`, {
-          method: "DELETE",
-          headers: { Accept: "application/json" },
-        });
+        const response = await apiFetch(
+          `/api/terminals/${encodeURIComponent(terminal.terminalId)}`,
+          {
+            method: "DELETE",
+            headers: { Accept: "application/json" },
+          },
+        );
         if (!response.ok) {
           failures.push(
             `${terminal.tentacleName || terminal.label || terminal.terminalId}: ${await readDeleteFailureMessage(
@@ -84,7 +89,7 @@ export const DeleteAllTerminalsDialog = ({
 
     for (const sessionId of inactiveSessionIds) {
       try {
-        const response = await fetch(`/api/conversations/${encodeURIComponent(sessionId)}`, {
+        const response = await apiFetch(`/api/conversations/${encodeURIComponent(sessionId)}`, {
           method: "DELETE",
           headers: { Accept: "application/json" },
         });

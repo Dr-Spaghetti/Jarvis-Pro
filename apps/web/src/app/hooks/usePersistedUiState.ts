@@ -13,6 +13,8 @@ import { retainActiveTerminalEntries, retainActiveTerminalIds } from "../termina
 import type { FrontendUiStateSnapshot, TerminalView } from "../types";
 import { clampSidebarWidth, normalizeFrontendUiStateSnapshot } from "../uiStateNormalizers";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type UsePersistedUiStateOptions = {
   columns: TerminalView;
 };
@@ -258,7 +260,7 @@ export const usePersistedUiState = ({
         requestOptions.signal = signal;
       }
 
-      const response = await fetch(buildUiStateUrl(), requestOptions);
+      const response = await apiFetch(buildUiStateUrl(), requestOptions);
       if (!response.ok) {
         return null;
       }
@@ -465,7 +467,7 @@ export const usePersistedUiState = ({
     }
 
     const timerId = window.setTimeout(() => {
-      void fetch(buildUiStateUrl(), {
+      void apiFetch(buildUiStateUrl(), {
         method: "PATCH",
         headers: {
           Accept: "application/json",

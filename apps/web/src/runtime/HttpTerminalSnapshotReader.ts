@@ -1,5 +1,7 @@
 import type { AgentState, TerminalSnapshot, TerminalSnapshotReader } from "@octogent/core";
 
+import { apiFetch } from "./apiClient";
+
 type HttpResponse = {
   ok: boolean;
   status: number;
@@ -77,7 +79,7 @@ export class HttpTerminalSnapshotReader implements TerminalSnapshotReader {
     this.fetcher =
       fetcher ??
       ((input, init) =>
-        fetch(input, {
+        apiFetch(input, {
           ...init,
           signal: init.signal ?? null,
         }));

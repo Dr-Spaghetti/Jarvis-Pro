@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { buildTerminalSnapshotsUrl } from "../../runtime/runtimeEndpoints";
 import { BACKEND_LIVENESS_SCAN_INTERVAL_MS } from "../constants";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type BackendLivenessStatus = "live" | "offline";
 
 export const useBackendLivenessPolling = (): BackendLivenessStatus => {
@@ -19,7 +21,7 @@ export const useBackendLivenessPolling = (): BackendLivenessStatus => {
 
       isInFlight = true;
       try {
-        const response = await fetch(buildTerminalSnapshotsUrl(), {
+        const response = await apiFetch(buildTerminalSnapshotsUrl(), {
           method: "GET",
           headers: {
             Accept: "application/json",

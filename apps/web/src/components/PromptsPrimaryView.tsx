@@ -7,6 +7,8 @@ import { ActionButton } from "./ui/ActionButton";
 import { MarkdownContent } from "./ui/MarkdownContent";
 import { useToasts } from "./ui/ToastProvider";
 
+import { apiFetch } from "../runtime/apiClient";
+
 type PromptsPrimaryViewProps = {
   enabled: boolean;
   onSidebarContent?: (content: ReactNode) => void;
@@ -89,7 +91,7 @@ export const PromptsPrimaryView = ({ enabled, onSidebarContent }: PromptsPrimary
   const handleNewPrompt = useCallback(async () => {
     setIsCreatingTerminal(true);
     try {
-      const res = await fetch("/api/terminals", {
+      const res = await apiFetch("/api/terminals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

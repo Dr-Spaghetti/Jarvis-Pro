@@ -4,6 +4,8 @@ import { buildPromptItemUrl, buildPromptsUrl } from "../../runtime/runtimeEndpoi
 import { extractPromptVariables, interpolatePromptVariables } from "../extractPromptVariables";
 import type { PromptDetail, PromptLibraryEntry } from "../types";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 type UsePromptLibraryOptions = {
   enabled?: boolean;
 };
@@ -66,7 +68,7 @@ export const usePromptLibrary = ({
     setIsLoadingPrompts(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(buildPromptsUrl());
+      const res = await apiFetch(buildPromptsUrl());
       if (!res.ok) throw new Error("Failed to load prompts");
       const data = (await res.json()) as { prompts: PromptLibraryEntry[] };
       setPrompts(data.prompts);
@@ -86,7 +88,7 @@ export const usePromptLibrary = ({
 
     const requestId = ++detailRequestRef.current;
 
-    fetch(buildPromptItemUrl(name))
+    apiFetch(buildPromptItemUrl(name))
       .then(async (res) => {
         if (requestId !== detailRequestRef.current) return;
         if (!res.ok) throw new Error("Prompt not found");
@@ -109,7 +111,7 @@ export const usePromptLibrary = ({
     async (name: string, content: string): Promise<boolean> => {
       setErrorMessage(null);
       try {
-        const res = await fetch(buildPromptsUrl(), {
+        const res = await apiFetch(buildPromptsUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, content }),
@@ -132,7 +134,7 @@ export const usePromptLibrary = ({
     async (name: string): Promise<boolean> => {
       setErrorMessage(null);
       try {
-        const res = await fetch(buildPromptItemUrl(name), { method: "DELETE" });
+        const res = await apiFetch(buildPromptItemUrl(name), { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete prompt");
         if (selectedPromptName === name) {
           setSelectedPromptName(null);
@@ -164,7 +166,7 @@ export const usePromptLibrary = ({
     if (!selectedPromptName) return false;
     setErrorMessage(null);
     try {
-      const res = await fetch(buildPromptItemUrl(selectedPromptName), {
+      const res = await apiFetch(buildPromptItemUrl(selectedPromptName), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editDraft }),

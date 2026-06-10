@@ -230,3 +230,110 @@
 .panel-state-retry:hover {
   border-color: var(--gold);
 }
+
+/* --- Auth gate (token prompt before the app mounts) --- */
+
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: radial-gradient(circle at 50% 30%, rgba(245, 181, 10, 0.06), transparent 60%),
+    var(--bg-canvas);
+}
+
+.auth-gate-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(420px, 100%);
+  padding: 2rem 1.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass-bg);
+  box-shadow: 0 0 40px rgba(245, 181, 10, 0.08);
+}
+
+.auth-gate-title {
+  margin: 0;
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.auth-gate-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.auth-gate-subtitle code {
+  color: var(--gold-dim, var(--gold));
+}
+
+.auth-gate-label {
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-gate-input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.auth-gate-input:focus {
+  border-color: var(--gold);
+  outline: none;
+}
+
+.auth-gate-status {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.auth-gate-error {
+  margin: 0;
+  color: #e05555;
+  font-size: 0.8rem;
+}
+
+.auth-gate-submit {
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.auth-gate-submit:hover:not(:disabled) {
+  background: rgba(245, 181, 10, 0.12);
+  box-shadow: var(--gold-glow, 0 0 12px rgba(245, 181, 10, 0.25));
+}
+
+.auth-gate-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+output.auth-gate {
+  /* <output> defaults to inline; the gate is a fixed full-screen flex layer. */
+  display: flex;
+}

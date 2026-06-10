@@ -19,6 +19,8 @@ import {
 } from "../EmptyOctopus";
 import { useToasts } from "../ui/ToastProvider";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 const OCTOPUS_COLORS = [
   "#ff6b2b",
   "#ff2d6b",
@@ -135,7 +137,7 @@ export const CanvasTentaclePanel = ({
   const handleTodoToggle = useCallback(
     async (itemIndex: number, done: boolean) => {
       try {
-        const response = await fetch(buildDeckTodoToggleUrl(node.tentacleId), {
+        const response = await apiFetch(buildDeckTodoToggleUrl(node.tentacleId), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemIndex, done }),
@@ -153,7 +155,7 @@ export const CanvasTentaclePanel = ({
     async (itemIndex: number, text: string) => {
       if (text.trim().length === 0) return;
       try {
-        const response = await fetch(buildDeckTodoEditUrl(node.tentacleId), {
+        const response = await apiFetch(buildDeckTodoEditUrl(node.tentacleId), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemIndex, text: text.trim() }),
@@ -172,7 +174,7 @@ export const CanvasTentaclePanel = ({
     async (text: string) => {
       if (text.trim().length === 0) return;
       try {
-        const response = await fetch(buildDeckTodoAddUrl(node.tentacleId), {
+        const response = await apiFetch(buildDeckTodoAddUrl(node.tentacleId), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: text.trim() }),
@@ -191,7 +193,7 @@ export const CanvasTentaclePanel = ({
   const handleTodoDelete = useCallback(
     async (itemIndex: number) => {
       try {
-        const response = await fetch(buildDeckTodoDeleteUrl(node.tentacleId), {
+        const response = await apiFetch(buildDeckTodoDeleteUrl(node.tentacleId), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemIndex }),
@@ -209,7 +211,7 @@ export const CanvasTentaclePanel = ({
     async (itemIndex: number) => {
       try {
         setSolvingTodoIndex(itemIndex);
-        const response = await fetch(buildDeckTodoSolveUrl(node.tentacleId), {
+        const response = await apiFetch(buildDeckTodoSolveUrl(node.tentacleId), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemIndex }),

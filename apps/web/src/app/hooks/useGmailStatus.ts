@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { buildGmailAuthUrl, buildGmailStatusUrl } from "../../runtime/runtimeEndpoints";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 export type GmailStatus = { connected: boolean; email?: string };
 
 export type UseGmailStatusResult = {
@@ -20,7 +22,7 @@ export const useGmailStatus = (): UseGmailStatusResult => {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(buildGmailStatusUrl(), { cache: "no-store" });
+      const res = await apiFetch(buildGmailStatusUrl(), { cache: "no-store" });
       if (!res.ok || isDisposedRef.current) return;
       const data = (await res.json()) as GmailStatus;
       setGmailStatus(data);
@@ -58,7 +60,7 @@ export const useGmailStatus = (): UseGmailStatusResult => {
     setIsConnectingGmail(true);
     void (async () => {
       try {
-        const res = await fetch(buildGmailAuthUrl());
+        const res = await apiFetch(buildGmailAuthUrl());
         if (!res.ok) {
           setIsConnectingGmail(false);
           return;
@@ -78,7 +80,7 @@ export const useGmailStatus = (): UseGmailStatusResult => {
   const disconnectGmail = useCallback(() => {
     void (async () => {
       try {
-        await fetch(buildGmailAuthUrl(), { method: "DELETE" });
+        await apiFetch(buildGmailAuthUrl(), { method: "DELETE" });
         setGmailStatus({ connected: false });
       } catch {
         // ignore

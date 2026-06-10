@@ -7,6 +7,8 @@ import { normalizeConversationSessionSummary } from "../conversationNormalizers"
 import type { ConversationSessionSummary, TerminalView } from "../types";
 import type { AgentRuntimeStateInfo } from "./useAgentRuntimeStates";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 const TENTACLE_RADIUS = 40;
 const ACTIVE_SESSION_RADIUS = 12;
 const INACTIVE_SESSION_RADIUS = 10;
@@ -162,7 +164,7 @@ export const useCanvasGraphData = ({
 
   const fetchDeckTentacles = useCallback(async () => {
     try {
-      const response = await fetch(buildDeckTentaclesUrl(), {
+      const response = await apiFetch(buildDeckTentaclesUrl(), {
         method: "GET",
         headers: { Accept: "application/json" },
       });
@@ -180,7 +182,7 @@ export const useCanvasGraphData = ({
 
   const fetchInactiveSessions = useCallback(async () => {
     try {
-      const response = await fetch(buildConversationsUrl(), {
+      const response = await apiFetch(buildConversationsUrl(), {
         method: "GET",
         headers: { Accept: "application/json" },
       });

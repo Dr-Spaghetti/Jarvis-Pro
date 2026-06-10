@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
+import { apiFetch } from "../runtime/apiClient";
+
 import {
   buildBrainAskUrl,
   buildBrainCaptureUrl,
@@ -199,7 +201,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   const loadRecent = useCallback(async () => {
     try {
-      const res = await fetch(buildBrainRecentUrl(12), { headers: { Accept: "application/json" } });
+      const res = await apiFetch(buildBrainRecentUrl(12), {
+        headers: { Accept: "application/json" },
+      });
       if (!res.ok) return;
       const data = (await res.json()) as { configured?: boolean };
       setConfigured(data.configured !== false);
@@ -213,7 +217,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     void loadRecent();
     (async () => {
       try {
-        const res = await fetch(buildDeckSkillsUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildDeckSkillsUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (res.ok) {
           const data = (await res.json()) as unknown;
           if (Array.isArray(data)) setSkillCount(data.length);
@@ -222,7 +228,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
       try {
-        const res = await fetch(buildDeckTentaclesUrl(), {
+        const res = await apiFetch(buildDeckTentaclesUrl(), {
           headers: { Accept: "application/json" },
         });
         if (res.ok) {
@@ -233,7 +239,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
       try {
-        const res = await fetch(buildBrainJournalUrl(6), {
+        const res = await apiFetch(buildBrainJournalUrl(6), {
           headers: { Accept: "application/json" },
         });
         if (res.ok) {
@@ -244,7 +250,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
       try {
-        const res = await fetch(buildBrainMemoryUrl(), {
+        const res = await apiFetch(buildBrainMemoryUrl(), {
           headers: { Accept: "application/json" },
         });
         if (res.ok) {
@@ -255,7 +261,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
       try {
-        const res = await fetch(buildBrainDigestUrl(), {
+        const res = await apiFetch(buildBrainDigestUrl(), {
           headers: { Accept: "application/json" },
         });
         if (res.ok) {
@@ -271,7 +277,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(buildVoiceConfigUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildVoiceConfigUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (!res.ok) return;
         const config = (await res.json()) as VoiceConfig;
         setVoiceConfig(config);
@@ -309,7 +317,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
     searchTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch(buildBrainSemanticUrl(q), {
+        const res = await apiFetch(buildBrainSemanticUrl(q), {
           headers: { Accept: "application/json" },
         });
         if (!res.ok) return;
@@ -329,7 +337,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     setCapturing(true);
     setCaptureMsg(null);
     try {
-      const res = await fetch(buildBrainCaptureUrl(), {
+      const res = await apiFetch(buildBrainCaptureUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
@@ -356,7 +364,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     setAnswerSources([]);
     setAskNote(null);
     try {
-      const res = await fetch(buildBrainAskUrl(), {
+      const res = await apiFetch(buildBrainAskUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
@@ -390,7 +398,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     async (text: string) => {
       if (ttsProvider !== "browser") {
         try {
-          const response = await fetch(buildVoiceSpeakUrl(), {
+          const response = await apiFetch(buildVoiceSpeakUrl(), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text, provider: ttsProvider }),
@@ -419,7 +427,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     async (transcript: string) => {
       setVoiceError(null);
       setLastVoiceTranscript(transcript);
-      const intentResponse = await fetch(buildVoiceIntentUrl(), {
+      const intentResponse = await apiFetch(buildVoiceIntentUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript }),
@@ -446,7 +454,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       }
 
       if (intent.type === "brain-capture") {
-        const response = await fetch(buildBrainCaptureUrl(), {
+        const response = await apiFetch(buildBrainCaptureUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: intent.text }),
@@ -463,7 +471,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       }
 
       if (intent.type === "create-terminal") {
-        const response = await fetch("/api/terminals", {
+        const response = await apiFetch("/api/terminals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -497,7 +505,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         return;
       }
       setVoiceStatus("Transcribing");
-      const response = await fetch(buildVoiceTranscribeUrl(model), {
+      const response = await apiFetch(buildVoiceTranscribeUrl(model), {
         method: "POST",
         headers: { "Content-Type": audio.type || "audio/webm" },
         body: audio,
@@ -619,7 +627,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   const openNoteByPath = useCallback(async (path: string) => {
     try {
-      const res = await fetch(buildBrainNoteUrl(path), { headers: { Accept: "application/json" } });
+      const res = await apiFetch(buildBrainNoteUrl(path), {
+        headers: { Accept: "application/json" },
+      });
       if (!res.ok) return;
       const data = (await res.json()) as { title?: string; content?: string };
       setOpenNote({ title: data.title ?? path, content: data.content ?? "" });

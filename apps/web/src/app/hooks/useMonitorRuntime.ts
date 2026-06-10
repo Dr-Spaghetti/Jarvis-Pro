@@ -12,6 +12,8 @@ import {
 } from "../monitorNormalizers";
 import type { MonitorConfigSnapshot, MonitorFeedSnapshot } from "../types";
 
+import { apiFetch } from "../../runtime/apiClient";
+
 export type MonitorConfigPatchRequest = {
   providerId?: "x";
   queryTerms?: string[];
@@ -67,7 +69,7 @@ export const useMonitorRuntime = ({
       return;
     }
 
-    const response = await fetch(buildMonitorConfigUrl(), {
+    const response = await apiFetch(buildMonitorConfigUrl(), {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -102,7 +104,7 @@ export const useMonitorRuntime = ({
       try {
         const url = manual ? buildMonitorRefreshUrl() : buildMonitorFeedUrl();
         const method = manual ? "POST" : "GET";
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method,
           headers: {
             Accept: "application/json",
@@ -138,7 +140,7 @@ export const useMonitorRuntime = ({
 
       setIsSavingMonitorConfig(true);
       try {
-        const response = await fetch(buildMonitorConfigUrl(), {
+        const response = await apiFetch(buildMonitorConfigUrl(), {
           method: "PATCH",
           headers: {
             Accept: "application/json",

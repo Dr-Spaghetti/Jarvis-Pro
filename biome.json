@@ -15,6 +15,23 @@
   "organizeImports": {
     "enabled": true
   },
+  "overrides": [
+    {
+      "include": ["apps/web/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": ["fetch"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "files": {
     "ignore": ["node_modules", "dist", "coverage", ".claude", ".octogent"]
   }
