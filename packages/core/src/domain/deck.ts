@@ -41,4 +41,7 @@ export type DeckTentacleSummary = {
   todoDone: number;
   todoItems: { text: string; done: boolean }[];
   suggestedSkills: string[];
+  lastOpenedAt?: string | null;
+  openCount?: number;
+  pinned?: boolean;
 };
