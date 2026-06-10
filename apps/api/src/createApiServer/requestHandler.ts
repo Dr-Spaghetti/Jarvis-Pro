@@ -32,6 +32,8 @@ import {
 import {
   handleDeckSkillsRoute,
   handleDeckTentacleItemRoute,
+  handleDeckTentacleOpenedRoute,
+  handleDeckTentaclePinnedRoute,
   handleDeckTentacleSkillsRoute,
   handleDeckTentacleSwarmRoute,
   handleDeckTentaclesRoute,
@@ -151,6 +153,8 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleDeckTentaclesRoute,
       handleDeckTentacleItemRoute,
       handleDeckTentacleSkillsRoute,
+      handleDeckTentacleOpenedRoute,
+      handleDeckTentaclePinnedRoute,
       handleDeckTodoSolveRoute,
       handleDeckTentacleSwarmRoute,
       handleDeckTodoToggleRoute,

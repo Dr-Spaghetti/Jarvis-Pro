@@ -36,6 +36,9 @@ type DeckTentacleState = {
   status: DeckTentacleStatus;
   octopus: DeckOctopusAppearance;
   scope: { paths: string[]; tags: string[] };
+  lastOpenedAt: string | null;
+  openCount: number;
+  pinned: boolean;
 };
 
 type DeckStateDocument = {
@@ -73,6 +76,9 @@ const parseTentacleState = (raw: unknown): DeckTentacleState => {
     status: "idle",
     octopus: { animation: null, expression: null, accessory: null, hairColor: null },
     scope: { paths: [], tags: [] },
+    lastOpenedAt: null,
+    openCount: 0,
+    pinned: false,
   };
 
   if (raw === null || typeof raw !== "object") return defaults;
@@ -110,7 +116,19 @@ const parseTentacleState = (raw: unknown): DeckTentacleState => {
     }
   }
 
-  return { color, status, octopus, scope };
+  const lastOpenedAt = (() => {
+    const v = rec.lastOpenedAt;
+    if (typeof v !== "string") return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : v;
+  })();
+
+  const openCount =
+    typeof rec.openCount === "number" && rec.openCount >= 0 ? Math.floor(rec.openCount) : 0;
+
+  const pinned = rec.pinned === true;
+
+  return { color, status, octopus, scope, lastOpenedAt, openCount, pinned };
 };
 
 // ─── Parse CONTEXT.md for title and description ───────────────────────────────
@@ -254,6 +272,9 @@ export const readDeckTentacles = (
       todoDone,
       todoItems,
       suggestedSkills: agentInfo.suggestedSkills,
+      lastOpenedAt: state.lastOpenedAt,
+      openCount: state.openCount,
+      pinned: state.pinned,
     });
   }
 
@@ -516,6 +537,9 @@ export const createDeckTentacle = (
     status: "idle",
     octopus: input.octopus,
     scope: { paths: [], tags: [] },
+    lastOpenedAt: null,
+    openCount: 0,
+    pinned: false,
   };
   writeDeckState(stateDir, deckState);
   markTentaclesInitialized(stateDir);
@@ -535,6 +559,9 @@ export const createDeckTentacle = (
       todoDone: 0,
       todoItems: [],
       suggestedSkills,
+      lastOpenedAt: null,
+      openCount: 0,
+      pinned: false,
     },
   };
 };
@@ -599,4 +626,96 @@ export const deleteDeckTentacle = (
   writeDeckState(stateDir, deckState);
 
   return { ok: true };
+};
+
+// ─── Record tentacle opened ──────────────────────────────────────────────────
+
+const mutateDeckJson = (
+  stateDir: string,
+  tentacleId: string,
+  mutate: (entry: Record<string, unknown>) => void,
+): void => {
+  const filePath = join(stateDir, "state", "deck.json");
+  let rawDoc: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, "utf-8"));
+    rawDoc =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+  } catch {
+    rawDoc = {};
+  }
+
+  if (
+    !rawDoc.tentacles ||
+    typeof rawDoc.tentacles !== "object" ||
+    Array.isArray(rawDoc.tentacles)
+  ) {
+    rawDoc.tentacles = {};
+  }
+
+  const tentacles = rawDoc.tentacles as Record<string, unknown>;
+  if (
+    !tentacles[tentacleId] ||
+    typeof tentacles[tentacleId] !== "object" ||
+    Array.isArray(tentacles[tentacleId])
+  ) {
+    tentacles[tentacleId] = {};
+  }
+
+  mutate(tentacles[tentacleId] as Record<string, unknown>);
+
+  const dir = join(stateDir, "state");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(rawDoc, null, 2)}\n`);
+};
+
+export const recordDeckTentacleOpened = (
+  workspaceCwd: string,
+  tentacleId: string,
+  projectStateDir?: string,
+): DeckTentacleSummary | null => {
+  if (tentacleId.includes("..") || tentacleId.includes("/")) return null;
+
+  const tentacleDir = join(workspaceCwd, TENTACLES_DIR, tentacleId);
+  if (!existsSync(tentacleDir)) return null;
+
+  const stateDir = projectStateDir ?? join(workspaceCwd, ".octogent");
+
+  mutateDeckJson(stateDir, tentacleId, (entry) => {
+    const prev = typeof entry.openCount === "number" && entry.openCount >= 0 ? entry.openCount : 0;
+    entry.openCount = prev + 1;
+    entry.lastOpenedAt = new Date().toISOString();
+  });
+
+  return (
+    readDeckTentacles(workspaceCwd, projectStateDir).find((t) => t.tentacleId === tentacleId) ??
+    null
+  );
+};
+
+// ─── Set tentacle pinned ─────────────────────────────────────────────────────
+
+export const setDeckTentaclePinned = (
+  workspaceCwd: string,
+  tentacleId: string,
+  pinned: boolean,
+  projectStateDir?: string,
+): DeckTentacleSummary | null => {
+  if (tentacleId.includes("..") || tentacleId.includes("/")) return null;
+
+  const tentacleDir = join(workspaceCwd, TENTACLES_DIR, tentacleId);
+  if (!existsSync(tentacleDir)) return null;
+
+  const stateDir = projectStateDir ?? join(workspaceCwd, ".octogent");
+
+  mutateDeckJson(stateDir, tentacleId, (entry) => {
+    entry.pinned = pinned;
+  });
+
+  return (
+    readDeckTentacles(workspaceCwd, projectStateDir).find((t) => t.tentacleId === tentacleId) ??
+    null
+  );
 };

@@ -10,6 +10,8 @@ import {
   parseTodoProgress,
   readDeckTentacles,
   readDeckVaultFile,
+  recordDeckTentacleOpened,
+  setDeckTentaclePinned,
   toggleTodoItem,
   updateDeckTentacleSuggestedSkills,
 } from "../deck/readDeckTentacles";
@@ -869,5 +871,70 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
   }
 
   writeJson(response, 201, { tentacleId, parentTerminalId, workers }, corsOrigin);
+  return true;
+};
+
+// ---------------------------------------------------------------------------
+// Deck — Record tentacle opened
+// ---------------------------------------------------------------------------
+
+const DECK_TENTACLE_OPENED_PATTERN = /^\/api\/deck\/tentacles\/([^/]+)\/opened$/;
+
+export const handleDeckTentacleOpenedRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { workspaceCwd, projectStateDir },
+) => {
+  const match = requestUrl.pathname.match(DECK_TENTACLE_OPENED_PATTERN);
+  if (!match) return false;
+  if (request.method !== "POST") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const tentacleId = decodeURIComponent(match[1] as string);
+  const result = recordDeckTentacleOpened(workspaceCwd, tentacleId, projectStateDir);
+  if (!result) {
+    writeJson(response, 404, { error: "Tentacle not found" }, corsOrigin);
+    return true;
+  }
+
+  writeJson(response, 200, result, corsOrigin);
+  return true;
+};
+
+// ---------------------------------------------------------------------------
+// Deck — Set tentacle pinned
+// ---------------------------------------------------------------------------
+
+const DECK_TENTACLE_PINNED_PATTERN = /^\/api\/deck\/tentacles\/([^/]+)\/pinned$/;
+
+export const handleDeckTentaclePinnedRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { workspaceCwd, projectStateDir },
+) => {
+  const match = requestUrl.pathname.match(DECK_TENTACLE_PINNED_PATTERN);
+  if (!match) return false;
+  if (request.method !== "PATCH") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
+  if (!body.ok) return true;
+
+  const payload = body.payload as Record<string, unknown> | null;
+  if (!payload || typeof payload.pinned !== "boolean") {
+    writeJson(response, 400, { error: "pinned (boolean) is required" }, corsOrigin);
+    return true;
+  }
+
+  const tentacleId = decodeURIComponent(match[1] as string);
+  const result = setDeckTentaclePinned(workspaceCwd, tentacleId, payload.pinned, projectStateDir);
+  if (!result) {
+    writeJson(response, 404, { error: "Tentacle not found" }, corsOrigin);
+    return true;
+  }
+
+  writeJson(response, 200, result, corsOrigin);
   return true;
 };

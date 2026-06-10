@@ -3414,4 +3414,180 @@ describe("createApiServer", () => {
     expect(listResponse.status).toBe(200);
     await expect(listResponse.json()).resolves.toEqual([]);
   });
+
+  // ---------------------------------------------------------------------------
+  // Deck — opened / pinned routes
+  // ---------------------------------------------------------------------------
+
+  const makeTentacleOnDisk = (workspaceCwd: string, tentacleId: string) => {
+    const tentacleDir = join(workspaceCwd, ".octogent", "tentacles", tentacleId);
+    mkdirSync(tentacleDir, { recursive: true });
+    writeFileSync(join(tentacleDir, "CONTEXT.md"), `# ${tentacleId}\n\nTest tentacle.\n`, "utf8");
+    writeFileSync(join(tentacleDir, "todo.md"), "# Todo\n", "utf8");
+  };
+
+  it("POST /api/deck/tentacles/:id/opened increments openCount and sets lastOpenedAt", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    makeTentacleOnDisk(workspaceCwd, "alpha");
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res1 = await fetch(`${baseUrl}/api/deck/tentacles/alpha/opened`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(res1.status).toBe(200);
+    const body1 = (await res1.json()) as { openCount: number; lastOpenedAt: string | null };
+    expect(body1.openCount).toBe(1);
+    expect(typeof body1.lastOpenedAt).toBe("string");
+    expect(Number.isNaN(new Date(body1.lastOpenedAt as string).getTime())).toBe(false);
+
+    const res2 = await fetch(`${baseUrl}/api/deck/tentacles/alpha/opened`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(res2.status).toBe(200);
+    const body2 = (await res2.json()) as { openCount: number };
+    expect(body2.openCount).toBe(2);
+  });
+
+  it("POST /api/deck/tentacles/:id/opened returns 404 for unknown tentacle", async () => {
+    const baseUrl = await startServer();
+
+    const res = await fetch(`${baseUrl}/api/deck/tentacles/nonexistent/opened`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({ error: "Tentacle not found" });
+  });
+
+  it("PATCH /api/deck/tentacles/:id/pinned toggles pin and round-trips via GET", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    makeTentacleOnDisk(workspaceCwd, "beta");
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const pinRes = await fetch(`${baseUrl}/api/deck/tentacles/beta/pinned`, {
+      method: "PATCH",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: true }),
+    });
+    expect(pinRes.status).toBe(200);
+    const pinBody = (await pinRes.json()) as { pinned: boolean; tentacleId: string };
+    expect(pinBody.pinned).toBe(true);
+    expect(pinBody.tentacleId).toBe("beta");
+
+    const listRes = await fetch(`${baseUrl}/api/deck/tentacles`, {
+      headers: { Accept: "application/json" },
+    });
+    expect(listRes.status).toBe(200);
+    const list = (await listRes.json()) as Array<{ tentacleId: string; pinned: boolean }>;
+    expect(list.find((t) => t.tentacleId === "beta")?.pinned).toBe(true);
+
+    const unpinRes = await fetch(`${baseUrl}/api/deck/tentacles/beta/pinned`, {
+      method: "PATCH",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: false }),
+    });
+    expect(unpinRes.status).toBe(200);
+    const unpinBody = (await unpinRes.json()) as { pinned: boolean };
+    expect(unpinBody.pinned).toBe(false);
+  });
+
+  it("PATCH /api/deck/tentacles/:id/pinned returns 400 for malformed body", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    makeTentacleOnDisk(workspaceCwd, "gamma");
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/deck/tentacles/gamma/pinned`, {
+      method: "PATCH",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: "yes" }),
+    });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "pinned (boolean) is required" });
+  });
+
+  it("PATCH /api/deck/tentacles/:id/pinned returns 404 for unknown tentacle", async () => {
+    const baseUrl = await startServer();
+
+    const res = await fetch(`${baseUrl}/api/deck/tentacles/ghost/pinned`, {
+      method: "PATCH",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: true }),
+    });
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({ error: "Tentacle not found" });
+  });
+
+  it("disk-only tentacle gets default lastOpenedAt=null, openCount=0, pinned=false", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    makeTentacleOnDisk(workspaceCwd, "delta");
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const listRes = await fetch(`${baseUrl}/api/deck/tentacles`, {
+      headers: { Accept: "application/json" },
+    });
+    expect(listRes.status).toBe(200);
+    const list = (await listRes.json()) as Array<{
+      tentacleId: string;
+      lastOpenedAt: unknown;
+      openCount: unknown;
+      pinned: unknown;
+    }>;
+    const delta = list.find((t) => t.tentacleId === "delta");
+    expect(delta?.lastOpenedAt).toBeNull();
+    expect(delta?.openCount).toBe(0);
+    expect(delta?.pinned).toBe(false);
+  });
+
+  it("PATCH pinned preserves unknown keys in deck.json", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    makeTentacleOnDisk(workspaceCwd, "epsilon");
+
+    // Pre-seed deck.json with a custom unknown key on the tentacle entry
+    const deckJsonPath = join(workspaceCwd, ".octogent", "state", "deck.json");
+    mkdirSync(join(workspaceCwd, ".octogent", "state"), { recursive: true });
+    writeFileSync(
+      deckJsonPath,
+      JSON.stringify(
+        {
+          tentacles: {
+            epsilon: {
+              color: "#ff0000",
+              status: "idle",
+              octopus: { animation: null, expression: null, accessory: null, hairColor: null },
+              scope: { paths: [], tags: [] },
+              lastOpenedAt: null,
+              openCount: 0,
+              pinned: false,
+              _customKey: "should-survive",
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const pinRes = await fetch(`${baseUrl}/api/deck/tentacles/epsilon/pinned`, {
+      method: "PATCH",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: true }),
+    });
+    expect(pinRes.status).toBe(200);
+
+    const rawAfter = JSON.parse(readFileSync(deckJsonPath, "utf8")) as {
+      tentacles: Record<string, Record<string, unknown>>;
+    };
+    expect(rawAfter.tentacles.epsilon?._customKey).toBe("should-survive");
+    expect(rawAfter.tentacles.epsilon?.pinned).toBe(true);
+  });
 });
