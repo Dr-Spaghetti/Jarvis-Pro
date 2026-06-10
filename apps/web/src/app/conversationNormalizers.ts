@@ -87,6 +87,13 @@ export const normalizeConversationSessionSummary = (
   }
 
   const tentacleId = asString(record.tentacleId);
+  const rawTags = record.tags;
+  const tags =
+    Array.isArray(rawTags) && rawTags.every((t) => typeof t === "string")
+      ? (rawTags as string[])
+      : undefined;
+  const pinned = record.pinned === true ? true : undefined;
+
   return {
     sessionId,
     tentacleId,
@@ -100,6 +107,8 @@ export const normalizeConversationSessionSummary = (
     firstUserTurnPreview: asString(record.firstUserTurnPreview),
     lastUserTurnPreview: asString(record.lastUserTurnPreview),
     lastAssistantTurnPreview: asString(record.lastAssistantTurnPreview),
+    ...(tags !== undefined ? { tags } : {}),
+    ...(pinned !== undefined ? { pinned } : {}),
   };
 };
 

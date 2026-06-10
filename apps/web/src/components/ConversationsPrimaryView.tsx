@@ -36,6 +36,7 @@ export const ConversationsPrimaryView = ({
     clearAllSessions,
     deleteSession,
     exportSession,
+    patchConversationMeta,
     searchConversations,
     clearSearch: clearConversationsSearch,
     navigateToSearchHit: navigateToConversationSearchHit,
@@ -95,6 +96,9 @@ export const ConversationsPrimaryView = ({
       }}
       onClearSearch={clearConversationsSearch}
       onNavigateToHit={navigateToConversationSearchHit}
+      onPatchMeta={(sessionId, patch) => {
+        void patchConversationMeta(sessionId, patch);
+      }}
     />
   );
 

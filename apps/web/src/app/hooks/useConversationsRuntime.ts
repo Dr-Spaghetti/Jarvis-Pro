@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   buildConversationExportUrl,
+  buildConversationMetaUrl,
   buildConversationSearchUrl,
   buildConversationSessionUrl,
   buildConversationsUrl,
@@ -28,6 +29,11 @@ type UseConversationsRuntimeOptions = {
   enabled?: boolean;
 };
 
+type ConversationMetaPatch = {
+  tags?: string[];
+  pinned?: boolean;
+};
+
 type UseConversationsRuntimeResult = {
   sessions: ConversationSessionSummary[];
   selectedSessionId: string | null;
@@ -49,6 +55,7 @@ type UseConversationsRuntimeResult = {
     sessionId: string,
     format: ConversationExportFormat,
   ) => Promise<ConversationExportResult | null>;
+  patchConversationMeta: (sessionId: string, patch: ConversationMetaPatch) => Promise<boolean>;
   searchConversations: (query: string) => Promise<void>;
   clearSearch: () => void;
   navigateToSearchHit: (hit: ConversationSearchHit) => void;
@@ -274,6 +281,43 @@ export const useConversationsRuntime = ({
     [enabled],
   );
 
+  const patchConversationMeta = useCallback(
+    async (sessionId: string, patch: ConversationMetaPatch): Promise<boolean> => {
+      if (!enabled) return false;
+
+      // Optimistic update
+      setSessions((current) =>
+        current.map((s) => {
+          if (s.sessionId !== sessionId) return s;
+          return {
+            ...s,
+            ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
+            ...(patch.pinned !== undefined ? { pinned: patch.pinned } : {}),
+          };
+        }),
+      );
+
+      try {
+        const response = await fetch(buildConversationMetaUrl(sessionId), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update conversation (${response.status})`);
+        }
+
+        return true;
+      } catch {
+        // Roll back on failure
+        void refreshSessions();
+        return false;
+      }
+    },
+    [enabled, refreshSessions],
+  );
+
   const clearSearch = useCallback(() => {
     setSearchQuery("");
     setSearchHits([]);
@@ -370,6 +414,7 @@ export const useConversationsRuntime = ({
     clearAllSessions,
     deleteSession,
     exportSession,
+    patchConversationMeta,
     searchConversations: searchConversationsAction,
     clearSearch,
     navigateToSearchHit,

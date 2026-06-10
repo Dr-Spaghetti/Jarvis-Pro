@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ConversationSearchHit, ConversationSessionSummary } from "../app/types";
 
@@ -17,6 +17,11 @@ const getSessionSortTimestamp = (session: ConversationSessionSummary): number =>
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+type ConversationMetaPatch = {
+  tags?: string[];
+  pinned?: boolean;
+};
+
 type SidebarConversationsListProps = {
   sessions: ConversationSessionSummary[];
   selectedSessionId: string | null;
@@ -30,6 +35,7 @@ type SidebarConversationsListProps = {
   onSearch: (query: string) => void;
   onClearSearch: () => void;
   onNavigateToHit: (hit: ConversationSearchHit) => void;
+  onPatchMeta?: (sessionId: string, patch: ConversationMetaPatch) => void;
 };
 
 export const SidebarConversationsList = ({
@@ -45,6 +51,7 @@ export const SidebarConversationsList = ({
   onSearch,
   onClearSearch,
   onNavigateToHit,
+  onPatchMeta,
 }: SidebarConversationsListProps) => {
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +61,18 @@ export const SidebarConversationsList = ({
   onSearchRef.current = onSearch;
   onClearSearchRef.current = onClearSearch;
 
+  // Tag editing state: sessionId whose tags are being edited, and the draft input value
+  const [editingTagsSessionId, setEditingTagsSessionId] = useState<string | null>(null);
+  const [tagDraft, setTagDraft] = useState("");
+
   const sortedSessions = useMemo(
-    () => [...sessions].sort((a, b) => getSessionSortTimestamp(b) - getSessionSortTimestamp(a)),
+    () =>
+      [...sessions].sort((a, b) => {
+        const pinnedA = a.pinned ? 1 : 0;
+        const pinnedB = b.pinned ? 1 : 0;
+        if (pinnedB !== pinnedA) return pinnedB - pinnedA;
+        return getSessionSortTimestamp(b) - getSessionSortTimestamp(a);
+      }),
     [sessions],
   );
 
@@ -255,20 +272,128 @@ export const SidebarConversationsList = ({
         ) : (
           <ol className="sidebar-conversations-list">
             {sortedSessions.map((session) => (
-              <li key={session.sessionId}>
-                <button
-                  aria-current={session.sessionId === selectedSessionId ? "page" : undefined}
-                  className="sidebar-conversation-item"
-                  data-active={session.sessionId === selectedSessionId ? "true" : "false"}
-                  onClick={() => {
-                    onSelectSession(session.sessionId);
-                  }}
-                  type="button"
-                >
-                  <strong>{getSessionTitle(session)}</strong>
-                  <span>{`Agent ${session.tentacleId ?? "--"}`}</span>
-                  <span>{`${session.turnCount} turns`}</span>
-                </button>
+              <li key={session.sessionId} className="sidebar-conversation-entry">
+                <div className="sidebar-conversation-row">
+                  <button
+                    aria-current={session.sessionId === selectedSessionId ? "page" : undefined}
+                    className="sidebar-conversation-item"
+                    data-active={session.sessionId === selectedSessionId ? "true" : "false"}
+                    onClick={() => {
+                      onSelectSession(session.sessionId);
+                    }}
+                    type="button"
+                  >
+                    <strong>{getSessionTitle(session)}</strong>
+                    <span>{`Agent ${session.tentacleId ?? "--"}`}</span>
+                    <span>{`${session.turnCount} turns`}</span>
+                  </button>
+                  {onPatchMeta && (
+                    <button
+                      aria-label={session.pinned ? "Unpin conversation" : "Pin conversation"}
+                      aria-pressed={session.pinned ? "true" : "false"}
+                      className="sidebar-conversation-pin-btn"
+                      data-pinned={session.pinned ? "true" : "false"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPatchMeta(session.sessionId, { pinned: !session.pinned });
+                      }}
+                      type="button"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        focusable="false"
+                        viewBox="0 0 16 16"
+                        fill={session.pinned ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M9.5 2.5l4 4-6 6-1.5-3-3 3-1-1 3-3L2 7.5l6-6z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {(session.tags && session.tags.length > 0) ||
+                editingTagsSessionId === session.sessionId ? (
+                  <div className="sidebar-conversation-tags">
+                    {session.tags?.map((tag) => (
+                      <span key={tag} className="sidebar-conversation-tag">
+                        {tag}
+                        {onPatchMeta && (
+                          <button
+                            aria-label={`Remove tag ${tag}`}
+                            className="sidebar-conversation-tag-remove"
+                            onClick={() => {
+                              const next = (session.tags ?? []).filter((t) => t !== tag);
+                              onPatchMeta(session.sessionId, { tags: next });
+                            }}
+                            type="button"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    {onPatchMeta && editingTagsSessionId === session.sessionId ? (
+                      <input
+                        aria-label="Add tag"
+                        className="sidebar-conversation-tag-input"
+                        onBlur={() => {
+                          setEditingTagsSessionId(null);
+                          setTagDraft("");
+                        }}
+                        onChange={(e) => {
+                          setTagDraft(e.target.value);
+                        }}
+                        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                          if (e.key === "Enter") {
+                            const trimmed = tagDraft.trim();
+                            if (trimmed && !(session.tags ?? []).includes(trimmed)) {
+                              onPatchMeta(session.sessionId, {
+                                tags: [...(session.tags ?? []), trimmed],
+                              });
+                            }
+                            setTagDraft("");
+                            setEditingTagsSessionId(null);
+                          } else if (e.key === "Escape") {
+                            setTagDraft("");
+                            setEditingTagsSessionId(null);
+                          }
+                        }}
+                        placeholder="tag name…"
+                        type="text"
+                        value={tagDraft}
+                      />
+                    ) : onPatchMeta ? (
+                      <button
+                        aria-label="Add tag"
+                        className="sidebar-conversation-tag-add"
+                        onClick={() => {
+                          setEditingTagsSessionId(session.sessionId);
+                          setTagDraft("");
+                        }}
+                        type="button"
+                      >
+                        + tag
+                      </button>
+                    ) : null}
+                  </div>
+                ) : onPatchMeta ? (
+                  <div className="sidebar-conversation-tags">
+                    <button
+                      aria-label="Add tag"
+                      className="sidebar-conversation-tag-add"
+                      onClick={() => {
+                        setEditingTagsSessionId(session.sessionId);
+                        setTagDraft("");
+                      }}
+                      type="button"
+                    >
+                      + tag
+                    </button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ol>
