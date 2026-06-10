@@ -1546,12 +1546,15 @@
 /* ─── Recent Agents Panel ──────────────────────────────────────────────────── */
 
 .recent-agents-panel {
-  flex: 0 0 auto;
+  flex: 0 0 220px;
+  width: 220px;
+  min-height: 0;
+  overflow-y: auto;
   padding: 0.8rem 1rem;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: 0.5rem;
-  margin-bottom: 1rem;
+  margin-right: 1rem;
   font-family: var(--font-display);
 }
 
