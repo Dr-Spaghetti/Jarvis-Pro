@@ -6,6 +6,8 @@ import {
   buildConversationExportUrl,
   buildConversationSessionUrl,
   buildConversationsUrl,
+  buildDeckTentacleOpenedUrl,
+  buildDeckTentaclePinnedUrl,
   buildGithubSummaryUrl,
   buildMonitorConfigUrl,
   buildMonitorFeedUrl,
@@ -236,5 +238,37 @@ describe("runtimeEndpoints", () => {
         new URL("https://workspace.example.com/dashboard") as unknown as Location,
       ),
     ).toBe("ws://127.0.0.1:8787/api/terminal-events/ws");
+  });
+
+  it("builds deck tentacle opened URL on same origin by default", () => {
+    expect(buildDeckTentacleOpenedUrl("my-agent")).toBe("/api/deck/tentacles/my-agent/opened");
+  });
+
+  it("builds absolute deck tentacle opened URL when runtime base URL is configured", () => {
+    expect(buildDeckTentacleOpenedUrl("my-agent", "https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/deck/tentacles/my-agent/opened",
+    );
+  });
+
+  it("URL-encodes tentacle IDs with special characters for opened URL", () => {
+    expect(buildDeckTentacleOpenedUrl("my agent/1")).toBe(
+      "/api/deck/tentacles/my%20agent%2F1/opened",
+    );
+  });
+
+  it("builds deck tentacle pinned URL on same origin by default", () => {
+    expect(buildDeckTentaclePinnedUrl("my-agent")).toBe("/api/deck/tentacles/my-agent/pinned");
+  });
+
+  it("builds absolute deck tentacle pinned URL when runtime base URL is configured", () => {
+    expect(buildDeckTentaclePinnedUrl("my-agent", "https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/deck/tentacles/my-agent/pinned",
+    );
+  });
+
+  it("URL-encodes tentacle IDs with special characters for pinned URL", () => {
+    expect(buildDeckTentaclePinnedUrl("my agent/1")).toBe(
+      "/api/deck/tentacles/my%20agent%2F1/pinned",
+    );
   });
 });

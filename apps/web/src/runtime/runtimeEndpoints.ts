@@ -430,6 +430,24 @@ export const buildDeckTodoSolveUrl = (
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildDeckTentacleOpenedUrl = (
+  tentacleId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/deck/tentacles/${encodeURIComponent(tentacleId)}/opened`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildDeckTentaclePinnedUrl = (
+  tentacleId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/deck/tentacles/${encodeURIComponent(tentacleId)}/pinned`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildPromptsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/prompts";
