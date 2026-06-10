@@ -488,6 +488,93 @@ describe("createApiServer", () => {
     writeFileSync(turnsPath, JSON.stringify(turns), "utf8");
   };
 
+  describe("bearer token auth", () => {
+    it("reports auth as not required and serves API routes openly when no token is configured", async () => {
+      const baseUrl = await startServer();
+
+      const statusResponse = await fetch(`${baseUrl}/api/auth/status`);
+      expect(statusResponse.status).toBe(200);
+      await expect(statusResponse.json()).resolves.toEqual({ authRequired: false });
+
+      const openResponse = await fetch(`${baseUrl}/api/terminal-snapshots`);
+      expect(openResponse.status).toBe(200);
+    });
+
+    it("rejects API requests without or with a wrong token when auth is enabled", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      const missingResponse = await fetch(`${baseUrl}/api/terminal-snapshots`);
+      expect(missingResponse.status).toBe(401);
+      await expect(missingResponse.json()).resolves.toEqual({
+        error: "Authentication required.",
+      });
+
+      const wrongResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+        headers: { Authorization: "Bearer wrong-token" },
+      });
+      expect(wrongResponse.status).toBe(401);
+    });
+
+    it("accepts the token via Authorization header and via ?token= query parameter", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      const headerResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+        headers: { Authorization: "Bearer test-secret-token" },
+      });
+      expect(headerResponse.status).toBe(200);
+
+      const queryResponse = await fetch(
+        `${baseUrl}/api/terminal-snapshots?token=test-secret-token`,
+      );
+      expect(queryResponse.status).toBe(200);
+    });
+
+    it("keeps /api/auth/status public so the UI can discover the auth requirement", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      const statusResponse = await fetch(`${baseUrl}/api/auth/status`);
+      expect(statusResponse.status).toBe(200);
+      await expect(statusResponse.json()).resolves.toEqual({ authRequired: true });
+    });
+
+    it("verifies tokens via POST /api/auth/verify", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      const validResponse = await fetch(`${baseUrl}/api/auth/verify`, {
+        method: "POST",
+        headers: { Authorization: "Bearer test-secret-token" },
+      });
+      expect(validResponse.status).toBe(204);
+
+      const invalidResponse = await fetch(`${baseUrl}/api/auth/verify`, {
+        method: "POST",
+        headers: { Authorization: "Bearer nope" },
+      });
+      expect(invalidResponse.status).toBe(401);
+    });
+
+    it("answers OPTIONS preflight without a token when auth is enabled", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      const preflightResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+        method: "OPTIONS",
+      });
+      expect(preflightResponse.status).toBe(204);
+    });
+
+    it("serves the static web bundle without a token so the token prompt can load", async () => {
+      const webDistDir = mkdtempSync(join(tmpdir(), "octogent-webdist-test-"));
+      temporaryDirectories.push(webDistDir);
+      writeFileSync(join(webDistDir, "index.html"), "<html><body>jarvis</body></html>", "utf8");
+
+      const baseUrl = await startServer({ authToken: "test-secret-token", webDistDir });
+
+      const htmlResponse = await fetch(`${baseUrl}/`);
+      expect(htmlResponse.status).toBe(200);
+      await expect(htmlResponse.text()).resolves.toContain("jarvis");
+    });
+  });
+
   it("returns snapshots for GET /api/terminal-snapshots", async () => {
     const baseUrl = await startServer();
 

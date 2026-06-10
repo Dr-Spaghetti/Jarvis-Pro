@@ -1,10 +1,13 @@
+import { timingSafeEqual } from "node:crypto";
+import type { IncomingMessage } from "node:http";
+
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 export const withCors = (headers: Record<string, string>, corsOrigin: string | null) => {
   const nextHeaders: Record<string, string> = {
     ...headers,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 
   if (corsOrigin) {
@@ -67,4 +70,53 @@ export const getRequestCorsOrigin = (origin: string | undefined, allowRemoteAcce
   }
 
   return origin;
+};
+
+export const resolveAuthTokenFromEnv = (env: NodeJS.ProcessEnv = process.env): string | null => {
+  const token = env.OCTOGENT_AUTH_TOKEN?.trim();
+  return token ? token : null;
+};
+
+export const isAuthTokenMatch = (candidate: string, expected: string): boolean => {
+  const candidateBuffer = Buffer.from(candidate, "utf8");
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  if (candidateBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(candidateBuffer, expectedBuffer);
+};
+
+// Browsers cannot attach headers to WebSocket upgrades or <a download> links,
+// so a ?token= query parameter is accepted alongside the Authorization header.
+export const extractRequestAuthToken = (
+  request: IncomingMessage,
+  requestUrl: URL,
+): string | null => {
+  const authorization = readHeaderValue(request.headers.authorization);
+  if (authorization) {
+    const match = /^Bearer\s+(.+)$/i.exec(authorization);
+    if (match?.[1]) {
+      return match[1].trim() || null;
+    }
+  }
+
+  const queryToken = requestUrl.searchParams.get("token");
+  if (queryToken && queryToken.trim().length > 0) {
+    return queryToken.trim();
+  }
+
+  return null;
+};
+
+export const isAuthorizedRequest = (
+  authToken: string | null,
+  request: IncomingMessage,
+  requestUrl: URL,
+): boolean => {
+  if (authToken === null) {
+    return true;
+  }
+
+  const candidate = extractRequestAuthToken(request, requestUrl);
+  return candidate !== null && isAuthTokenMatch(candidate, authToken);
 };

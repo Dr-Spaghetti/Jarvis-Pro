@@ -1,18 +1,25 @@
 import type { IncomingMessage } from "node:http";
 import type { Socket } from "node:net";
 
-import { isAllowedHostHeader, isAllowedOriginHeader, readHeaderValue } from "./security";
+import {
+  isAllowedHostHeader,
+  isAllowedOriginHeader,
+  isAuthorizedRequest,
+  readHeaderValue,
+} from "./security";
 
 type TerminalRuntime = ReturnType<typeof import("../terminalRuntime").createTerminalRuntime>;
 
 type CreateUpgradeHandlerOptions = {
   runtime: TerminalRuntime;
   allowRemoteAccess: boolean;
+  authToken: string | null;
 };
 
 export const createUpgradeHandler = ({
   runtime,
   allowRemoteAccess,
+  authToken,
 }: CreateUpgradeHandlerOptions) => {
   return (request: IncomingMessage, socket: Socket, head: Buffer) => {
     const originHeader = readHeaderValue(request.headers.origin);
@@ -23,6 +30,14 @@ export const createUpgradeHandler = ({
     }
 
     if (!isAllowedOriginHeader(originHeader, allowRemoteAccess)) {
+      socket.destroy();
+      return;
+    }
+
+    // Browsers cannot set an Authorization header during a WebSocket
+    // handshake, so the token rides in as a ?token= query parameter.
+    const requestUrl = new URL(request.url ?? "/", "http://localhost");
+    if (!isAuthorizedRequest(authToken, request, requestUrl)) {
       socket.destroy();
       return;
     }

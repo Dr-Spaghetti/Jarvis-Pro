@@ -10,6 +10,7 @@ import type { CodexUsageSnapshot } from "../codexUsage";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
+import { handleAuthStatusRoute, handleAuthVerifyRoute } from "./authRoutes";
 import {
   handleBrainAskRoute,
   handleBrainCaptureRoute,
@@ -76,6 +77,7 @@ import {
   getRequestCorsOrigin,
   isAllowedHostHeader,
   isAllowedOriginHeader,
+  isAuthorizedRequest,
   readHeaderValue,
 } from "./security";
 import {
@@ -132,9 +134,17 @@ type CreateApiRequestHandlerOptions = {
   invalidateClaudeUsageCache: () => void;
   codeIntelStore: CodeIntelStore;
   allowRemoteAccess: boolean;
+  authToken: string | null;
 };
 
+// Paths reachable without a bearer token when auth is enabled:
+// - /api/auth/status lets the web UI discover that it must prompt for a token.
+// - /api/gmail/callback is hit by Google's browser redirect, which cannot
+//   carry an Authorization header; it is protected by its own OAuth state.
+const AUTH_EXEMPT_PATHS = new Set(["/api/auth/status", "/api/gmail/callback"]);
+
 const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
+  ["auth", [handleAuthStatusRoute, handleAuthVerifyRoute]],
   [
     "brain",
     [
@@ -273,6 +283,7 @@ export const createApiRequestHandler = ({
   invalidateClaudeUsageCache,
   codeIntelStore,
   allowRemoteAccess,
+  authToken,
 }: CreateApiRequestHandlerOptions) => {
   const resolvedWebDistDir = webDistDir && existsSync(webDistDir) ? webDistDir : null;
 
@@ -293,6 +304,7 @@ export const createApiRequestHandler = ({
     monitorService,
     invalidateClaudeUsageCache,
     codeIntelStore,
+    authToken,
   };
 
   return async (request: IncomingMessage, response: ServerResponse) => {
@@ -326,6 +338,17 @@ export const createApiRequestHandler = ({
       if (request.method === "OPTIONS") {
         writeNoContent(response, 204, corsOrigin);
         logRequest(request.method ?? "OPTIONS", requestUrl.pathname, statusCode, startTime);
+        return;
+      }
+
+      if (
+        authToken !== null &&
+        requestUrl.pathname.startsWith("/api/") &&
+        !AUTH_EXEMPT_PATHS.has(requestUrl.pathname) &&
+        !isAuthorizedRequest(authToken, request, requestUrl)
+      ) {
+        writeJson(response, 401, { error: "Authentication required." }, corsOrigin);
+        logRequest(request.method ?? "?", requestUrl.pathname, 401, startTime);
         return;
       }
 

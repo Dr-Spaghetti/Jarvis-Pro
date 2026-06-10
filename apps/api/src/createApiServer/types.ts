@@ -21,4 +21,9 @@ export type CreateApiServerOptions = {
   monitorService?: MonitorService;
   invalidateClaudeUsageCache?: () => void;
   allowRemoteAccess?: boolean;
+  /**
+   * Bearer token required on every API/WebSocket request when set. Defaults to
+   * OCTOGENT_AUTH_TOKEN from the environment; pass null to force auth off.
+   */
+  authToken?: string | null;
 };

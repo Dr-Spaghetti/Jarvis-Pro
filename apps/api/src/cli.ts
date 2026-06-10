@@ -220,6 +220,16 @@ const startServer = async () => {
     console.warn("");
   }
 
+  if (
+    process.env.OCTOGENT_ALLOW_REMOTE_ACCESS === "1" &&
+    !process.env.OCTOGENT_AUTH_TOKEN?.trim()
+  ) {
+    console.error(
+      "OCTOGENT_ALLOW_REMOTE_ACCESS=1 requires OCTOGENT_AUTH_TOKEN to be set in .env — refusing to expose the API without authentication.",
+    );
+    process.exit(1);
+  }
+
   const workspaceCwd = process.cwd();
   const { isInitialized, projectDisplayName, projectStateDir } =
     resolveStartupProjectContext(workspaceCwd);

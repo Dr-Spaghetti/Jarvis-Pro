@@ -12,6 +12,7 @@ import {
 import { createCodeIntelStore } from "./codeIntelStore";
 import { readCodexUsageSnapshot as readCodexUsageSnapshotDefault } from "./codexUsage";
 import { createApiRequestHandler } from "./createApiServer/requestHandler";
+import { resolveAuthTokenFromEnv } from "./createApiServer/security";
 import type { CreateApiServerOptions } from "./createApiServer/types";
 import { createUpgradeHandler } from "./createApiServer/upgradeHandler";
 import { readGithubRepoSummary as readGithubRepoSummaryDefault } from "./githubRepoSummary";
@@ -34,8 +35,10 @@ export const createApiServer = ({
   monitorService,
   invalidateClaudeUsageCache = invalidateUsageCacheDefault,
   allowRemoteAccess = false,
+  authToken,
 }: CreateApiServerOptions = {}) => {
   const resolvedWorkspaceCwd = workspaceCwd ?? process.cwd();
+  const resolvedAuthToken = authToken === undefined ? resolveAuthTokenFromEnv() : authToken;
   // State lives in ~/.octogent/projects/<name>/ when provided, else falls back to <project>/.octogent/
   const resolvedStateDir = projectStateDir ?? join(resolvedWorkspaceCwd, ".octogent");
   let resolvedApiBaseUrl = apiBaseUrl ?? "http://127.0.0.1:8787";
@@ -133,6 +136,7 @@ export const createApiServer = ({
     invalidateClaudeUsageCache,
     codeIntelStore,
     allowRemoteAccess,
+    authToken: resolvedAuthToken,
   });
 
   const server = createServer(requestHandler);
@@ -142,6 +146,7 @@ export const createApiServer = ({
     createUpgradeHandler({
       runtime,
       allowRemoteAccess,
+      authToken: resolvedAuthToken,
     }),
   );
 

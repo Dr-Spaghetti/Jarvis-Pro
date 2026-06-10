@@ -58,6 +58,14 @@ export const createHookProcessor = (deps: {
     }
   };
 
+  // Hooks we installed on a previous run (possibly with a different port or
+  // auth header) must be replaced, not accumulated — duplicates would fire
+  // every lifecycle event twice. User-authored hooks are left untouched.
+  const isOctogentHookEntry = (entry: unknown): boolean => {
+    const serialized = JSON.stringify(entry) ?? "";
+    return serialized.includes("/api/hooks/") || serialized.includes("/api/code-intel/events");
+  };
+
   const mergeHookEntries = (
     existingValue: unknown,
     eventName: string,
@@ -70,11 +78,11 @@ export const createHookProcessor = (deps: {
     const existingEntries = Array.isArray(nextHooks[eventName])
       ? [...(nextHooks[eventName] as unknown[])]
       : [];
-    const mergedEntries = [...existingEntries];
+    const mergedEntries = existingEntries.filter((entry) => !isOctogentHookEntry(entry));
 
     for (const nextEntry of nextEntries) {
       const serializedNextEntry = JSON.stringify(nextEntry);
-      const alreadyPresent = existingEntries.some(
+      const alreadyPresent = mergedEntries.some(
         (existingEntry) => JSON.stringify(existingEntry) === serializedNextEntry,
       );
       if (!alreadyPresent) {
@@ -99,7 +107,7 @@ export const createHookProcessor = (deps: {
             hooks: [
               {
                 type: "command",
-                command: `curl -s -X POST "${apiBaseUrl}/api/hooks/session-start?octogent_session=$OCTOGENT_SESSION_ID" -H 'Content-Type: application/json' -d @- || true`,
+                command: `curl -s -X POST "${apiBaseUrl}/api/hooks/session-start?octogent_session=$OCTOGENT_SESSION_ID" -H 'Content-Type: application/json' -H "Authorization: Bearer $OCTOGENT_AUTH_TOKEN" -d @- || true`,
                 timeout: 5,
               },
             ],
@@ -111,7 +119,7 @@ export const createHookProcessor = (deps: {
             hooks: [
               {
                 type: "command",
-                command: `curl -s -X POST "${apiBaseUrl}/api/hooks/user-prompt-submit?octogent_session=$OCTOGENT_SESSION_ID" -H 'Content-Type: application/json' -d @- || true`,
+                command: `curl -s -X POST "${apiBaseUrl}/api/hooks/user-prompt-submit?octogent_session=$OCTOGENT_SESSION_ID" -H 'Content-Type: application/json' -H "Authorization: Bearer $OCTOGENT_AUTH_TOKEN" -d @- || true`,
                 timeout: 5,
               },
             ],
@@ -124,8 +132,11 @@ export const createHookProcessor = (deps: {
               {
                 type: "http",
                 url: `${apiBaseUrl}/api/hooks/pre-tool-use`,
-                headers: { "X-Octogent-Session": "$OCTOGENT_SESSION_ID" },
-                allowedEnvVars: ["OCTOGENT_SESSION_ID"],
+                headers: {
+                  "X-Octogent-Session": "$OCTOGENT_SESSION_ID",
+                  Authorization: "Bearer $OCTOGENT_AUTH_TOKEN",
+                },
+                allowedEnvVars: ["OCTOGENT_SESSION_ID", "OCTOGENT_AUTH_TOKEN"],
                 timeout: 5,
               },
             ],
@@ -138,8 +149,11 @@ export const createHookProcessor = (deps: {
               {
                 type: "http",
                 url: `${apiBaseUrl}/api/code-intel/events`,
-                headers: { "X-Octogent-Session": "$OCTOGENT_SESSION_ID" },
-                allowedEnvVars: ["OCTOGENT_SESSION_ID"],
+                headers: {
+                  "X-Octogent-Session": "$OCTOGENT_SESSION_ID",
+                  Authorization: "Bearer $OCTOGENT_AUTH_TOKEN",
+                },
+                allowedEnvVars: ["OCTOGENT_SESSION_ID", "OCTOGENT_AUTH_TOKEN"],
                 timeout: 5,
               },
             ],
@@ -152,8 +166,11 @@ export const createHookProcessor = (deps: {
               {
                 type: "http",
                 url: `${apiBaseUrl}/api/hooks/notification`,
-                headers: { "X-Octogent-Session": "$OCTOGENT_SESSION_ID" },
-                allowedEnvVars: ["OCTOGENT_SESSION_ID"],
+                headers: {
+                  "X-Octogent-Session": "$OCTOGENT_SESSION_ID",
+                  Authorization: "Bearer $OCTOGENT_AUTH_TOKEN",
+                },
+                allowedEnvVars: ["OCTOGENT_SESSION_ID", "OCTOGENT_AUTH_TOKEN"],
                 timeout: 5,
               },
             ],
@@ -165,7 +182,7 @@ export const createHookProcessor = (deps: {
             hooks: [
               {
                 type: "command",
-                command: `curl -s -X POST "${apiBaseUrl}/api/hooks/stop?octogent_session=$OCTOGENT_SESSION_ID" -H 'Content-Type: application/json' -d @- || true`,
+                command: `curl -s -X POST "${apiBaseUrl}/api/hooks/stop?octogent_session=$OCTOGENT_SESSION_ID" -H 'Content-Type: application/json' -H "Authorization: Bearer $OCTOGENT_AUTH_TOKEN" -d @- || true`,
                 timeout: 15,
               },
             ],

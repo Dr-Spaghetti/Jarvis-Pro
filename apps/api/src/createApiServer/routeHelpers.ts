@@ -28,6 +28,7 @@ export type RouteHandlerDependencies = {
   monitorService: MonitorService;
   invalidateClaudeUsageCache: () => void;
   codeIntelStore: CodeIntelStore;
+  authToken: string | null;
 };
 
 export type RouteHandlerContext = {
