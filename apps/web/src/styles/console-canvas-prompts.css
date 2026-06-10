@@ -472,3 +472,61 @@
   background: color-mix(in srgb, var(--accent-primary) 14%, #11161d);
   color: #e6ebf3;
 }
+
+/* ── Variable editor ───────────────────────────────────────────────── */
+
+.prompts-variables {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold, #e9c56c) 20%, transparent);
+  background: color-mix(in srgb, var(--gold, #e9c56c) 4%, transparent);
+  border-radius: 0 0 6px 6px;
+}
+
+.prompts-variables-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.68rem;
+  font-family: var(--font-display, "JetBrains Mono", monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold, #e9c56c);
+}
+
+.prompts-variables-fields {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.prompts-variable-field {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prompts-variable-name {
+  font-family: var(--font-display, "JetBrains Mono", monospace);
+  font-size: 0.72rem;
+  color: var(--gold, #e9c56c);
+  word-break: break-all;
+}
+
+.prompts-variable-input {
+  background: var(--glass-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #e6ebf3;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  padding: 0.3rem 0.5rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.prompts-variable-input:focus {
+  border-color: var(--gold, #e9c56c);
+}
+
+.prompts-variables-actions {
+  margin-top: 0.75rem;
+}

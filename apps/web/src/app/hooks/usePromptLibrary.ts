@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { buildPromptItemUrl, buildPromptsUrl } from "../../runtime/runtimeEndpoints";
+import { extractPromptVariables, interpolatePromptVariables } from "../extractPromptVariables";
 import type { PromptDetail, PromptLibraryEntry } from "../types";
 
 type UsePromptLibraryOptions = {
@@ -16,6 +17,13 @@ type UsePromptLibraryResult = {
   isEditing: boolean;
   editDraft: string;
   errorMessage: string | null;
+  /** Names of `{{var}}` placeholders detected in the selected prompt. */
+  promptVariables: string[];
+  /** Current input values for each variable. */
+  variableValues: Record<string, string>;
+  /** The prompt content with all variable values interpolated. */
+  interpolatedContent: string;
+  setVariableValue: (name: string, value: string) => void;
   refreshPrompts: () => Promise<void>;
   selectPrompt: (name: string) => void;
   savePrompt: (name: string, content: string) => Promise<boolean>;
@@ -37,7 +45,22 @@ export const usePromptLibrary = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const detailRequestRef = useRef(0);
+
+  const promptVariables = useMemo(
+    () => extractPromptVariables(selectedPromptDetail?.content ?? ""),
+    [selectedPromptDetail],
+  );
+
+  const interpolatedContent = useMemo(
+    () => interpolatePromptVariables(selectedPromptDetail?.content ?? "", variableValues),
+    [selectedPromptDetail, variableValues],
+  );
+
+  const setVariableValue = useCallback((name: string, value: string) => {
+    setVariableValues((prev) => ({ ...prev, [name]: value }));
+  }, []);
 
   const refreshPrompts = useCallback(async () => {
     setIsLoadingPrompts(true);
@@ -59,6 +82,7 @@ export const usePromptLibrary = ({
     setIsEditing(false);
     setIsLoadingDetail(true);
     setErrorMessage(null);
+    setVariableValues({});
 
     const requestId = ++detailRequestRef.current;
 
@@ -173,6 +197,10 @@ export const usePromptLibrary = ({
     isEditing,
     editDraft,
     errorMessage,
+    promptVariables,
+    variableValues,
+    interpolatedContent,
+    setVariableValue,
     refreshPrompts,
     selectPrompt,
     savePrompt,

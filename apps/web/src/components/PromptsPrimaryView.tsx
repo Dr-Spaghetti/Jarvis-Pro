@@ -26,6 +26,10 @@ export const PromptsPrimaryView = ({ enabled, onSidebarContent }: PromptsPrimary
     isEditing,
     editDraft,
     errorMessage,
+    promptVariables,
+    variableValues,
+    interpolatedContent,
+    setVariableValue,
     refreshPrompts,
     selectPrompt: selectPromptLibraryItem,
     deletePrompt: deletePromptLibraryItem,
@@ -226,9 +230,43 @@ export const PromptsPrimaryView = ({ enabled, onSidebarContent }: PromptsPrimary
                   spellCheck={false}
                 />
               ) : (
-                <div className="prompts-content">
-                  <MarkdownContent content={selectedPrompt.content} />
-                </div>
+                <>
+                  <div className="prompts-content">
+                    <MarkdownContent content={selectedPrompt.content} />
+                  </div>
+                  {promptVariables.length > 0 && (
+                    <section className="prompts-variables" aria-label="Prompt variables">
+                      <h4 className="prompts-variables-title">Variables</h4>
+                      <div className="prompts-variables-fields">
+                        {promptVariables.map((varName) => (
+                          <label key={varName} className="prompts-variable-field">
+                            <span className="prompts-variable-name">{`{{${varName}}}`}</span>
+                            <input
+                              className="prompts-variable-input"
+                              onChange={(e) => {
+                                setVariableValue(varName, e.target.value);
+                              }}
+                              placeholder={varName}
+                              type="text"
+                              value={variableValues[varName] ?? ""}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      <div className="prompts-variables-actions">
+                        <ActionButton
+                          onClick={() => {
+                            void navigator.clipboard.writeText(interpolatedContent);
+                          }}
+                          size="dense"
+                          variant="info"
+                        >
+                          Copy with variables
+                        </ActionButton>
+                      </div>
+                    </section>
+                  )}
+                </>
               )}
             </div>
           ) : (
