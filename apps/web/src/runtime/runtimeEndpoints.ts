@@ -504,3 +504,13 @@ export const buildTerminalSocketUrl = (
 
   return buildAbsoluteUrl(webSocketBase, `/api/terminals/${encodedTentacleId}/ws`);
 };
+
+export const buildGmailStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/gmail/status";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/status");
+};
+
+export const buildGmailAuthUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/gmail/auth";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/auth");
+};

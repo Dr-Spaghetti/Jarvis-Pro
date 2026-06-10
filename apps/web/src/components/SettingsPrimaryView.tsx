@@ -1,3 +1,4 @@
+import type { GmailStatus } from "../app/hooks/useGmailStatus";
 import {
   TERMINAL_COMPLETION_SOUND_OPTIONS,
   type TerminalCompletionSoundId,
@@ -14,6 +15,10 @@ type SettingsPrimaryViewProps = {
   onPreviewTerminalCompletionSound: (soundId: TerminalCompletionSoundId) => void;
   onRuntimeStatusStripVisibilityChange: (visible: boolean) => void;
   onMonitorVisibilityChange: (visible: boolean) => void;
+  gmailStatus: GmailStatus | null;
+  isConnectingGmail: boolean;
+  onConnectGmail: () => void;
+  onDisconnectGmail: () => void;
 };
 
 export const SettingsPrimaryView = ({
@@ -24,6 +29,10 @@ export const SettingsPrimaryView = ({
   onPreviewTerminalCompletionSound,
   onRuntimeStatusStripVisibilityChange,
   onMonitorVisibilityChange,
+  gmailStatus,
+  isConnectingGmail,
+  onConnectGmail,
+  onDisconnectGmail,
 }: SettingsPrimaryViewProps) => (
   <section className="settings-view" aria-label="Settings primary view">
     <section className="settings-panel" aria-label="Completion notification settings">
@@ -87,6 +96,43 @@ export const SettingsPrimaryView = ({
           checked={isRuntimeStatusStripVisible}
           onChange={onRuntimeStatusStripVisibilityChange}
         />
+      </div>
+    </section>
+    <section className="settings-panel" aria-label="Gmail connection settings">
+      <header className="settings-panel-header">
+        <h2>Gmail</h2>
+        <p>
+          Connect your Gmail account so email skills can read and send on your behalf. Requires{" "}
+          <code>GMAIL_CLIENT_ID</code> and <code>GMAIL_CLIENT_SECRET</code> in <code>.env</code> —
+          see <code>.env.example</code> for setup.
+        </p>
+      </header>
+      <div className="settings-panel-actions">
+        {gmailStatus?.connected ? (
+          <>
+            <span className="settings-gmail-connected-pill" aria-label="Gmail connected">
+              ✓ {gmailStatus.email}
+            </span>
+            <ActionButton
+              size="dense"
+              variant="danger"
+              aria-label="Disconnect Gmail"
+              onClick={onDisconnectGmail}
+            >
+              Disconnect
+            </ActionButton>
+          </>
+        ) : (
+          <ActionButton
+            size="dense"
+            variant="accent"
+            aria-label="Connect Gmail"
+            onClick={onConnectGmail}
+            disabled={isConnectingGmail}
+          >
+            {isConnectingGmail ? "Connecting…" : "Connect Gmail"}
+          </ActionButton>
+        )}
       </div>
     </section>
     <section className="settings-panel" aria-label="Backup and export settings">

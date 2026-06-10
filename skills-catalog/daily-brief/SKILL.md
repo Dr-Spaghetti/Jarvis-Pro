@@ -9,8 +9,9 @@ description: >
 compatibility: >
   An orchestrator: it composes the calendar, email-assistant, task-manager,
   finance-snapshot, and local-falcon-seo skills and reads the Obsidian vault.
-  Every source is optional — it uses whatever connectors are available
-  (`claude mcp list`) and gracefully skips the rest. No API key of its own.
+  Every source is optional and gracefully skipped. For email: prefers
+  `GMAIL_REFRESH_TOKEN` in env (set via Octogent Settings → Gmail); falls back to
+  a connected Gmail MCP connector. No API key of its own.
 ---
 
 # Daily Brief

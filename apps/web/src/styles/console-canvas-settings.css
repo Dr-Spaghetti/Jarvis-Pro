@@ -200,6 +200,16 @@
   color: #c2f5d4;
 }
 
+.settings-gmail-connected-pill {
+  border: 1px solid color-mix(in srgb, var(--term-green) 52%, #1c4f35);
+  background: color-mix(in srgb, var(--term-green) 16%, #090d12 84%);
+  color: #c2f5d4;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 0.14rem 0.44rem;
+  font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+}
+
 @media (max-width: 940px) {
   .settings-toggle-grid {
     grid-template-columns: 1fr;

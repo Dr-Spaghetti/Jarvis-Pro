@@ -8,6 +8,7 @@ import { useCodexUsagePolling } from "./app/hooks/useCodexUsagePolling";
 import { useConsoleKeyboardShortcuts } from "./app/hooks/useConsoleKeyboardShortcuts";
 import { useGitHubPrimaryViewModel } from "./app/hooks/useGitHubPrimaryViewModel";
 import { useGithubSummaryPolling } from "./app/hooks/useGithubSummaryPolling";
+import { useGmailStatus } from "./app/hooks/useGmailStatus";
 import { useInitialColumnsHydration } from "./app/hooks/useInitialColumnsHydration";
 import { useMonitorRuntime } from "./app/hooks/useMonitorRuntime";
 import { usePersistedUiState } from "./app/hooks/usePersistedUiState";
@@ -293,6 +294,7 @@ export const App = () => {
   const { claudeUsageSnapshot, isRefreshingClaudeUsage, refreshClaudeUsage } =
     useClaudeUsagePolling();
   const backendLivenessStatus = useBackendLivenessPolling();
+  const { gmailStatus, isConnectingGmail, connectGmail, disconnectGmail } = useGmailStatus();
   const { githubRepoSummary, isRefreshingGitHubSummary, refreshGitHubRepoSummary } =
     useGithubSummaryPolling();
   const handleMaximizeTerminal = useCallback(
@@ -522,6 +524,10 @@ export const App = () => {
                 onPreviewTerminalCompletionSound: playCompletionSoundPreview,
                 onTerminalCompletionSoundChange: setTerminalCompletionSound,
                 terminalCompletionSound,
+                gmailStatus,
+                isConnectingGmail,
+                onConnectGmail: connectGmail,
+                onDisconnectGmail: disconnectGmail,
               }}
               canvasPrimaryViewProps={{
                 columns: terminals,

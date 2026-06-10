@@ -47,6 +47,11 @@ import {
 } from "./deckRoutes";
 import { handleTentacleGitPullRequestRoute, handleTentacleGitRoute } from "./gitRoutes";
 import {
+  handleGmailAuthRoute,
+  handleGmailCallbackRoute,
+  handleGmailStatusRoute,
+} from "./gmailRoutes";
+import {
   handleChannelMessagesRoute,
   handleHookRoute,
   handlePromptItemRoute,
@@ -196,6 +201,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ],
   ["tentacles", [handleTentacleGitRoute, handleTentacleGitPullRequestRoute]],
   ["code-intel", [handleCodeIntelEventsRoute]],
+  ["gmail", [handleGmailStatusRoute, handleGmailAuthRoute, handleGmailCallbackRoute]],
   [
     "voice",
     [

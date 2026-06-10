@@ -17,6 +17,8 @@ compatibility: >
   `Areas/Freelance/Review-Outreach/Prospects.md`, mirrored to a private Google
   Sheet. Composes lead-prospecting, review-manager, email-assistant, task-manager,
   personal-finance. Reads the playbook in Areas/Freelance/Review-Outreach/ + Profile.md.
+  For outreach email: email-assistant uses `GMAIL_REFRESH_TOKEN` from env (set via
+  Octogent Settings → Gmail) or an authenticated Gmail MCP connector.
 ---
 
 # Review-Repair Outreach Engine
