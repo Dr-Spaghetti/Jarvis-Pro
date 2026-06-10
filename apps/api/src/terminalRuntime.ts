@@ -53,7 +53,11 @@ export type {
   TerminalNameOrigin,
   TentacleWorkspaceMode,
 } from "./terminalRuntime/types";
-export { isTerminalAgentProvider, isTerminalCompletionSoundId } from "./terminalRuntime/types";
+export {
+  isDeckSortMode,
+  isTerminalAgentProvider,
+  isTerminalCompletionSoundId,
+} from "./terminalRuntime/types";
 export { RuntimeInputError } from "./terminalRuntime/types";
 
 export const MAX_CHILDREN_PER_PARENT = 9;

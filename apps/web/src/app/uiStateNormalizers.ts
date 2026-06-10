@@ -1,4 +1,4 @@
-import { asRecord } from "@octogent/core";
+import { asRecord, isDeckSortMode } from "@octogent/core";
 
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, PRIMARY_NAV_MAX } from "./constants";
 import { isTerminalCompletionSoundId } from "./notificationSounds";
@@ -107,6 +107,10 @@ export const normalizeFrontendUiStateSnapshot = (
     Number.isFinite(record.canvasTerminalsPanelWidth)
   ) {
     nextState.canvasTerminalsPanelWidth = record.canvasTerminalsPanelWidth;
+  }
+
+  if (isDeckSortMode(record.deckSortMode)) {
+    nextState.deckSortMode = record.deckSortMode;
   }
 
   return nextState;

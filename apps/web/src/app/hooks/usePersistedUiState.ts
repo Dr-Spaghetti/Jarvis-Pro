@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
+import type { DeckSortMode } from "@octogent/core";
 import { buildUiStateUrl } from "../../runtime/runtimeEndpoints";
 import type { PrimaryNavIndex } from "../constants";
 import { MIN_SIDEBAR_WIDTH, PRIMARY_NAV_ITEMS, UI_STATE_SAVE_DEBOUNCE_MS } from "../constants";
@@ -30,6 +31,7 @@ const DEFAULT_MINIMIZED_TERMINAL_IDS: string[] = [];
 const DEFAULT_TERMINAL_WIDTHS: Record<string, number> = {};
 const DEFAULT_CANVAS_OPEN_TERMINAL_IDS: string[] = [];
 const DEFAULT_CANVAS_OPEN_TENTACLE_IDS: string[] = [];
+const DEFAULT_DECK_SORT_MODE: DeckSortMode = "recent";
 
 const areStringArraysEqual = (left: string[] | undefined, right: string[] | undefined) => {
   if (left === right) {
@@ -80,6 +82,7 @@ const buildPersistedUiStateSnapshot = ({
   canvasOpenTerminalIds,
   canvasOpenTentacleIds,
   canvasTerminalsPanelWidth,
+  deckSortMode,
 }: {
   activePrimaryNav: PrimaryNavIndex;
   isAgentsSidebarVisible: boolean;
@@ -98,6 +101,7 @@ const buildPersistedUiStateSnapshot = ({
   canvasOpenTerminalIds: string[];
   canvasOpenTentacleIds: string[];
   canvasTerminalsPanelWidth: number | null;
+  deckSortMode: DeckSortMode;
 }): FrontendUiStateSnapshot => ({
   activePrimaryNav,
   isAgentsSidebarVisible,
@@ -116,6 +120,7 @@ const buildPersistedUiStateSnapshot = ({
   canvasOpenTerminalIds,
   canvasOpenTentacleIds,
   ...(canvasTerminalsPanelWidth != null ? { canvasTerminalsPanelWidth } : {}),
+  deckSortMode,
 });
 
 const areUiStateSnapshotsEqual = (
@@ -139,7 +144,8 @@ const areUiStateSnapshotsEqual = (
   areNumberRecordMapsEqual(left.terminalWidths, right.terminalWidths) &&
   areStringArraysEqual(left.canvasOpenTerminalIds, right.canvasOpenTerminalIds) &&
   areStringArraysEqual(left.canvasOpenTentacleIds, right.canvasOpenTentacleIds) &&
-  left.canvasTerminalsPanelWidth === right.canvasTerminalsPanelWidth;
+  left.canvasTerminalsPanelWidth === right.canvasTerminalsPanelWidth &&
+  left.deckSortMode === right.deckSortMode;
 
 type UsePersistedUiStateResult = {
   activePrimaryNav: PrimaryNavIndex;
@@ -179,6 +185,8 @@ type UsePersistedUiStateResult = {
   setCanvasOpenTentacleIds: Dispatch<SetStateAction<string[]>>;
   canvasTerminalsPanelWidth: number | null;
   setCanvasTerminalsPanelWidth: Dispatch<SetStateAction<number | null>>;
+  deckSortMode: DeckSortMode;
+  setDeckSortMode: Dispatch<SetStateAction<DeckSortMode>>;
   readUiState: (signal?: AbortSignal) => Promise<FrontendUiStateSnapshot | null>;
   applyHydratedUiState: (
     snapshot: FrontendUiStateSnapshot | null,
@@ -231,6 +239,7 @@ export const usePersistedUiState = ({
     DEFAULT_CANVAS_OPEN_TENTACLE_IDS,
   );
   const [canvasTerminalsPanelWidth, setCanvasTerminalsPanelWidth] = useState<number | null>(null);
+  const [deckSortMode, setDeckSortMode] = useState<DeckSortMode>(DEFAULT_DECK_SORT_MODE);
   const lastPersistedUiStateRef = useRef<FrontendUiStateSnapshot | null>(null);
 
   const readUiState = useCallback(async (signal?: AbortSignal) => {
@@ -286,6 +295,7 @@ export const usePersistedUiState = ({
           canvasOpenTerminalIds: DEFAULT_CANVAS_OPEN_TERMINAL_IDS,
           canvasOpenTentacleIds: DEFAULT_CANVAS_OPEN_TENTACLE_IDS,
           canvasTerminalsPanelWidth: null,
+          deckSortMode: DEFAULT_DECK_SORT_MODE,
         });
         return;
       }
@@ -333,6 +343,7 @@ export const usePersistedUiState = ({
         canvasOpenTerminalIds: nextCanvasOpenTerminalIds,
         canvasOpenTentacleIds: nextCanvasOpenTentacleIds,
         canvasTerminalsPanelWidth: snapshot.canvasTerminalsPanelWidth ?? null,
+        deckSortMode: snapshot.deckSortMode ?? DEFAULT_DECK_SORT_MODE,
       });
 
       if (
@@ -406,6 +417,10 @@ export const usePersistedUiState = ({
       if (snapshot.canvasTerminalsPanelWidth !== undefined) {
         setCanvasTerminalsPanelWidth(snapshot.canvasTerminalsPanelWidth);
       }
+
+      if (snapshot.deckSortMode !== undefined) {
+        setDeckSortMode(snapshot.deckSortMode);
+      }
     },
     [],
   );
@@ -442,6 +457,7 @@ export const usePersistedUiState = ({
       canvasOpenTerminalIds,
       canvasOpenTentacleIds,
       canvasTerminalsPanelWidth,
+      deckSortMode,
     });
 
     if (areUiStateSnapshotsEqual(lastPersistedUiStateRef.current, payload)) {
@@ -490,6 +506,7 @@ export const usePersistedUiState = ({
     sidebarWidth,
     terminalCompletionSound,
     terminalWidths,
+    deckSortMode,
   ]);
 
   return {
@@ -530,6 +547,8 @@ export const usePersistedUiState = ({
     setCanvasOpenTentacleIds,
     canvasTerminalsPanelWidth,
     setCanvasTerminalsPanelWidth,
+    deckSortMode,
+    setDeckSortMode,
     readUiState,
     applyHydratedUiState,
   };

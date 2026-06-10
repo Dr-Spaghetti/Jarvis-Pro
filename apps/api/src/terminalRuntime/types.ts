@@ -9,7 +9,11 @@ import type {
   TerminalAgentProvider,
   TerminalLifecycleState,
 } from "@octogent/core";
-import { isTerminalAgentProvider, isTerminalCompletionSoundId } from "@octogent/core";
+import {
+  isDeckSortMode,
+  isTerminalAgentProvider,
+  isTerminalCompletionSoundId,
+} from "@octogent/core";
 import type { IPty } from "node-pty";
 import type { WebSocket } from "ws";
 
@@ -95,6 +99,7 @@ export {
   type TentacleWorkspaceMode,
   type TerminalAgentProvider,
   type TerminalLifecycleState,
+  isDeckSortMode,
   isTerminalAgentProvider,
   isTerminalCompletionSoundId,
 };

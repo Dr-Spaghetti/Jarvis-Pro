@@ -1,4 +1,8 @@
-import { type PersistedUiState, isTerminalCompletionSoundId } from "../terminalRuntime";
+import {
+  type PersistedUiState,
+  isDeckSortMode,
+  isTerminalCompletionSoundId,
+} from "../terminalRuntime";
 
 export const parseUiStatePatch = (
   payload: unknown,
@@ -249,6 +253,17 @@ export const parseUiStatePatch = (
       };
     }
     patch.terminalInactivityThresholdMs = record.terminalInactivityThresholdMs;
+  }
+
+  if (record.deckSortMode !== undefined) {
+    if (!isDeckSortMode(record.deckSortMode)) {
+      return {
+        patch: null,
+        error:
+          "deckSortMode must be one of: recent, active-first, pinned-first, needs-review-first.",
+      };
+    }
+    patch.deckSortMode = record.deckSortMode;
   }
 
   return { patch, error: null };

@@ -140,6 +140,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={vi.fn()}
         onPinToggle={vi.fn()}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );
@@ -158,6 +160,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={vi.fn()}
         onPinToggle={vi.fn()}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );
@@ -178,6 +182,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={vi.fn()}
         onPinToggle={vi.fn()}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );
@@ -195,6 +201,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={vi.fn()}
         onPinToggle={vi.fn()}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );
@@ -214,6 +222,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={vi.fn()}
         onPinToggle={vi.fn()}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );
@@ -233,6 +243,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={vi.fn()}
         onPinToggle={onPinToggle}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );
@@ -252,6 +264,8 @@ describe("RecentAgentsPanel", () => {
         tentacles={[t]}
         onOpenTentacle={onOpenTentacle}
         onPinToggle={vi.fn()}
+        sortMode="recent"
+        onSortModeChange={vi.fn()}
         now={NOW}
       />,
     );

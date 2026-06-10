@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import type {
   DeckAvailableSkill,
+  DeckSortMode,
   DeckTentacleSummary,
   WorkspaceSetupSnapshot,
   WorkspaceSetupStepId,
@@ -76,6 +77,8 @@ type DeckPrimaryViewProps = {
   onRefreshWorkspaceSetup: () => Promise<WorkspaceSetupSnapshot | null>;
   onRunWorkspaceSetupStep: (stepId: WorkspaceSetupStepId) => Promise<WorkspaceSetupSnapshot | null>;
   suppressWorkspaceSetupCard?: boolean;
+  deckSortMode?: DeckSortMode;
+  onDeckSortModeChange?: (mode: DeckSortMode) => void;
 };
 
 export const DeckPrimaryView = ({
@@ -86,6 +89,8 @@ export const DeckPrimaryView = ({
   onRefreshWorkspaceSetup,
   onRunWorkspaceSetupStep,
   suppressWorkspaceSetupCard = false,
+  deckSortMode = "recent",
+  onDeckSortModeChange,
 }: DeckPrimaryViewProps) => {
   const { showToast } = useToasts();
   const [tentacles, setTentacles] = useState<DeckTentacleSummary[]>([]);
@@ -606,6 +611,8 @@ export const DeckPrimaryView = ({
         tentacles={tentacles}
         onOpenTentacle={(tentacleId) => setFocus({ type: "vault-browser", tentacleId })}
         onPinToggle={handleTogglePin}
+        sortMode={deckSortMode}
+        onSortModeChange={onDeckSortModeChange ?? (() => {})}
       />
 
       <div className="deck-pods-container">

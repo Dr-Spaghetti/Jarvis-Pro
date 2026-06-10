@@ -1,13 +1,11 @@
-import { useState } from "react";
-
-import type { DeckTentacleSummary } from "@octogent/core";
+import type { DeckSortMode, DeckTentacleSummary } from "@octogent/core";
 import { formatRelativeTime } from "../../app/formatRelativeTime";
 import { PanelState } from "../ui/PanelState";
 import { STATUS_LABELS } from "./TentaclePod";
 
 // ─── Sort logic (exported for unit tests) ────────────────────────────────────
 
-export type SortMode = "recent" | "active-first" | "pinned-first" | "needs-review-first";
+export type SortMode = DeckSortMode;
 
 export const deriveRecentAgents = (
   tentacles: DeckTentacleSummary[],
@@ -52,6 +50,8 @@ type RecentAgentsPanelProps = {
   tentacles: DeckTentacleSummary[];
   onOpenTentacle: (tentacleId: string) => void;
   onPinToggle: (tentacleId: string, newPinned: boolean) => void;
+  sortMode: SortMode;
+  onSortModeChange: (mode: SortMode) => void;
   now?: number;
 };
 
@@ -59,10 +59,10 @@ export const RecentAgentsPanel = ({
   tentacles,
   onOpenTentacle,
   onPinToggle,
+  sortMode,
+  onSortModeChange,
   now = Date.now(),
 }: RecentAgentsPanelProps) => {
-  const [sortMode, setSortMode] = useState<SortMode>("recent");
-
   const agents = deriveRecentAgents(tentacles, sortMode);
 
   if (agents.length === 0) {
@@ -84,7 +84,7 @@ export const RecentAgentsPanel = ({
               type="button"
               className="recent-agents-sort-btn"
               data-active={sortMode === opt.value}
-              onClick={() => setSortMode(opt.value)}
+              onClick={() => onSortModeChange(opt.value)}
             >
               {opt.label}
             </button>

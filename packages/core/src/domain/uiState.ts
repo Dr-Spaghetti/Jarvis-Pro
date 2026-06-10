@@ -1,5 +1,17 @@
 import type { TerminalCompletionSoundId } from "./completionSound";
 
+export type DeckSortMode = "recent" | "active-first" | "pinned-first" | "needs-review-first";
+
+const DECK_SORT_MODES: readonly DeckSortMode[] = [
+  "recent",
+  "active-first",
+  "pinned-first",
+  "needs-review-first",
+];
+
+export const isDeckSortMode = (value: unknown): value is DeckSortMode =>
+  typeof value === "string" && (DECK_SORT_MODES as readonly string[]).includes(value);
+
 export type PersistedUiState = {
   activePrimaryNav?: number;
   isAgentsSidebarVisible?: boolean;
@@ -19,4 +31,5 @@ export type PersistedUiState = {
   canvasOpenTentacleIds?: string[];
   canvasTerminalsPanelWidth?: number;
   terminalInactivityThresholdMs?: number;
+  deckSortMode?: DeckSortMode;
 };

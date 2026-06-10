@@ -13,7 +13,7 @@ import type {
   TerminalNameOrigin,
   TerminalRegistryDocument,
 } from "./types";
-import { isTerminalAgentProvider, isTerminalCompletionSoundId } from "./types";
+import { isDeckSortMode, isTerminalAgentProvider, isTerminalCompletionSoundId } from "./types";
 
 const REGISTRY_PERSIST_DEBOUNCE_MS = 100;
 
@@ -132,6 +132,10 @@ const parsePersistedUiState = (value: unknown): PersistedUiState => {
     Number.isFinite(value.canvasTerminalsPanelWidth)
   ) {
     nextState.canvasTerminalsPanelWidth = value.canvasTerminalsPanelWidth;
+  }
+
+  if (isDeckSortMode(value.deckSortMode)) {
+    nextState.deckSortMode = value.deckSortMode;
   }
 
   return nextState;

@@ -99,6 +99,8 @@ export const App = () => {
     setCanvasOpenTentacleIds,
     canvasTerminalsPanelWidth,
     setCanvasTerminalsPanelWidth,
+    deckSortMode,
+    setDeckSortMode,
   } = usePersistedUiState({ columns: terminals });
   const {
     workspaceSetup,
@@ -482,6 +484,8 @@ export const App = () => {
                 onRefreshWorkspaceSetup: refreshWorkspaceSetup,
                 onRunWorkspaceSetupStep: runWorkspaceSetupStep,
                 suppressWorkspaceSetupCard: true,
+                deckSortMode,
+                onDeckSortModeChange: setDeckSortMode,
               }}
               isMonitorVisible={isMonitorVisible}
               activityPrimaryViewProps={{
