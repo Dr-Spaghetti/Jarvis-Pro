@@ -23,3 +23,6 @@
 
 /* Jarvis command-center home (HUD) */
 @import "./styles/jarvis-home.css";
+
+/* UI feedback primitives (overlay, tooltips, toasts, panel states) */
+@import "./styles/ui-feedback.css";

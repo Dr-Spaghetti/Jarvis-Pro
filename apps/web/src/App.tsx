@@ -31,6 +31,7 @@ import { PrimaryViewRouter } from "./components/PrimaryViewRouter";
 import { RuntimeStatusStrip } from "./components/RuntimeStatusStrip";
 import { SidebarActionPanel } from "./components/SidebarActionPanel";
 import { TelemetryTape } from "./components/TelemetryTape";
+import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
 import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader";
 import {
   buildTerminalEventsSocketUrl,
@@ -48,6 +49,7 @@ export const App = () => {
     number | null
   >(null);
   const [deckSidebarContent, setDeckSidebarContent] = useState<ReactNode>(null);
+  const [isShortcutsOverlayOpen, setIsShortcutsOverlayOpen] = useState(false);
   const [conversationsSidebarContent, setConversationsSidebarContent] = useState<ReactNode>(null);
   const [conversationsActionPanel, setConversationsActionPanel] = useState<ReactNode>(null);
   const [promptsSidebarContent, setPromptsSidebarContent] = useState<ReactNode>(null);
@@ -318,7 +320,11 @@ export const App = () => {
     enabled: isUiStateHydrated && (activePrimaryNav === 3 || isRuntimeStatusStripVisible),
   });
 
-  useConsoleKeyboardShortcuts({ setActivePrimaryNav });
+  const toggleShortcutsOverlay = useCallback(() => setIsShortcutsOverlayOpen((open) => !open), []);
+  useConsoleKeyboardShortcuts({
+    setActivePrimaryNav,
+    onToggleShortcutsOverlay: toggleShortcutsOverlay,
+  });
   const monitorRuntime = useMonitorRuntime({
     enabled: isUiStateHydrated && isMonitorVisible,
   });
@@ -648,6 +654,10 @@ export const App = () => {
 
       {isUiStateHydrated && isMonitorVisible && isBottomTelemetryVisible && (
         <TelemetryTape monitorFeed={monitorRuntime.monitorFeed} />
+      )}
+
+      {isShortcutsOverlayOpen && (
+        <ShortcutsOverlay onClose={() => setIsShortcutsOverlayOpen(false)} />
       )}
     </div>
   );

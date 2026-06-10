@@ -119,4 +119,35 @@ describe("App shell and navigation", () => {
     expect(screen.getByRole("switch", { name: "Show runtime status strip" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Enable X Monitor" })).toBeInTheDocument();
   });
+
+  it("opens and closes the shortcuts overlay with the ? key", async () => {
+    mockShellRequests();
+
+    render(<App />);
+    await screen.findByRole("navigation", { name: "Primary navigation" });
+
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "?" });
+    expect(screen.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "?" });
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
+  });
+
+  it("does not open the shortcuts overlay while typing in an input", async () => {
+    mockShellRequests();
+
+    render(<App />);
+    await screen.findByRole("navigation", { name: "Primary navigation" });
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: "?" });
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
+
+    input.remove();
+  });
 });

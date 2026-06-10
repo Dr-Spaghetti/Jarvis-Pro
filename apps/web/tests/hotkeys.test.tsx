@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isEditableEventTarget,
+  isShortcutsOverlayKey,
   normalizeTickerQueryInput,
   parsePrimaryNavKey,
 } from "../src/app/hotkeys";
@@ -40,5 +41,12 @@ describe("hotkeys helpers", () => {
   it("normalizes ticker input to uppercase with allowed symbols and max length", () => {
     expect(normalizeTickerQueryInput("main branch? #1")).toBe("MAINBRANCH1");
     expect(normalizeTickerQueryInput("abc.def/ghi-jkl_mno12345")).toBe("ABC.DEF/GHI-JKL_");
+  });
+
+  it("matches only the question mark for the shortcuts overlay", () => {
+    expect(isShortcutsOverlayKey("?")).toBe(true);
+    expect(isShortcutsOverlayKey("/")).toBe(false);
+    expect(isShortcutsOverlayKey("h")).toBe(false);
+    expect(isShortcutsOverlayKey("Escape")).toBe(false);
   });
 });

@@ -1,0 +1,96 @@
+/* ─── UI feedback primitives: shortcuts overlay, tooltips, toasts, panel states ── */
+
+/* ─── Shortcuts overlay ──────────────────────────────────────────────────── */
+
+.shortcuts-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+}
+
+.shortcuts-overlay {
+  /* Reset native <dialog> chrome */
+  position: static;
+  margin: 0;
+  color: inherit;
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(80vh, 640px);
+  overflow-y: auto;
+  padding: 1.1rem 1.3rem;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border-hot);
+  border-radius: 0.6rem;
+  box-shadow: var(--hud-shadow);
+  font-family: var(--font-display);
+  outline: none;
+}
+
+.shortcuts-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.shortcuts-overlay-title {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shortcuts-overlay-close {
+  padding: 0 0.4rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.shortcuts-overlay-close:hover {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+
+.shortcuts-overlay-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.shortcuts-overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.shortcuts-overlay-key {
+  flex: 0 0 auto;
+  min-width: 2rem;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 0.3rem;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.shortcuts-overlay-desc {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}

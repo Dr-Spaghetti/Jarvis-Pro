@@ -29,3 +29,5 @@ export const parsePrimaryNavKey = (key: string): PrimaryNavIndex | null => {
 
 export const normalizeTickerQueryInput = (value: string): string =>
   value.toUpperCase().replace(TICKER_QUERY_ALLOWED_PATTERN, "").slice(0, MAX_TICKER_QUERY_LENGTH);
+
+export const isShortcutsOverlayKey = (key: string): boolean => key === "?";
