@@ -505,6 +505,11 @@ export const buildTerminalSocketUrl = (
   return buildAbsoluteUrl(webSocketBase, `/api/terminals/${encodedTentacleId}/ws`);
 };
 
+export const buildTokenTelemetryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/telemetry/tokens";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/telemetry/tokens");
+};
+
 export const buildAuthStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/auth/status";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/auth/status");
