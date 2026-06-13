@@ -23,7 +23,7 @@ const MAX_FILES_SCANNED = 2000;
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
 
-const resolveVaultDir = (): string | null => {
+export const resolveVaultDir = (): string | null => {
   const dir = process.env.OBSIDIAN_VAULT_PATH?.trim();
   if (!dir || !existsSync(dir)) return null;
   return dir;
@@ -663,7 +663,7 @@ export const handleBrainCaptureRoute: ApiRouteHandler = async ({
 
 // Deterministic, agent-free "today" snapshot assembled purely from the vault —
 // no model call, no spawned agent. Lets the home show an instant brief cheaply.
-const localDateStamp = (): string => {
+export const localDateStamp = (): string => {
   const d = new Date();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -673,35 +673,31 @@ const localDateStamp = (): string => {
 const OPEN_TASK = /^\s*[-*]\s+\[ \]\s+(.+?)\s*$/;
 const MAX_DIGEST_TASKS = 30;
 
-export const handleBrainDigestRoute: ApiRouteHandler = async ({
-  request,
-  response,
-  requestUrl,
-  corsOrigin,
-}) => {
-  if (requestUrl.pathname !== "/api/brain/digest") return false;
-  if (request.method !== "GET") {
-    writeMethodNotAllowed(response, corsOrigin);
-    return true;
-  }
+export type BrainDigest = {
+  configured: boolean;
+  date: string;
+  dailyNote: { exists: boolean; path: string | null };
+  recentNotes: BrainNote[];
+  tasks: { open: string[]; openCount: number };
+  journal: JournalEntry[];
+  memory: { factCount: number };
+};
+
+// Deterministic digest computation, shared by the GET route and the morning
+// brief scheduler. No network, no agent — pure filesystem read of the vault.
+export const computeBrainDigest = (): BrainDigest => {
   const date = localDateStamp();
   const vaultDir = resolveVaultDir();
   if (!vaultDir) {
-    writeJson(
-      response,
-      200,
-      {
-        configured: false,
-        date,
-        dailyNote: { exists: false, path: null },
-        recentNotes: [],
-        tasks: { open: [], openCount: 0 },
-        journal: [],
-        memory: { factCount: 0 },
-      },
-      corsOrigin,
-    );
-    return true;
+    return {
+      configured: false,
+      date,
+      dailyNote: { exists: false, path: null },
+      recentNotes: [],
+      tasks: { open: [], openCount: 0 },
+      journal: [],
+      memory: { factCount: 0 },
+    };
   }
 
   const dailyRel = `Daily/${date}.md`;
@@ -763,20 +759,29 @@ export const handleBrainDigestRoute: ApiRouteHandler = async ({
     }
   }
 
-  writeJson(
-    response,
-    200,
-    {
-      configured: true,
-      date,
-      dailyNote: { exists: dailyExists, path: dailyExists ? dailyRel : null },
-      recentNotes: scored.slice(0, 5).map((entry) => entry.note),
-      tasks: { open: openTasks, openCount: openTasks.length },
-      journal: journal.reverse().slice(0, 5),
-      memory: { factCount },
-    },
-    corsOrigin,
-  );
+  return {
+    configured: true,
+    date,
+    dailyNote: { exists: dailyExists, path: dailyExists ? dailyRel : null },
+    recentNotes: scored.slice(0, 5).map((entry) => entry.note),
+    tasks: { open: openTasks, openCount: openTasks.length },
+    journal: journal.reverse().slice(0, 5),
+    memory: { factCount },
+  };
+};
+
+export const handleBrainDigestRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
+  if (requestUrl.pathname !== "/api/brain/digest") return false;
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+  writeJson(response, 200, computeBrainDigest(), corsOrigin);
   return true;
 };
 

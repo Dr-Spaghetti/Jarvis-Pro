@@ -9,6 +9,7 @@ import {
   getStoredAuthToken,
 } from "../runtime/apiClient";
 import { buildSettingsExportUrl } from "../runtime/runtimeEndpoints";
+import { MorningBriefPanel } from "./MorningBriefPanel";
 import { ActionButton } from "./ui/ActionButton";
 import { SettingsToggle } from "./ui/SettingsToggle";
 
@@ -140,6 +141,7 @@ export const SettingsPrimaryView = ({
         )}
       </div>
     </section>
+    <MorningBriefPanel />
     <section className="settings-panel" aria-label="Remote access authentication settings">
       <header className="settings-panel-header">
         <h2>Remote access</h2>

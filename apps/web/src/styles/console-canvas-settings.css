@@ -215,3 +215,41 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Morning brief panel ───────────────────────────────── */
+
+.settings-brief-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.settings-brief-time-label {
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-brief-time {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.settings-brief-time:focus {
+  border-color: var(--gold);
+  outline: none;
+}
+
+.settings-brief-status {
+  margin: 0.6rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}

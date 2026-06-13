@@ -11,6 +11,7 @@ import {
 } from "./claudeUsage";
 import { createCodeIntelStore } from "./codeIntelStore";
 import { readCodexUsageSnapshot as readCodexUsageSnapshotDefault } from "./codexUsage";
+import { createBriefScheduler } from "./createApiServer/briefScheduler";
 import { createApiRequestHandler } from "./createApiServer/requestHandler";
 import { resolveAuthTokenFromEnv } from "./createApiServer/security";
 import type { CreateApiServerOptions } from "./createApiServer/types";
@@ -150,6 +151,8 @@ export const createApiServer = ({
     }),
   );
 
+  const briefScheduler = createBriefScheduler(resolvedStateDir);
+
   return {
     server,
     async start(port = 8787, host = "127.0.0.1") {
@@ -162,9 +165,12 @@ export const createApiServer = ({
       const resolvedPort = typeof address === "object" && address ? address.port : port;
       resolvedApiBaseUrl = `http://${host}:${resolvedPort}`;
 
+      briefScheduler.start();
+
       return { host, port: resolvedPort };
     },
     async stop() {
+      briefScheduler.stop();
       await runtime.close();
       await new Promise<void>((resolveStop, rejectStop) => {
         server.close((error) => {

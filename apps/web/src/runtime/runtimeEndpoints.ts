@@ -529,6 +529,11 @@ export const buildMonitorExportUrl = (
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildBriefConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/brief/config";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/brief/config");
+};
+
 export const buildAuthStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/auth/status";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/auth/status");

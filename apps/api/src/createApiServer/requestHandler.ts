@@ -28,6 +28,7 @@ import {
   handleBrainSearchRoute,
   handleBrainSemanticRoute,
 } from "./brainRoutes";
+import { handleBriefConfigRoute } from "./briefRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
   handleConversationExportRoute,
@@ -166,6 +167,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainAskRoute,
     ],
   ],
+  ["brief", [handleBriefConfigRoute]],
   ["channels", [handleChannelMessagesRoute]],
   ["hooks", [handleHookRoute]],
   ["prompts", [handlePromptsCollectionRoute, handlePromptItemRoute]],

@@ -575,6 +575,41 @@ describe("createApiServer", () => {
     });
   });
 
+  describe("morning brief scheduler", () => {
+    it("defaults to disabled and round-trips config via PATCH", async () => {
+      const baseUrl = await startServer();
+
+      const initial = await fetch(`${baseUrl}/api/brief/config`);
+      expect(initial.status).toBe(200);
+      await expect(initial.json()).resolves.toMatchObject({
+        enabled: false,
+        time: "08:00",
+        lastBriefDate: null,
+      });
+
+      const patch = await fetch(`${baseUrl}/api/brief/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: true, time: "07:15" }),
+      });
+      expect(patch.status).toBe(200);
+      await expect(patch.json()).resolves.toMatchObject({ enabled: true, time: "07:15" });
+
+      const readBack = await fetch(`${baseUrl}/api/brief/config`);
+      await expect(readBack.json()).resolves.toMatchObject({ enabled: true, time: "07:15" });
+    });
+
+    it("rejects an invalid brief time", async () => {
+      const baseUrl = await startServer();
+      const bad = await fetch(`${baseUrl}/api/brief/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ time: "99:99" }),
+      });
+      expect(bad.status).toBe(400);
+    });
+  });
+
   describe("token telemetry", () => {
     it("returns an empty session list before any telemetry is collected", async () => {
       const baseUrl = await startServer();
