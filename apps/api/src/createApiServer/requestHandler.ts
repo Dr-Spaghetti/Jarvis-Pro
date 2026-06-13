@@ -10,6 +10,7 @@ import type { CodexUsageSnapshot } from "../codexUsage";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
+import { handleAgentAlertConfigRoute, handleAgentAlertsRoute } from "./alertRoutes";
 import { handleAuthStatusRoute, handleAuthVerifyRoute } from "./authRoutes";
 import {
   handleBrainAskRoute,
@@ -191,7 +192,16 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ["setup", [handleWorkspaceSetupRoute]],
   ["ui-state", [handleUiStateRoute]],
   ["settings", [handleSettingsExportRoute]],
-  ["monitor", [handleMonitorConfigRoute, handleMonitorFeedRoute, handleMonitorRefreshRoute]],
+  [
+    "monitor",
+    [
+      handleAgentAlertConfigRoute,
+      handleAgentAlertsRoute,
+      handleMonitorConfigRoute,
+      handleMonitorFeedRoute,
+      handleMonitorRefreshRoute,
+    ],
+  ],
   [
     "conversations",
     [

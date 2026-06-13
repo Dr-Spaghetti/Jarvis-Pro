@@ -510,6 +510,16 @@ export const buildTokenTelemetryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/telemetry/tokens");
 };
 
+export const buildAgentAlertsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/monitor/alerts";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/monitor/alerts");
+};
+
+export const buildAgentAlertConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/monitor/alerts/config";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/monitor/alerts/config");
+};
+
 export const buildAuthStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/auth/status";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/auth/status");

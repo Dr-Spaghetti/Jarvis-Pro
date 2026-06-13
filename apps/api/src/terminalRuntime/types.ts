@@ -67,6 +67,8 @@ export type TerminalSession = {
   cols: number;
   rows: number;
   agentState: AgentRuntimeState;
+  /** ISO timestamp of the last agentState transition; drives stuck-agent alerts. */
+  agentStateChangedAt?: string;
   stateTracker: AgentStateTracker;
   isBootstrapCommandSent: boolean;
   scrollbackChunks: string[];

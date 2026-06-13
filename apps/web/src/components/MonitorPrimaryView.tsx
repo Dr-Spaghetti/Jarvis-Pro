@@ -5,6 +5,7 @@ import type {
   MonitorConfigPatchRequest,
   UseMonitorRuntimeResult,
 } from "../app/hooks/useMonitorRuntime";
+import { AgentAlertsPanel } from "./AgentAlertsPanel";
 import { ActionButton } from "./ui/ActionButton";
 
 type MonitorPrimaryViewProps = {
@@ -20,7 +21,7 @@ type MonitorPrimaryViewProps = {
   >;
 };
 
-type MonitorSubtabId = "resources" | "configure";
+type MonitorSubtabId = "resources" | "alerts" | "configure";
 type MonitorProviderId = "x";
 
 const MONITOR_PROVIDER_TABS: Array<{
@@ -31,6 +32,7 @@ const MONITOR_PROVIDER_TABS: Array<{
 
 const MONITOR_SUBTABS: Array<{ id: MonitorSubtabId; label: string }> = [
   { id: "resources", label: "Resources" },
+  { id: "alerts", label: "Alerts" },
   { id: "configure", label: "Configure" },
 ];
 const MONITOR_SEARCH_WINDOW_OPTIONS: Array<{ value: 7 | 3 | 1; label: string }> = [
@@ -253,7 +255,9 @@ export const MonitorPrimaryView = ({ monitorRuntime }: MonitorPrimaryViewProps) 
         )}
       </header>
 
-      {activeSubtab === "configure" ? (
+      {activeSubtab === "alerts" && <AgentAlertsPanel />}
+
+      {activeSubtab === "configure" && (
         <section className="monitor-configure" aria-label="Monitor configuration">
           <section
             className="monitor-panel monitor-panel--configure"
@@ -420,7 +424,9 @@ export const MonitorPrimaryView = ({ monitorRuntime }: MonitorPrimaryViewProps) 
             </div>
           </section>
         </section>
-      ) : (
+      )}
+
+      {activeSubtab === "resources" && (
         <section className="monitor-resources" aria-label="Monitor resources">
           <section className="monitor-feed" aria-label="Monitor feed results">
             <header>

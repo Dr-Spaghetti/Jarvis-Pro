@@ -593,3 +593,58 @@
     transform: translateX(-50%);
   }
 }
+
+/* ── Agent alerts subtab ───────────────────────────────── */
+
+.monitor-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.monitor-alert-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.monitor-alerts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.monitor-alerts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.monitor-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(224, 85, 85, 0.4);
+  border-radius: 8px;
+  background: rgba(224, 85, 85, 0.08);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.monitor-alert-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e05555;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(224, 85, 85, 0.6);
+}
+
+.monitor-alert-message {
+  min-width: 0;
+}

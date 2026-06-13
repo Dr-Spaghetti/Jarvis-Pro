@@ -15,6 +15,8 @@ export type TerminalSnapshot = {
   hasUserPrompt?: boolean;
   parentTerminalId?: string;
   agentRuntimeState?: AgentRuntimeState;
+  /** ISO timestamp of when the agent entered its current runtime state. */
+  agentStateChangedAt?: string;
   lifecycleState?: TerminalLifecycleState;
   lifecycleReason?: string;
   lifecycleUpdatedAt?: string;

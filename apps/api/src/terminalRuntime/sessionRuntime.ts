@@ -177,6 +177,7 @@ export const createSessionRuntime = ({
     }
 
     session.agentState = nextState;
+    session.agentStateChangedAt = new Date().toISOString();
     appendDebugLog(session, `state-change session=${sessionId} state=${nextState}`);
     appendTranscriptEvent(session, sessionId, {
       type: "state_change",
@@ -573,6 +574,7 @@ export const createSessionRuntime = ({
       cols: DEFAULT_PTY_COLS,
       rows: DEFAULT_PTY_ROWS,
       agentState: stateTracker.currentState,
+      agentStateChangedAt: new Date().toISOString(),
       stateTracker,
       isBootstrapCommandSent: false,
       scrollbackChunks: [],

@@ -630,6 +630,41 @@ describe("createApiServer", () => {
     });
   });
 
+  describe("agent alerts", () => {
+    it("defaults to a disabled stuck rule and no active alerts", async () => {
+      const baseUrl = await startServer();
+
+      const response = await fetch(`${baseUrl}/api/monitor/alerts`);
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        config: { agentStuckMinutes: null },
+        alerts: [],
+      });
+    });
+
+    it("persists the stuck-rule threshold via PATCH and rejects bad values", async () => {
+      const baseUrl = await startServer();
+
+      const patch = await fetch(`${baseUrl}/api/monitor/alerts/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentStuckMinutes: 12 }),
+      });
+      expect(patch.status).toBe(200);
+      await expect(patch.json()).resolves.toEqual({ agentStuckMinutes: 12 });
+
+      const readBack = await fetch(`${baseUrl}/api/monitor/alerts/config`);
+      await expect(readBack.json()).resolves.toEqual({ agentStuckMinutes: 12 });
+
+      const bad = await fetch(`${baseUrl}/api/monitor/alerts/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentStuckMinutes: -3 }),
+      });
+      expect(bad.status).toBe(400);
+    });
+  });
+
   it("returns snapshots for GET /api/terminal-snapshots", async () => {
     const baseUrl = await startServer();
 
