@@ -597,3 +597,57 @@
   font-size: 0.74rem;
   cursor: pointer;
 }
+
+/* ── Skill run approval gate (Wave 9) ──────────────────── */
+.jarvis-skill-confirm {
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  background: rgba(250, 163, 44, 0.05);
+  padding: 0.75rem 1rem;
+  margin-top: 0.5rem;
+}
+.jarvis-skill-confirm-msg {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+.jarvis-skill-confirm-msg strong {
+  color: var(--accent-primary);
+  font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+}
+.jarvis-skill-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.jarvis-skill-confirm-btn {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+.jarvis-skill-confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.jarvis-skill-confirm-btn--ok {
+  background: var(--accent-primary);
+  color: #0a0c10;
+  border-color: var(--accent-primary);
+}
+.jarvis-skill-confirm-btn--ok:hover:not(:disabled) {
+  opacity: 0.85;
+}
+.jarvis-skill-confirm-btn--cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.jarvis-skill-confirm-btn--cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+}

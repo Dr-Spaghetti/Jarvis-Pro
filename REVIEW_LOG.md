@@ -35,6 +35,98 @@ applied, one reviewer finding deliberately NOT applied.
   Lighting up the tiles would need either `.env` keys or an MCP-backed tile rewrite
   (scoped as future work, not done).
 
+## Wave 9 — Run-skill voice intent + POST /api/skills/run — commit 8424c5c
+
+Adversarial review of Wave 9 diff. **No blocking issues. Two medium findings, three low/negligible. All documented for follow-up.**
+
+### Summary
+
+10 files changed, 430 insertions. Tests pass (285 API, 191 web), lint clean, builds green. The run-skill voice classifier, fuzzy-match API route, approval gate, and Deck ▶ button all function correctly under normal use. Findings below are edge-case quality issues, not correctness bugs.
+
+### MEDIUM-1 — Approval gate checks spoken name, not resolved canonical name
+
+**File:** `apps/web/src/components/JarvisHomePrimaryView.tsx`
+
+```typescript
+const needsApproval = /\b(outreach|email.assist)\b/.test(intent.skillName.toLowerCase());
+```
+
+`intent.skillName` is the raw spoken phrase, **not** the canonical name resolved by `fuzzyFindSkill`. A user who says "run campaign blaster" where "campaign blaster" fuzzy-resolves to an outreach skill internally named "Outreach Builder" bypasses the gate — the regex never sees "outreach".
+
+**Risk:** Approval gate is bypassable via any synonym that fuzzy-matches a gated skill.
+**Mitigation options:**
+1. Move the gate server-side: add `sensitive: true` frontmatter to SKILL.md and check it in `handleSkillsRunRoute` before spawning the terminal, returning 403 with a `requiresConfirmation` flag.
+2. Run the gate regex against the resolved skill name (from a pre-flight lookup) rather than the spoken phrase.
+
+Current gate is a UX friction point, not a security boundary — acceptable for the current local-first deployment, but worth addressing when high-value catalog skills are added.
+
+### MEDIUM-2 — No server-side skill category enforcement
+
+**File:** `apps/api/src/createApiServer/skillsRoutes.ts`
+
+The API accepts any valid `skillName` and spawns a terminal unconditionally. Any authenticated caller can POST `/api/skills/run` directly, bypassing the confirmation dialog. Auth-gating prevents unauthenticated callers, but not authorized users making direct API calls.
+
+**Mitigation:** `sensitive: true` frontmatter + server-side gate (see MEDIUM-1 option 1). Pass `confirmed: true` in the POST body after the dialog; server enforces its presence for sensitive skills. Scope as Wave 10 work.
+
+### LOW-1 — `needle.includes(hay)` false positives on short skill names
+
+**File:** `apps/api/src/createApiServer/skillsRoutes.ts`, `fuzzyFindSkill` step 2
+
+```typescript
+if (hay.includes(needle) || needle.includes(hay)) return skill;
+```
+
+If the bundled catalog ever includes a skill with a very short normalized name (e.g., `"ai"`, `"run"`, `"brief"`), the contains-check matches any spoken input containing that substring — before word-overlap even fires. "run my daily brief" → matches any skill named "brief" or "run" at step 2.
+
+**Mitigation:** Guard `hay.length >= 4` before the contains check so single-word skills with ≤3 chars fall through to word-overlap scoring instead.
+
+### LOW-2 — "run the skill" (no name given) classifies as `run-skill` with candidate `"skill"`
+
+**File:** `apps/api/src/voiceIntent.ts`, implicit run-skill matcher
+
+When the user says "run the skill" without specifying a name, the explicit prefix check returns `""` (correctly rejected), but the implicit regex then captures `"skill"` as the candidate via lazy-match backtracking. The intent becomes `{ type: "run-skill", skillName: "skill" }`, which either matches an unintended skill or returns 404 with a confusing error toast.
+
+**Mitigation:** Add `runSkillCandidate !== "skill"` to the implicit guard (or a broader stop-word list). **No test covers this path** — add one.
+
+### LOW-3 — Redundant `existsSync` before `readFileSync` (TOCTOU)
+
+**File:** `apps/api/src/createApiServer/skillsRoutes.ts`, lines 104–115
+
+`existsSync` followed by `readFileSync` has a race window. The `try/catch` at line 110 already handles the failure case — the only difference is 404 vs 500 status. The check is redundant and cosmetically leaks a known anti-pattern.
+
+**Mitigation:** Remove the `existsSync` block; detect `ENOENT` inside the catch and return 404; return 500 for other errors. Makes the code simpler and the status codes more precise.
+
+### Test coverage gaps
+
+| Scenario | Covered? |
+|---|---|
+| Explicit `run skill [name]` | ✅ |
+| Implicit `run [name]` (non-nav) | ✅ |
+| Nav word guard (`run deck`) | ✅ |
+| Terminal keyword guard (`run new agent`) | ✅ |
+| Question opener guard | ✅ |
+| **`run the skill` (no name) → candidate "skill"** | ❌ |
+| **Gate regex on spoken vs resolved name** | ❌ |
+| **Confirm button double-click prevention** | ❌ |
+| POST 400 / 404 / 200 / 405 | ✅ |
+| `buildSkillsRunUrl` same-origin + absolute | ✅ |
+
+### Design decisions confirmed correct
+
+- **Client-side approval gate** is appropriate for a local tool with auth-gated API. Gate is UX friction, not a security boundary.
+- **`fuzzyFindSkill` 50% word-overlap** trades some false-positive risk for user-friendly matching. Correct for the use case; LOW-1 above is a preventable edge case.
+- **`initialPrompt` = full SKILL.md body** is safe — `filePath` comes from an enumerated set of real files, not user input. No path traversal risk.
+- **`workspaceMode: "shared"`** for skill terminals is correct; skills should share workspace context.
+
+### Lessons
+
+- **`resolveJarvisVoiceIntent` lazy-regex with `(?:\s+skill)?$` captures ambiguous trailing words** — test bare invocations ("run the skill") to catch classifier edge cases before they surface as confusing API errors.
+- **Approval gates that operate on spoken input instead of resolved identifiers are structurally fragile** — the gate should always verify the resolved canonical name, not the user's words.
+- **`build-package.mjs` does not rebuild the API bundle** (lesson from Wave 7 reinforced) — any API-route change needs `vite build --config vite.api.bundle.config.mts` explicitly before functional smoke.
+- **PowerShell here-string git commits fail on backticks and angle brackets** — assign the message to `$msg` first, then `git commit -m $msg`.
+
+---
+
 ## Wave 1 — Recent Agents command center + global UX polish (2026-06-10)
 
 Scope reviewed: commits `9aca49c..82095e8` (core deck fields, opened/pinned API,

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { listSkillDefinitionFiles, readSkillMetadata } from "../claudeSkills";
@@ -51,9 +51,10 @@ const fuzzyFindSkill = (spoken: string, skills: SkillEntry[]): SkillEntry | null
   }
 
   // 2. Skills whose normalized name contains the needle (or vice-versa).
+  // Minimum hay length of 4 prevents a very short skill name from matching almost any input.
   for (const skill of skills) {
     const hay = normalizeSkillName(skill.name);
-    if (hay.includes(needle) || needle.includes(hay)) return skill;
+    if (hay.length >= 4 && (hay.includes(needle) || needle.includes(hay))) return skill;
   }
 
   // 3. Word-overlap match — any skill whose name shares ≥50% of spoken words.
@@ -101,16 +102,17 @@ export const handleSkillsRunRoute: ApiRouteHandler = async (
     return true;
   }
 
-  if (!existsSync(matched.filePath)) {
-    writeJson(response, 404, { error: `Skill file missing: ${matched.name}` }, corsOrigin);
-    return true;
-  }
-
   let skillBody: string;
   try {
     skillBody = readFileSync(matched.filePath, "utf8");
-  } catch {
-    writeJson(response, 500, { error: `Could not read skill: ${matched.name}` }, corsOrigin);
+  } catch (err) {
+    const isNotFound =
+      typeof err === "object" && err !== null && "code" in err && err.code === "ENOENT";
+    if (isNotFound) {
+      writeJson(response, 404, { error: `Skill file missing: ${matched.name}` }, corsOrigin);
+    } else {
+      writeJson(response, 500, { error: `Could not read skill: ${matched.name}` }, corsOrigin);
+    }
     return true;
   }
 

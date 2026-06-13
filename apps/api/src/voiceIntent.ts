@@ -170,7 +170,7 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
     runSkillCandidate &&
     runSkillCandidate.length >= 3 &&
     !/\b(agent|terminal|session|tentacle)\b/.test(runSkillCandidate) &&
-    !/^(deck|agents?|activity|code.intel|monitor|conversations?|prompts?|settings?|jarvis)$/.test(
+    !/^(deck|agents?|activity|code.intel|monitor|conversations?|prompts?|settings?|jarvis|skills?)$/.test(
       runSkillCandidate,
     )
   ) {
