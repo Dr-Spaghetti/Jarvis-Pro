@@ -770,6 +770,66 @@ export const computeBrainDigest = (): BrainDigest => {
   };
 };
 
+export type BrainTileStats =
+  | { configured: false }
+  | {
+      configured: true;
+      noteCount: number;
+      openTaskCount: number;
+      journalThisWeek: number;
+    };
+
+// Lightweight counts for the home tiles — a single bounded vault scan plus the
+// journal file. Returns configured:false when no vault is set so the tile can
+// honestly show "not configured" rather than a fake zero.
+export const computeBrainTileStats = (now: number = Date.now()): BrainTileStats => {
+  const vaultDir = resolveVaultDir();
+  if (!vaultDir) {
+    return { configured: false };
+  }
+
+  let noteCount = 0;
+  let openTaskCount = 0;
+  for (const rel of listMarkdownFiles(vaultDir)) {
+    noteCount += 1;
+    const relPosix = toPosix(rel);
+    if (relPosix.startsWith("Journal/") || relPosix.startsWith("Jarvis/")) {
+      continue;
+    }
+    try {
+      const content = readFileSync(join(vaultDir, rel), "utf8");
+      for (const line of content.split(/\r?\n/)) {
+        if (OPEN_TASK.test(line)) {
+          openTaskCount += 1;
+        }
+      }
+    } catch {
+      // skip unreadable
+    }
+  }
+
+  let journalThisWeek = 0;
+  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const journalFile = join(vaultDir, JOURNAL_PATH);
+  if (existsSync(journalFile)) {
+    try {
+      for (const line of readFileSync(journalFile, "utf8").split(/\r?\n/)) {
+        const entry = parseJournalLine(line);
+        if (entry) {
+          const ts = Date.parse(entry.ts);
+          if (!Number.isNaN(ts) && ts >= weekAgo) {
+            journalThisWeek += 1;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return { configured: true, noteCount, openTaskCount, journalThisWeek };
+};
+
 export const handleBrainDigestRoute: ApiRouteHandler = async ({
   request,
   response,

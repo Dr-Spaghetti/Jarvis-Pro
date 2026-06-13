@@ -575,6 +575,58 @@ describe("createApiServer", () => {
     });
   });
 
+  describe("home tiles", () => {
+    it("reports not-configured tiles when no sources are available", async () => {
+      vi.stubEnv("OBSIDIAN_VAULT_PATH", "");
+      vi.stubEnv("GMAIL_REFRESH_TOKEN", "");
+      vi.stubEnv("APOLLO_API_KEY", "");
+      vi.stubEnv("LOCALFALCON_API_KEY", "");
+
+      const baseUrl = await startServer();
+      const response = await fetch(`${baseUrl}/api/tiles`);
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        tiles: Array<{ id: string; status: string; value: unknown }>;
+        generatedAt: string;
+      };
+
+      const byId = new Map(payload.tiles.map((tile) => [tile.id, tile]));
+      expect(byId.get("open-tasks")?.status).toBe("not-configured");
+      expect(byId.get("brain-notes")?.status).toBe("not-configured");
+      expect(byId.get("journal-week")?.status).toBe("not-configured");
+      expect(byId.get("gmail-unread")?.status).toBe("not-configured");
+      expect(byId.get("apollo")?.status).toBe("not-configured");
+      expect(byId.get("local-falcon")?.status).toBe("not-configured");
+      // never a fabricated value
+      for (const tile of payload.tiles) {
+        if (tile.status === "not-configured") {
+          expect(tile.value).toBeNull();
+        }
+      }
+      expect(typeof payload.generatedAt).toBe("string");
+    });
+
+    it("reports real local-data tile values when a vault is configured", async () => {
+      const vaultDir = mkdtempSync(join(tmpdir(), "octogent-tiles-vault-"));
+      temporaryDirectories.push(vaultDir);
+      writeFileSync(join(vaultDir, "note.md"), "# Note\n- [ ] do a thing\n", "utf8");
+      vi.stubEnv("OBSIDIAN_VAULT_PATH", vaultDir);
+      vi.stubEnv("GMAIL_REFRESH_TOKEN", "");
+      vi.stubEnv("APOLLO_API_KEY", "");
+      vi.stubEnv("LOCALFALCON_API_KEY", "");
+
+      const baseUrl = await startServer();
+      const response = await fetch(`${baseUrl}/api/tiles`);
+      const payload = (await response.json()) as {
+        tiles: Array<{ id: string; status: string; value: unknown }>;
+      };
+      const byId = new Map(payload.tiles.map((tile) => [tile.id, tile]));
+      expect(byId.get("open-tasks")?.status).toBe("ok");
+      expect(byId.get("open-tasks")?.value).toBe(1);
+      expect(byId.get("brain-notes")?.value).toBe(1);
+    });
+  });
+
   describe("morning brief scheduler", () => {
     it("defaults to disabled and round-trips config via PATCH", async () => {
       const baseUrl = await startServer();

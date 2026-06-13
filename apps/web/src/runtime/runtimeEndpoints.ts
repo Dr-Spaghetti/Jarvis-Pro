@@ -529,6 +529,11 @@ export const buildMonitorExportUrl = (
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildTilesUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/tiles";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/tiles");
+};
+
 export const buildBriefConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/brief/config";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/brief/config");

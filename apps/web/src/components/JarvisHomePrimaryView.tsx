@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
 import { apiFetch } from "../runtime/apiClient";
+import { HomeTilesPanel } from "./HomeTilesPanel";
 
 import {
   buildBrainAskUrl,
@@ -651,6 +652,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             <b>● online</b> · {skillCount ?? "—"} skills · {memoryCount ?? 0} memories
           </div>
         </header>
+
+        <HomeTilesPanel />
 
         <section className="jarvis-panel jarvis-brain" aria-label="The Brain">
           <p className="jarvis-panel-title">🧠 The Brain — Obsidian</p>

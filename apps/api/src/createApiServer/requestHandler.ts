@@ -94,6 +94,7 @@ import {
   handleTerminalSnapshotsRoute,
   handleTerminalsCollectionRoute,
 } from "./terminalRoutes";
+import { handleTilesRoute } from "./tilesRoutes";
 import {
   handleClaudeUsageRoute,
   handleCodexUsageRoute,
@@ -194,6 +195,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ["claude", [handleClaudeUsageRoute]],
   ["analytics", [handleUsageHeatmapRoute]],
   ["telemetry", [handleTokenTelemetryRoute]],
+  ["tiles", [handleTilesRoute]],
   ["github", [handleGithubSummaryRoute]],
   ["setup", [handleWorkspaceSetupRoute]],
   ["ui-state", [handleUiStateRoute]],

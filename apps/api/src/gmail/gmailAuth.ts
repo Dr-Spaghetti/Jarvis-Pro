@@ -77,6 +77,74 @@ export const exchangeCodeForTokens = async (
   return { accessToken, refreshToken, email };
 };
 
+// The stored GMAIL_ACCESS_TOKEN expires ~hourly, so anything reading Gmail must
+// mint a fresh access token from the long-lived refresh token rather than reuse
+// the stored one. Returns null if Gmail isn't configured or the refresh fails.
+export const refreshAccessToken = async (): Promise<string | null> => {
+  const clientId = process.env.GMAIL_CLIENT_ID?.trim();
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN?.trim();
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  try {
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    });
+    const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data = (await response.json()) as Record<string, unknown>;
+    return typeof data.access_token === "string" ? data.access_token : null;
+  } catch {
+    return null;
+  }
+};
+
+const GMAIL_UNREAD_ENDPOINT = "https://www.googleapis.com/gmail/v1/users/me/labels/UNREAD";
+
+export type GmailUnreadResult =
+  | { configured: false }
+  | { configured: true; ok: false }
+  | { configured: true; ok: true; unread: number };
+
+// Read the unread message count via the UNREAD system label (cheap, no message
+// listing). Always refreshes the access token first.
+export const fetchGmailUnreadCount = async (): Promise<GmailUnreadResult> => {
+  if (!process.env.GMAIL_REFRESH_TOKEN?.trim()) {
+    return { configured: false };
+  }
+  const accessToken = await refreshAccessToken();
+  if (!accessToken) {
+    return { configured: true, ok: false };
+  }
+  try {
+    const response = await fetch(GMAIL_UNREAD_ENDPOINT, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      return { configured: true, ok: false };
+    }
+    const data = (await response.json()) as Record<string, unknown>;
+    const unread =
+      typeof data.messagesUnread === "number" && Number.isFinite(data.messagesUnread)
+        ? data.messagesUnread
+        : 0;
+    return { configured: true, ok: true, unread };
+  } catch {
+    return { configured: true, ok: false };
+  }
+};
+
 const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export const writeEnvKey = (workspaceCwd: string, key: string, value: string): void => {
