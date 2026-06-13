@@ -446,40 +446,54 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       // Speaking supersedes the thinking indicator.
       setIsThinking(false);
       setIsSpeaking(true);
+
+      const playBlob = async (blob: Blob): Promise<void> => {
+        const objectUrl = URL.createObjectURL(blob);
+        const audio = new Audio(objectUrl);
+        currentAudioRef.current = audio;
+        await new Promise<void>((resolve) => {
+          const cleanup = () => {
+            URL.revokeObjectURL(objectUrl);
+            if (currentAudioRef.current === audio) {
+              currentAudioRef.current = null;
+            }
+            resolve();
+          };
+          audio.addEventListener("ended", cleanup, { once: true });
+          audio.addEventListener("error", cleanup, { once: true });
+          // A hard mute pauses the element; resolve so the loop/await never
+          // hangs waiting for an "ended" that won't come.
+          audio.addEventListener("pause", cleanup, { once: true });
+          audio.play().catch(cleanup);
+        });
+      };
+
       try {
-        if (ttsProvider !== "browser") {
+        // Try the chosen voice first, then any OTHER working server voices, so a
+        // provider that's out of credit (e.g. OpenAI) auto-falls to a natural
+        // one (Deepgram/Piper) instead of the robotic browser voice.
+        const candidates = [ttsProvider, ...(voiceConfig?.tts.providers ?? [])].filter(
+          (provider, index, all) =>
+            provider && provider !== "browser" && all.indexOf(provider) === index,
+        );
+        for (const provider of candidates) {
+          if (isMutedRef.current) return;
           try {
             const response = await apiFetch(buildVoiceSpeakUrl(), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text, provider: ttsProvider }),
+              body: JSON.stringify({ text, provider }),
             });
             if (response.ok && !isMutedRef.current) {
-              const objectUrl = URL.createObjectURL(await response.blob());
-              const audio = new Audio(objectUrl);
-              currentAudioRef.current = audio;
-              await new Promise<void>((resolve) => {
-                const cleanup = () => {
-                  URL.revokeObjectURL(objectUrl);
-                  if (currentAudioRef.current === audio) {
-                    currentAudioRef.current = null;
-                  }
-                  resolve();
-                };
-                audio.addEventListener("ended", cleanup, { once: true });
-                audio.addEventListener("error", cleanup, { once: true });
-                // A hard mute pauses the element; resolve so the loop/await
-                // never hangs waiting for an "ended" that won't come.
-                audio.addEventListener("pause", cleanup, { once: true });
-                audio.play().catch(cleanup);
-              });
+              await playBlob(await response.blob());
               return;
             }
           } catch {
-            // Fall back to browser speech synthesis below.
+            // Try the next candidate provider.
           }
         }
 
+        // Last resort: the browser's built-in (robotic) voice.
         if (!isMutedRef.current && "speechSynthesis" in window) {
           window.speechSynthesis.cancel();
           await new Promise<void>((resolve) => {
@@ -493,7 +507,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         setIsSpeaking(false);
       }
     },
-    [ttsProvider],
+    [ttsProvider, voiceConfig],
   );
 
   useEffect(() => {
