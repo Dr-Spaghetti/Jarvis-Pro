@@ -3990,4 +3990,73 @@ describe("createApiServer", () => {
     expect(rawAfter.tentacles.epsilon?._customKey).toBe("should-survive");
     expect(rawAfter.tentacles.epsilon?.pinned).toBe(true);
   });
+
+  // ---------------------------------------------------------------------------
+  // POST /api/skills/run
+  // ---------------------------------------------------------------------------
+
+  it("POST /api/skills/run returns 400 when skillName is missing", async () => {
+    const baseUrl = await startServer();
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ error: "skillName is required" });
+  });
+
+  it("POST /api/skills/run returns 404 when no matching skill exists", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    // Create an empty skills directory so project skills are found but empty;
+    // use a unique name with no common words so catalog fuzzy-match can't fire.
+    mkdirSync(join(workspaceCwd, ".claude", "skills"), { recursive: true });
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Single made-up token — no word overlap with any catalog skill.
+      body: JSON.stringify({ skillName: "zyxwvutqrst" }),
+    });
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining("not found"),
+    });
+  });
+
+  it("GET /api/skills/run returns 405 method not allowed", async () => {
+    const baseUrl = await startServer();
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, { method: "GET" });
+    expect(res.status).toBe(405);
+  });
+
+  it("POST /api/skills/run launches a terminal when skill is found", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    const skillDir = join(workspaceCwd, ".claude", "skills", "test-skill");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      "---\nname: Test Skill\n---\n\nDo something useful.\n",
+      "utf8",
+    );
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: "test skill" }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { terminalId: string; skillName: string };
+    expect(typeof body.terminalId).toBe("string");
+    expect(body.terminalId.length).toBeGreaterThan(0);
+    expect(body.skillName).toBe("Test Skill");
+  });
 });

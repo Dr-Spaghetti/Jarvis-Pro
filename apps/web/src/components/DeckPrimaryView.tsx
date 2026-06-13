@@ -18,6 +18,7 @@ import {
   buildDeckTentaclesUrl,
   buildDeckTodoToggleUrl,
   buildDeckVaultFileUrl,
+  buildSkillsRunUrl,
   buildTerminalsUrl,
 } from "../runtime/runtimeEndpoints";
 import { OctopusGlyph } from "./EmptyOctopus";
@@ -410,6 +411,27 @@ export const DeckPrimaryView = ({
     [fetchTentacles, showToast],
   );
 
+  const handleRunSkill = useCallback(
+    async (skillName: string) => {
+      try {
+        const res = await apiFetch(buildSkillsRunUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ skillName }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          showToast(data?.error ?? `Could not run skill: ${skillName}`, "error");
+          return;
+        }
+        showToast(`Running ${skillName}`, "ok");
+      } catch {
+        showToast(`Could not run skill: ${skillName}`, "error");
+      }
+    },
+    [showToast],
+  );
+
   const handleTogglePin = useCallback(
     async (tentacleId: string, newPinned: boolean) => {
       try {
@@ -644,6 +666,7 @@ export const DeckPrimaryView = ({
                 availableSkills={availableSkills}
                 isSavingSkills={savingTentacleSkillsId === t.tentacleId}
                 onSaveSuggestedSkills={handleTentacleSkillsSave}
+                onRunSkill={(skillName) => void handleRunSkill(skillName)}
               />
             </div>
           );

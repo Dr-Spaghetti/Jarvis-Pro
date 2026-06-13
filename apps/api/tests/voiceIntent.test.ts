@@ -54,4 +54,39 @@ describe("resolveJarvisVoiceIntent", () => {
     const { intent } = resolveJarvisVoiceIntent("jarvis");
     expect(intent).toEqual({ type: "unknown", text: "" });
   });
+
+  describe("run-skill intent", () => {
+    it("routes explicit 'run skill [name]' to run-skill", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis run skill daily brief");
+      expect(intent).toEqual({ type: "run-skill", skillName: "daily brief" });
+    });
+
+    it("routes 'execute skill [name]' to run-skill", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis execute skill review repair outreach");
+      expect(intent).toEqual({ type: "run-skill", skillName: "review repair outreach" });
+    });
+
+    it("routes implicit 'run [name]' to run-skill when name is not a nav target", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis run morning report");
+      expect(intent.type).toBe("run-skill");
+      if (intent.type === "run-skill") {
+        expect(intent.skillName).toBe("morning report");
+      }
+    });
+
+    it("does not treat 'run new agent' as run-skill (terminal guard)", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis run new agent");
+      expect(intent.type).toBe("create-terminal");
+    });
+
+    it("does not treat 'run deck' as run-skill (nav word guard)", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis run deck");
+      expect(intent.type).toBe("navigate");
+    });
+
+    it("does not treat a question as run-skill (question opener guard)", () => {
+      const { intent } = resolveJarvisVoiceIntent("what skill should I run");
+      expect(intent.type).toBe("ask");
+    });
+  });
 });

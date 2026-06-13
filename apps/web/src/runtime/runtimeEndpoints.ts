@@ -561,3 +561,8 @@ export const buildGmailAuthUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/gmail/auth";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/auth");
 };
+
+export const buildSkillsRunUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/skills/run";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/skills/run");
+};

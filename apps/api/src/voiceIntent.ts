@@ -15,6 +15,7 @@ export type JarvisVoiceIntent =
   | { type: "brain-search"; query: string }
   | { type: "brain-capture"; text: string }
   | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
+  | { type: "run-skill"; skillName: string }
   | { type: "ask"; question: string }
   | { type: "unknown"; text: string };
 
@@ -139,6 +140,44 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
       transcript,
       commandText,
       intent: { type: "ask", question: stripTrailingAddress(command) },
+    };
+  }
+
+  // Explicit "run skill [name]" or "execute skill [name]" phrases.
+  const runSkillExplicit = afterAnyPrefix(command, [
+    "run skill",
+    "execute skill",
+    "launch skill",
+    "start skill",
+    "run the skill",
+    "execute the skill",
+  ]);
+  if (runSkillExplicit !== null && runSkillExplicit.length > 0) {
+    return {
+      transcript,
+      commandText,
+      intent: { type: "run-skill", skillName: runSkillExplicit },
+    };
+  }
+
+  // Implicit "run [name]" / "execute [name]" — "run daily brief", "execute review repair outreach".
+  // Guard: don't intercept bare single-word nav targets or terminal-creation phrases.
+  const runSkillMatch = command.match(
+    /^(?:run|execute|launch)\s+(?:(?:my|the|a)\s+)?(.+?)(?:\s+skill)?$/,
+  );
+  const runSkillCandidate = runSkillMatch?.[1]?.trim();
+  if (
+    runSkillCandidate &&
+    runSkillCandidate.length >= 3 &&
+    !/\b(agent|terminal|session|tentacle)\b/.test(runSkillCandidate) &&
+    !/^(deck|agents?|activity|code.intel|monitor|conversations?|prompts?|settings?|jarvis)$/.test(
+      runSkillCandidate,
+    )
+  ) {
+    return {
+      transcript,
+      commandText,
+      intent: { type: "run-skill", skillName: runSkillCandidate },
     };
   }
 

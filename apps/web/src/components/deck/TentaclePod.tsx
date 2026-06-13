@@ -76,6 +76,7 @@ export type TentaclePodProps = {
   onSaveSuggestedSkills?:
     | ((tentacleId: string, suggestedSkills: string[]) => Promise<boolean>)
     | undefined;
+  onRunSkill?: ((skillName: string) => void) | undefined;
 };
 
 export const TentaclePod = ({
@@ -92,6 +93,7 @@ export const TentaclePod = ({
   availableSkills,
   isSavingSkills,
   onSaveSuggestedSkills,
+  onRunSkill,
 }: TentaclePodProps) => {
   const progressPct =
     tentacle.todoTotal > 0 ? Math.round((tentacle.todoDone / tentacle.todoTotal) * 100) : 0;
@@ -224,24 +226,36 @@ export const TentaclePod = ({
                   {skillNames.map((skillName) => {
                     const skill = availableSkills.find((entry) => entry.name === skillName);
                     return (
-                      <label key={skillName} className="deck-pod-skill-option">
-                        <input
-                          type="checkbox"
-                          checked={draftSkills.includes(skillName)}
-                          onChange={() => toggleSkill(skillName)}
-                        />
-                        <span className="deck-pod-skill-copy">
-                          <span className="deck-pod-skill-name">{skillName}</span>
-                          {skill?.description && (
-                            <span className="deck-pod-skill-desc">{skill.description}</span>
-                          )}
-                          {!skill && (
-                            <span className="deck-pod-skill-desc">
-                              Stored on this agent, but not available right now.
-                            </span>
-                          )}
-                        </span>
-                      </label>
+                      <div key={skillName} className="deck-pod-skill-row">
+                        <label className="deck-pod-skill-option">
+                          <input
+                            type="checkbox"
+                            checked={draftSkills.includes(skillName)}
+                            onChange={() => toggleSkill(skillName)}
+                          />
+                          <span className="deck-pod-skill-copy">
+                            <span className="deck-pod-skill-name">{skillName}</span>
+                            {skill?.description && (
+                              <span className="deck-pod-skill-desc">{skill.description}</span>
+                            )}
+                            {!skill && (
+                              <span className="deck-pod-skill-desc">
+                                Stored on this agent, but not available right now.
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                        {onRunSkill && (
+                          <button
+                            type="button"
+                            className="deck-pod-skill-run-btn"
+                            title={`Run ${skillName}`}
+                            onClick={() => onRunSkill(skillName)}
+                          >
+                            ▶
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

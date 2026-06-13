@@ -87,6 +87,7 @@ import {
   isAuthorizedRequest,
   readHeaderValue,
 } from "./security";
+import { handleSkillsRunRoute } from "./skillsRoutes";
 import { handleTokenTelemetryRoute } from "./telemetryRoutes";
 import {
   handleTerminalActionRoute,
@@ -202,6 +203,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleDeckVaultFileRoute,
     ],
   ],
+  ["skills", [handleSkillsRunRoute]],
   ["terminal-snapshots", [handleTerminalSnapshotsRoute]],
   ["codex", [handleCodexUsageRoute]],
   ["claude", [handleClaudeUsageRoute]],

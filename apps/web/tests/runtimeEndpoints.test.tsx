@@ -13,6 +13,7 @@ import {
   buildMonitorConfigUrl,
   buildMonitorFeedUrl,
   buildMonitorRefreshUrl,
+  buildSkillsRunUrl,
   buildTentacleGitCommitUrl,
   buildTentacleGitPullRequestMergeUrl,
   buildTentacleGitPullRequestUrl,
@@ -276,6 +277,16 @@ describe("runtimeEndpoints", () => {
   it("URL-encodes tentacle IDs with special characters for pinned URL", () => {
     expect(buildDeckTentaclePinnedUrl("my agent/1")).toBe(
       "/api/deck/tentacles/my%20agent%2F1/pinned",
+    );
+  });
+
+  it("builds skills run URL on same origin by default", () => {
+    expect(buildSkillsRunUrl()).toBe("/api/skills/run");
+  });
+
+  it("builds absolute skills run URL when runtime base URL is configured", () => {
+    expect(buildSkillsRunUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/skills/run",
     );
   });
 });

@@ -17,6 +17,7 @@ import {
   buildBrainSemanticUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
+  buildSkillsRunUrl,
   buildVoiceConfigUrl,
   buildVoiceIntentUrl,
   buildVoiceSpeakUrl,
@@ -66,6 +67,7 @@ type JarvisIntentResolution = {
     | { type: "brain-search"; query: string }
     | { type: "brain-capture"; text: string }
     | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
+    | { type: "run-skill"; skillName: string }
     | { type: "ask"; question: string }
     | { type: "unknown"; text: string };
 };
@@ -181,6 +183,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
+  const [skillRunConfirmName, setSkillRunConfirmName] = useState<string | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   // Which local Ollama model answers. Empty = server default. Persisted so the
   // choice sticks; mirrored to a ref so the voice loop reads it without re-binding.
@@ -665,6 +668,34 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         onNavigate(1);
         setVoiceStatus("Agent created");
         await speakJarvis("Agent created.");
+        return;
+      }
+
+      if (intent.type === "run-skill") {
+        const needsApproval = /\b(outreach|email.assist)\b/.test(intent.skillName.toLowerCase());
+        if (needsApproval) {
+          setSkillRunConfirmName(intent.skillName);
+          setVoiceStatus(`Approval needed: ${intent.skillName}`);
+          setIsThinking(false);
+          await speakJarvis(
+            `I need your approval to run ${intent.skillName}. Tap Confirm to proceed.`,
+          );
+          return;
+        }
+        const res = await apiFetch(buildSkillsRunUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ skillName: intent.skillName }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          setVoiceError(data?.error ?? `Could not run skill: ${intent.skillName}`);
+          setIsThinking(false);
+          return;
+        }
+        onNavigate(1);
+        setVoiceStatus(`Running skill: ${intent.skillName}`);
+        await speakJarvis(`Running ${intent.skillName}.`);
         return;
       }
 
@@ -1229,6 +1260,54 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
           {lastVoiceTranscript && <p className="jarvis-voice-transcript">{lastVoiceTranscript}</p>}
           {voiceError && <p className="jarvis-empty">{voiceError}</p>}
+          {skillRunConfirmName && (
+            <div className="jarvis-skill-confirm" role="alertdialog" aria-label="Approval required">
+              <p className="jarvis-skill-confirm-msg">
+                Run <strong>{skillRunConfirmName}</strong>? This skill may send emails or outreach.
+              </p>
+              <div className="jarvis-skill-confirm-actions">
+                <button
+                  type="button"
+                  className="jarvis-skill-confirm-btn jarvis-skill-confirm-btn--ok"
+                  onClick={() => {
+                    const name = skillRunConfirmName;
+                    setSkillRunConfirmName(null);
+                    apiFetch(buildSkillsRunUrl(), {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ skillName: name }),
+                    })
+                      .then(async (res) => {
+                        if (!res.ok) {
+                          const data = (await res.json().catch(() => null)) as {
+                            error?: string;
+                          } | null;
+                          setVoiceError(data?.error ?? `Could not run skill: ${name}`);
+                          return;
+                        }
+                        onNavigate(1);
+                        setVoiceStatus(`Running skill: ${name}`);
+                      })
+                      .catch(() => {
+                        setVoiceError(`Could not run skill: ${name}`);
+                      });
+                  }}
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  className="jarvis-skill-confirm-btn jarvis-skill-confirm-btn--cancel"
+                  onClick={() => {
+                    setSkillRunConfirmName(null);
+                    setVoiceStatus("Voice idle");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="jarvis-panel jarvis-activity" aria-label="Recent activity">
