@@ -65,6 +65,7 @@ type JarvisIntentResolution = {
     | { type: "brain-search"; query: string }
     | { type: "brain-capture"; text: string }
     | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
+    | { type: "ask"; question: string }
     | { type: "unknown"; text: string };
 };
 type SpeechRecognitionResultLike = {
@@ -618,9 +619,50 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         return;
       }
 
+      if (intent.type === "ask") {
+        setVoiceStatus("Thinking");
+        setIsThinking(true);
+        try {
+          const res = await apiFetch(buildBrainAskUrl(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: intent.question }),
+          });
+          if (!res.ok) {
+            setVoiceError("Ask failed");
+            setIsThinking(false);
+            return;
+          }
+          const data = (await res.json()) as {
+            available?: boolean;
+            answer?: string;
+            hint?: string;
+            sources?: { title: string; path: string }[];
+          };
+          if (data.available && typeof data.answer === "string") {
+            setAnswer(data.answer);
+            setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+            setVoiceStatus("Answered");
+            await speakJarvis(data.answer);
+          } else {
+            setAskNote(
+              data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
+            );
+            setVoiceStatus("No answer model");
+            setIsThinking(false);
+            await speakJarvis("I don't have a local answer model running right now.");
+          }
+        } catch {
+          setVoiceError("Ask failed");
+          setIsThinking(false);
+        }
+        return;
+      }
+
       setVoiceStatus("Command captured");
-      setVoiceError(intent.text ? `No action matched: ${intent.text}` : "No action matched");
-      await speakJarvis("I heard you, but I do not have that command wired yet.");
+      setVoiceError("I didn't catch a question or command.");
+      setIsThinking(false);
+      await speakJarvis("I didn't catch that — try asking me a question.");
     },
     [loadRecent, onNavigate, speakJarvis],
   );

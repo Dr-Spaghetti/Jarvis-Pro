@@ -15,6 +15,7 @@ export type JarvisVoiceIntent =
   | { type: "brain-search"; query: string }
   | { type: "brain-capture"; text: string }
   | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
+  | { type: "ask"; question: string }
   | { type: "unknown"; text: string };
 
 export type JarvisVoiceIntentResolution = {
@@ -52,6 +53,19 @@ const stripLeadingCommandWords = (value: string): string =>
     .replace(/^(please\s+)?(can you|could you|would you)\s+/i, "")
     .replace(/^(please\s+)?(do|run|start|open|show|search|capture|remember)\s+/i, "")
     .trim();
+
+// Explicit "talk to Jarvis" openers that should route to the Ask-Jarvis brain
+// even if the rest of the sentence happens to contain a navigation keyword.
+const ASK_PREFIXES = ["ask jarvis", "ask", "tell me about", "tell me", "explain"] as const;
+
+// Question-shaped openers. If a sentence starts like a question we answer it
+// rather than trying to match it against a command.
+const QUESTION_OPENER =
+  /^(what|whats|how|why|who|when|where|which|whose|is|are|am|can|could|would|should|do|does|did|will|may|might)\b/;
+
+// A trailing address ("...today jarvis") survives the leading wake-phrase strip;
+// remove it so it doesn't pollute the question sent to the brain.
+const stripTrailingAddress = (value: string): string => value.replace(/\s+jarvis$/i, "").trim();
 
 const afterAnyPrefix = (value: string, prefixes: readonly string[]): string | null => {
   for (const prefix of prefixes) {
@@ -109,6 +123,25 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
     };
   }
 
+  // Conversational questions go to the Ask-Jarvis brain. Checked BEFORE the
+  // navigation keyword matches so "what's on my deck" is answered rather than
+  // silently flipping to the Deck page.
+  const explicitAsk = afterAnyPrefix(command, ASK_PREFIXES);
+  if (explicitAsk !== null && explicitAsk.length > 0) {
+    return {
+      transcript,
+      commandText,
+      intent: { type: "ask", question: stripTrailingAddress(explicitAsk) },
+    };
+  }
+  if (QUESTION_OPENER.test(command)) {
+    return {
+      transcript,
+      commandText,
+      intent: { type: "ask", question: stripTrailingAddress(command) },
+    };
+  }
+
   if (/\b(deck|skills?|skill library)\b/.test(command)) {
     return { transcript, commandText, intent: { type: "navigate", target: "deck" } };
   }
@@ -133,13 +166,24 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
   if (/\b(settings?|configuration|config)\b/.test(command)) {
     return { transcript, commandText, intent: { type: "navigate", target: "settings" } };
   }
-  if (/\b(home|jarvis|command center)\b/.test(command)) {
+  // Require an explicit "home"/"command center" phrase — a bare "jarvis" must
+  // not match here, or every sentence that ends with the wake word ("...today
+  // jarvis") would wrongly navigate home instead of being answered.
+  if (/\b(go home|home screen|command center|jarvis home|go to jarvis)\b/.test(command)) {
     return { transcript, commandText, intent: { type: "navigate", target: "jarvis" } };
+  }
+
+  // Anything left that still carries words is treated as a question for the
+  // brain — Jarvis answers by default rather than shrugging. Empty input
+  // (just the wake word) stays "unknown".
+  const leftover = stripTrailingAddress(stripLeadingCommandWords(commandText));
+  if (leftover.length > 0) {
+    return { transcript, commandText, intent: { type: "ask", question: leftover } };
   }
 
   return {
     transcript,
     commandText,
-    intent: { type: "unknown", text: stripLeadingCommandWords(commandText) },
+    intent: { type: "unknown", text: "" },
   };
 };
