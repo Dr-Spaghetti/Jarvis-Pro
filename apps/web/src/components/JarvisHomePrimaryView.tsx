@@ -11,6 +11,7 @@ import {
   buildBrainDigestUrl,
   buildBrainJournalUrl,
   buildBrainMemoryUrl,
+  buildBrainModelsUrl,
   buildBrainNoteUrl,
   buildBrainRecentUrl,
   buildBrainSemanticUrl,
@@ -181,6 +182,17 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
   const [askNote, setAskNote] = useState<string | null>(null);
+  // Which local Ollama model answers. Empty = server default. Persisted so the
+  // choice sticks; mirrored to a ref so the voice loop reads it without re-binding.
+  const [chatModels, setChatModels] = useState<string[]>([]);
+  const [chatModel, setChatModel] = useState<string>(() => {
+    try {
+      return window.localStorage.getItem("jarvis.chatModel") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const chatModelRef = useRef("");
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
   const [ttsProvider, setTtsProvider] = useState<string>(() => {
@@ -327,6 +339,25 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   useEffect(() => {
     isRecordingCommandRef.current = isRecordingCommand;
   }, [isRecordingCommand]);
+  useEffect(() => {
+    chatModelRef.current = chatModel;
+  }, [chatModel]);
+
+  // Load the list of installed Ollama chat models for the answer-model picker.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiFetch(buildBrainModelsUrl(), {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { models?: string[] };
+        if (Array.isArray(data.models)) setChatModels(data.models);
+      } catch {
+        /* ignore — picker just shows the default */
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -403,7 +434,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       const res = await apiFetch(buildBrainAskUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify(chatModel ? { question, model: chatModel } : { question }),
       });
       if (!res.ok) {
         setAskNote("Ask failed");
@@ -433,7 +464,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     } finally {
       setAsking(false);
     }
-  }, [ask]);
+  }, [ask, chatModel]);
 
   // Resolves when speech finishes so the hands-free loop can re-arm afterwards.
   // Tracks isSpeaking for the indicator and keeps a handle on the audio element
@@ -644,7 +675,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           const res = await apiFetch(buildBrainAskUrl(), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: intent.question }),
+            body: JSON.stringify(
+              chatModelRef.current
+                ? { question: intent.question, model: chatModelRef.current }
+                : { question: intent.question },
+            ),
           });
           if (!res.ok) {
             setVoiceError("Ask failed");
@@ -976,6 +1011,38 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                     {asking ? "Thinking…" : "Ask"}
                   </button>
                 </div>
+                {chatModels.length > 0 && (
+                  <div className="jarvis-ask-model" style={{ marginTop: 8 }}>
+                    <label
+                      htmlFor="jarvis-chat-model"
+                      style={{ color: "var(--text-secondary)", marginRight: 8 }}
+                    >
+                      Answer model:
+                    </label>
+                    <select
+                      id="jarvis-chat-model"
+                      className="jarvis-select"
+                      value={chatModel}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setChatModel(value);
+                        try {
+                          window.localStorage.setItem("jarvis.chatModel", value);
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
+                      aria-label="Answer model"
+                    >
+                      <option value="">Auto (default)</option>
+                      {chatModels.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {answer && (
                   <div className="jarvis-answer">
                     <p className="jarvis-answer-text">{answer}</p>

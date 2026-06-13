@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
-import { chatViaOllama } from "./ollamaChat";
+import { chatViaOllama, getChatModel, listOllamaChatModels } from "./ollamaChat";
 import { cosineSimilarity, embedViaOllama } from "./ollamaEmbed";
 import type { ApiRouteHandler } from "./routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
@@ -914,6 +914,23 @@ const ASK_SYSTEM_PROMPT =
   "say you don't have it noted yet and suggest he capture it.\n" +
   "Never refuse a general question just because it isn't in his notes.";
 
+// Lists the local Ollama chat models the user can pick from, plus the default.
+export const handleBrainModelsRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
+  if (requestUrl.pathname !== "/api/brain/models") return false;
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+  const models = await listOllamaChatModels();
+  writeJson(response, 200, { models, default: getChatModel() }, corsOrigin);
+  return true;
+};
+
 export const handleBrainAskRoute: ApiRouteHandler = async ({
   request,
   response,
@@ -943,6 +960,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
     writeJson(response, 400, { error: "question (non-empty string) is required" }, corsOrigin);
     return true;
   }
+  const model =
+    typeof payload.model === "string" && payload.model.trim() ? payload.model.trim() : undefined;
 
   const notes = await retrieveContext(vaultDir, question, 6);
   const facts = readMemoryFacts(vaultDir, 20);
@@ -955,7 +974,10 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       : "(no matching notes)";
   const prompt = `MEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
 
-  const answer = await chatViaOllama(prompt, { system: ASK_SYSTEM_PROMPT });
+  const answer = await chatViaOllama(prompt, {
+    system: ASK_SYSTEM_PROMPT,
+    ...(model ? { model } : {}),
+  });
   if (!answer) {
     writeJson(
       response,
