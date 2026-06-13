@@ -575,6 +575,61 @@ describe("createApiServer", () => {
     });
   });
 
+  describe("token telemetry", () => {
+    it("returns an empty session list before any telemetry is collected", async () => {
+      const baseUrl = await startServer();
+
+      const response = await fetch(`${baseUrl}/api/telemetry/tokens`);
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ sessions: [] });
+    });
+
+    it("returns recorded session token usage newest-first", async () => {
+      const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+      temporaryDirectories.push(workspaceCwd);
+
+      const { recordSessionTokenUsage } = await import("../src/terminalRuntime/tokenTelemetry");
+      const stateDir = join(workspaceCwd, ".octogent");
+      recordSessionTokenUsage({
+        projectStateDir: stateDir,
+        sessionId: "sess-old",
+        terminalId: "terminal-1",
+        tentacleId: "tentacle-1",
+        totals: {
+          inputTokens: 10,
+          outputTokens: 2,
+          cacheCreationTokens: 0,
+          cacheReadTokens: 0,
+          messageCount: 1,
+        },
+        now: "2026-06-12T09:00:00.000Z",
+      });
+      recordSessionTokenUsage({
+        projectStateDir: stateDir,
+        sessionId: "sess-new",
+        terminalId: "terminal-2",
+        tentacleId: "tentacle-2",
+        totals: {
+          inputTokens: 500,
+          outputTokens: 80,
+          cacheCreationTokens: 12,
+          cacheReadTokens: 30,
+          messageCount: 4,
+        },
+        now: "2026-06-12T12:00:00.000Z",
+      });
+
+      const baseUrl = await startServer({ workspaceCwd });
+      const response = await fetch(`${baseUrl}/api/telemetry/tokens`);
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        sessions: Array<{ sessionId: string; inputTokens: number }>;
+      };
+      expect(payload.sessions.map((s) => s.sessionId)).toEqual(["sess-new", "sess-old"]);
+      expect(payload.sessions[0]?.inputTokens).toBe(500);
+    });
+  });
+
   it("returns snapshots for GET /api/terminal-snapshots", async () => {
     const baseUrl = await startServer();
 

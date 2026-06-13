@@ -5,6 +5,7 @@ import { logVerbose } from "../logging";
 import { parseClaudeTranscript } from "./claudeTranscript";
 import { storeClaudeTranscriptTurns } from "./conversations";
 import { broadcastMessage } from "./protocol";
+import { recordSessionTokenUsage, scanTranscriptTokenUsage } from "./tokenTelemetry";
 import type { PersistedTerminal, TerminalSession } from "./types";
 
 const MAX_AUTO_NAME_LENGTH = 50;
@@ -25,6 +26,7 @@ export const createHookProcessor = (deps: {
   terminals: Map<string, PersistedTerminal>;
   sessions: Map<string, TerminalSession>;
   transcriptDirectoryPath: string;
+  projectStateDir: string;
   getApiBaseUrl: () => string;
   persistRegistry: () => void;
   deliverChannelMessages: (terminalId: string) => number;
@@ -39,6 +41,7 @@ export const createHookProcessor = (deps: {
     terminals,
     sessions,
     transcriptDirectoryPath,
+    projectStateDir,
     getApiBaseUrl,
     persistRegistry,
     deliverChannelMessages,
@@ -410,6 +413,26 @@ export const createHookProcessor = (deps: {
     } else if (turns && turns.length > 0) {
       storeClaudeTranscriptTurns(transcriptDirectoryPath, matchedSessionId, turns);
       logVerbose(`[Hook] Stored ${turns.length} turns for session ${matchedSessionId}.`);
+    }
+
+    // Record real per-session token usage from the transcript's usage blocks.
+    // Full re-scan = authoritative cumulative totals, so this is idempotent.
+    const telemetrySession = sessions.get(matchedSessionId);
+    if (telemetrySession) {
+      const totals = scanTranscriptTokenUsage(transcriptPath);
+      if (totals) {
+        recordSessionTokenUsage({
+          projectStateDir,
+          sessionId: matchedSessionId,
+          terminalId: telemetrySession.terminalId,
+          tentacleId: telemetrySession.tentacleId,
+          totals,
+        });
+        logVerbose(
+          `[Hook] Recorded token telemetry for ${matchedSessionId}: ` +
+            `in=${totals.inputTokens} out=${totals.outputTokens} msgs=${totals.messageCount}.`,
+        );
+      }
     }
 
     // Deliver any queued channel messages now that the agent is idle.

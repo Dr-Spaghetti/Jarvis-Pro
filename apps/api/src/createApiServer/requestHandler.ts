@@ -80,6 +80,7 @@ import {
   isAuthorizedRequest,
   readHeaderValue,
 } from "./security";
+import { handleTokenTelemetryRoute } from "./telemetryRoutes";
 import {
   handleTerminalActionRoute,
   handleTerminalItemRoute,
@@ -185,6 +186,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ["codex", [handleCodexUsageRoute]],
   ["claude", [handleClaudeUsageRoute]],
   ["analytics", [handleUsageHeatmapRoute]],
+  ["telemetry", [handleTokenTelemetryRoute]],
   ["github", [handleGithubSummaryRoute]],
   ["setup", [handleWorkspaceSetupRoute]],
   ["ui-state", [handleUiStateRoute]],

@@ -281,6 +281,7 @@ export const createTerminalRuntime = ({
     terminals,
     sessions,
     transcriptDirectoryPath,
+    projectStateDir: stateDir,
     getApiBaseUrl,
     persistRegistry,
     deliverChannelMessages: channelMessaging.deliverChannelMessages,
