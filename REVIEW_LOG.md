@@ -130,3 +130,55 @@ fixes were applied during the build (live-smoke-tested), leaving only nits.
 - **A central `apiFetch` + a Biome `noRestrictedGlobals: ["fetch"]` override on
   `apps/web/src/**` is the durable guard** against a future raw-`fetch` call site
   silently skipping auth. The lint gate now enforces it.
+
+---
+
+## Wave 4 — Telemetry → analytics → alerting → export — commits a66cc8a..ecae609
+
+Adversarial review of the wave diff. **No critical or real findings.**
+
+### What held up
+- **Honest telemetry, no fabrication.** `scanTranscriptTokenUsage` reads only
+  real `message.usage` blocks from the Claude transcript JSONL and returns
+  `null` when none exist, so pre-telemetry / non-Claude sessions get no entry.
+  The route returns `[]` (not an error) → honest "collecting from now" empty
+  state. Re-firing the Stop hook re-scans the whole transcript and SETS totals,
+  so it's idempotent (no double counting).
+- **Alerts are derived, never stored.** `evaluateAgentAlerts` is pure over the
+  live snapshot list; an alert exists only while its condition holds. Nothing to
+  "clear" or go stale. `agentStateChangedAt` is set at the single state-
+  transition point + at session creation, and lives only on the in-memory
+  session (added to the snapshot, NOT to PersistedTerminal) — no registry bloat.
+- **Auth intact.** All new routes are under `/api/` and absent from
+  `AUTH_EXEMPT_PATHS`, so they require the token when set. The export download
+  link carries `?token=` via `appendAuthTokenParam` (browsers can't header an
+  `<a download>`), matching the Wave 7 pattern. The biome raw-`fetch` guard
+  still passes — the only unguarded `fetch` is the one inside `apiFetch`.
+- **No route shadowing.** The five `/api/monitor/*` handlers all match on exact
+  pathname equality, so ordering among them is irrelevant and none swallows
+  another's path.
+
+### Deferrals (logged, by design)
+- **Alert toasts fire only while the Monitor view is mounted** — the 30s poller
+  lives in `AgentAlertsPanel`. App-wide background alerting (poller hoisted to
+  `App`) is a larger change; the persistent alerts list is always accurate when
+  viewed, and toasts fire whenever Monitor is open. Revisit if push-style
+  alerting is wanted.
+- **Export is a point-in-time snapshot, not a historical log.** Because alerts
+  are live-derived, the export captures rules + alerts active at export time.
+  A persisted alert-history log would be a separate feature; documented in the
+  route comment and commit so it isn't mistaken for a full audit trail.
+
+### Lessons
+- **Adding a field to the shared `@octogent/core` `TerminalSnapshot` needs a
+  `pnpm --filter @octogent/core build`** before the API tests that import the
+  built type will see it. The `-r` test run handles ordering, but a single-
+  package `--filter @octogent/api test` against a stale core build will fail
+  confusingly.
+- **Biome reformats object-spread ternaries and multi-line conditions
+  aggressively** — run `biome check --write` on touched files before the lint
+  gate; three increments tripped the formatter on first pass.
+- **Self-contained panels (own `apiFetch` + `PanelState` states) avoid prop
+  threading** through `PrimaryViewRouter`/`App` — `JournalTimeline` was the
+  template for both `AgentAnalyticsPanel` and `AgentAlertsPanel`. Keeps wave
+  increments small and the view router untouched.
