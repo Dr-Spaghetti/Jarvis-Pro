@@ -270,3 +270,44 @@ Adversarial review of the wave diff. **No critical or real findings.**
   `data.tiles` was `undefined`. The fix is defensive parsing in the component
   (`Array.isArray(data.tiles) ? … : []`) — good practice regardless, and it
   kept the existing test green without modifying it.
+
+---
+
+## Wave 8 — Hands-free voice loop — commits 46d18df, c0d1f6d
+
+Adversarial review of the wave diff. **One real bug found and fixed; no others.**
+
+### Real finding (FIXED in c0d1f6d)
+- **Hard mute could hang the speak promise.** `speakJarvis` awaits the audio
+  element's `ended`/`error` to resolve (so the continuous loop can re-arm after
+  speech). `hardMute` calls `audio.pause()`, which fires neither — so the
+  promise would never resolve, leaving `isSpeaking` stuck and any awaiting loop
+  iteration hung. Fixed by also resolving on the `pause` event (idempotent
+  cleanup), so a mute mid-utterance unwinds cleanly.
+
+### What held up
+- **Hard mute is genuinely hard.** `stopAllVoiceActivity` stops the recorder +
+  mic tracks, the wake `SpeechRecognition`, the in-flight TTS audio element, and
+  `speechSynthesis.cancel()`, and `isMutedRef`/`isContinuousModeRef` are set
+  synchronously so `startCommandRecording` and `speakJarvis` both bail
+  immediately — no race where a queued callback re-opens the mic after mute.
+- **Loop can't run away.** Re-arming happens only through
+  `maybeContinueLoop → startCommandRecording`, guarded by continuous + not-muted
+  + tab-visible. Each cycle requires a real 7s recording + network round-trip,
+  so even on repeated silence it's a paced listen loop, not a tight spin; mute
+  or tab-blur ends it.
+- **Background safety.** `visibilitychange`(hidden) and `blur` both stop the loop
+  and disable continuous mode, so the mic is never left listening when the user
+  leaves the tab.
+- **Indicator is a pure function.** `deriveVoicePhase` (mute > speaking >
+  thinking > listening > idle) is unit-tested and the only source of the
+  indicator state, so the dot can't disagree with reality.
+
+### Lessons
+- **Promise-wrapping a media element must resolve on every terminal path** —
+  `ended`, `error`, AND `pause` (an external stop). Awaiting only the
+  happy-path event makes an external interrupt (mute) a silent hang. Stale-
+  closure reads were avoided throughout by mirroring loop flags
+  (`isMutedRef`/`isContinuousModeRef`) and the latest `startCommandRecording`
+  into refs, since the async voice callbacks outlive the render that created
+  them.
