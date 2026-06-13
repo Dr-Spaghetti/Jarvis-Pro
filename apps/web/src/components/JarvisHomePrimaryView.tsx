@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
+import { VOICE_PHASE_LABELS, deriveVoicePhase } from "../app/voicePhase";
 import { apiFetch } from "../runtime/apiClient";
 import { HomeTilesPanel } from "./HomeTilesPanel";
 
@@ -193,11 +194,30 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [isWakeArmed, setIsWakeArmed] = useState(false);
   const [isRecordingCommand, setIsRecordingCommand] = useState(false);
   const [lastVoiceTranscript, setLastVoiceTranscript] = useState("");
+  const [isContinuousMode, setIsContinuousMode] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
+  // Live mirrors of loop state so async callbacks read current values, not
+  // stale closures. Plus a handle on in-flight audio for hard mute.
+  const isContinuousModeRef = useRef(false);
+  const isMutedRef = useRef(false);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const startCommandRecordingRef = useRef<(() => void) | null>(null);
+  const speakJarvisRef = useRef<((text: string) => Promise<void>) | null>(null);
+
+  const voicePhase = deriveVoicePhase({
+    isMuted,
+    isSpeaking,
+    isThinking,
+    isRecordingCommand,
+    isWakeArmed,
+  });
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadRecent = useCallback(async () => {
@@ -294,6 +314,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   }, []);
 
   useEffect(() => {
+    isContinuousModeRef.current = isContinuousMode;
+  }, [isContinuousMode]);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
       if (recordingTimerRef.current !== null) {
@@ -383,6 +410,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       if (data.available && typeof data.answer === "string") {
         setAnswer(data.answer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+        // Auto-speak the answer when running hands-free (continuous mode), so
+        // the user doesn't have to click. Never speaks while muted.
+        if (isContinuousModeRef.current && !isMutedRef.current) {
+          void speakJarvisRef.current?.(data.answer);
+        }
       } else {
         setAskNote(
           data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
@@ -395,38 +427,128 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
   }, [ask]);
 
+  // Resolves when speech finishes so the hands-free loop can re-arm afterwards.
+  // Tracks isSpeaking for the indicator and keeps a handle on the audio element
+  // so a hard mute can cut playback instantly. A hard mute skips speaking.
   const speakJarvis = useCallback(
-    async (text: string) => {
-      if (ttsProvider !== "browser") {
-        try {
-          const response = await apiFetch(buildVoiceSpeakUrl(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, provider: ttsProvider }),
-          });
-          if (response.ok) {
-            const objectUrl = URL.createObjectURL(await response.blob());
-            const audio = new Audio(objectUrl);
-            audio.addEventListener("ended", () => URL.revokeObjectURL(objectUrl), { once: true });
-            void audio.play().catch(() => URL.revokeObjectURL(objectUrl));
-            return;
-          }
-        } catch {
-          // Fall back to browser speech synthesis below.
-        }
+    async (text: string): Promise<void> => {
+      if (isMutedRef.current) {
+        return;
       }
+      // Speaking supersedes the thinking indicator.
+      setIsThinking(false);
+      setIsSpeaking(true);
+      try {
+        if (ttsProvider !== "browser") {
+          try {
+            const response = await apiFetch(buildVoiceSpeakUrl(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text, provider: ttsProvider }),
+            });
+            if (response.ok && !isMutedRef.current) {
+              const objectUrl = URL.createObjectURL(await response.blob());
+              const audio = new Audio(objectUrl);
+              currentAudioRef.current = audio;
+              await new Promise<void>((resolve) => {
+                const cleanup = () => {
+                  URL.revokeObjectURL(objectUrl);
+                  if (currentAudioRef.current === audio) {
+                    currentAudioRef.current = null;
+                  }
+                  resolve();
+                };
+                audio.addEventListener("ended", cleanup, { once: true });
+                audio.addEventListener("error", cleanup, { once: true });
+                audio.play().catch(cleanup);
+              });
+              return;
+            }
+          } catch {
+            // Fall back to browser speech synthesis below.
+          }
+        }
 
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+        if (!isMutedRef.current && "speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          await new Promise<void>((resolve) => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.addEventListener("end", () => resolve(), { once: true });
+            utterance.addEventListener("error", () => resolve(), { once: true });
+            window.speechSynthesis.speak(utterance);
+          });
+        }
+      } finally {
+        setIsSpeaking(false);
       }
     },
     [ttsProvider],
   );
 
+  useEffect(() => {
+    speakJarvisRef.current = speakJarvis;
+  }, [speakJarvis]);
+
+  // Stop every voice activity at once: recognition, recording, pending audio,
+  // and speech. Used by the hard mute and by the tab-blur safety stop.
+  const stopAllVoiceActivity = useCallback(() => {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    if (recordingTimerRef.current !== null) {
+      window.clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    for (const track of mediaStreamRef.current?.getTracks() ?? []) {
+      track.stop();
+    }
+    mediaStreamRef.current = null;
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsWakeArmed(false);
+    setIsRecordingCommand(false);
+    setIsThinking(false);
+    setIsSpeaking(false);
+  }, []);
+
+  const hardMute = useCallback(() => {
+    setIsMuted(true);
+    isMutedRef.current = true;
+    setIsContinuousMode(false);
+    isContinuousModeRef.current = false;
+    stopAllVoiceActivity();
+    setVoiceStatus("Muted");
+  }, [stopAllVoiceActivity]);
+
+  const unmute = useCallback(() => {
+    setIsMuted(false);
+    isMutedRef.current = false;
+    setVoiceStatus("Voice idle");
+  }, []);
+
+  // After a command fully resolves, re-arm the mic for the next one when
+  // continuous mode is on, not muted, and the tab is visible.
+  const maybeContinueLoop = useCallback(() => {
+    if (
+      isContinuousModeRef.current &&
+      !isMutedRef.current &&
+      document.visibilityState === "visible"
+    ) {
+      startCommandRecordingRef.current?.();
+    }
+  }, []);
+
   const runVoiceIntent = useCallback(
     async (transcript: string) => {
       setVoiceError(null);
+      setIsThinking(true);
       setLastVoiceTranscript(transcript);
       const intentResponse = await apiFetch(buildVoiceIntentUrl(), {
         method: "POST",
@@ -435,6 +557,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       });
       if (!intentResponse.ok) {
         setVoiceError("Unable to resolve command");
+        setIsThinking(false);
         return;
       }
       const resolution = (await intentResponse.json()) as JarvisIntentResolution;
@@ -462,6 +585,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         });
         if (!response.ok) {
           setVoiceError("Capture failed");
+          setIsThinking(false);
           return;
         }
         setCaptureMsg("Captured to Inbox");
@@ -482,6 +606,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         });
         if (!response.ok) {
           setVoiceError("Unable to create agent");
+          setIsThinking(false);
           return;
         }
         onNavigate(1);
@@ -506,27 +631,36 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         return;
       }
       setVoiceStatus("Transcribing");
-      const response = await apiFetch(buildVoiceTranscribeUrl(model), {
-        method: "POST",
-        headers: { "Content-Type": audio.type || "audio/webm" },
-        body: audio,
-      });
-      if (!response.ok) {
-        setVoiceError("Transcription failed");
-        setVoiceStatus("Voice idle");
-        return;
+      setIsThinking(true);
+      try {
+        const response = await apiFetch(buildVoiceTranscribeUrl(model), {
+          method: "POST",
+          headers: { "Content-Type": audio.type || "audio/webm" },
+          body: audio,
+        });
+        if (!response.ok) {
+          setVoiceError("Transcription failed");
+          setVoiceStatus("Voice idle");
+          setIsThinking(false);
+          return;
+        }
+        const result = (await response.json()) as { text?: string };
+        const transcript = result.text?.trim();
+        if (!transcript) {
+          setVoiceError("No speech detected");
+          setVoiceStatus("Voice idle");
+          setIsThinking(false);
+          return;
+        }
+        setVoiceStatus("Command received");
+        await runVoiceIntent(transcript);
+      } finally {
+        setIsThinking(false);
+        // Re-arm for the next command when running hands-free.
+        maybeContinueLoop();
       }
-      const result = (await response.json()) as { text?: string };
-      const transcript = result.text?.trim();
-      if (!transcript) {
-        setVoiceError("No speech detected");
-        setVoiceStatus("Voice idle");
-        return;
-      }
-      setVoiceStatus("Command received");
-      await runVoiceIntent(transcript);
     },
-    [runVoiceIntent, voiceConfig, voiceModel],
+    [maybeContinueLoop, runVoiceIntent, voiceConfig, voiceModel],
   );
 
   const stopCommandRecording = useCallback(() => {
@@ -540,6 +674,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   }, []);
 
   const startCommandRecording = useCallback(async () => {
+    if (isMutedRef.current) {
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setVoiceError("Microphone capture is unavailable in this browser");
       return;
@@ -573,6 +710,36 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       stopCommandRecording();
     }, 7000);
   }, [stopCommandRecording, transcribeCommandAudio]);
+
+  // Keep the loop's re-arm handle pointed at the latest startCommandRecording
+  // (avoids a circular useCallback dependency with transcribeCommandAudio).
+  useEffect(() => {
+    startCommandRecordingRef.current = () => {
+      void startCommandRecording();
+    };
+  }, [startCommandRecording]);
+
+  // Stop the hands-free loop cleanly when the tab is hidden or loses focus,
+  // so the mic is never left listening in the background.
+  useEffect(() => {
+    const stopLoop = () => {
+      setIsContinuousMode(false);
+      isContinuousModeRef.current = false;
+      stopAllVoiceActivity();
+      setVoiceStatus("Voice idle");
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        stopLoop();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", stopLoop);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", stopLoop);
+    };
+  }, [stopAllVoiceActivity]);
 
   const stopWakeListening = useCallback(() => {
     recognitionRef.current?.stop();
@@ -793,6 +960,45 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         <section className="jarvis-panel jarvis-voice" aria-label="Jarvis voice control">
           <div className="jarvis-voice-header">
             <p className="jarvis-panel-title">Voice</p>
+            <div className="jarvis-voice-header-right">
+              <span
+                className="jarvis-voice-phase"
+                data-phase={voicePhase}
+                aria-live="polite"
+                aria-label={`Voice ${VOICE_PHASE_LABELS[voicePhase]}`}
+              >
+                <span className="jarvis-voice-phase-dot" aria-hidden="true" />
+                {VOICE_PHASE_LABELS[voicePhase]}
+              </span>
+              <button
+                type="button"
+                className="jarvis-voice-mute"
+                data-muted={isMuted}
+                aria-pressed={isMuted}
+                onClick={isMuted ? unmute : hardMute}
+              >
+                {isMuted ? "Unmute" : "Mute"}
+              </button>
+            </div>
+          </div>
+
+          <div className="jarvis-voice-modes">
+            <label className="jarvis-voice-continuous">
+              <input
+                type="checkbox"
+                checked={isContinuousMode}
+                disabled={isMuted}
+                onChange={(event) => {
+                  const next = event.target.checked;
+                  setIsContinuousMode(next);
+                  isContinuousModeRef.current = next;
+                  if (next && !isRecordingCommand) {
+                    void startCommandRecording();
+                  }
+                }}
+              />
+              Continuous conversation
+            </label>
             <span className="jarvis-voice-status">{voiceStatus}</span>
           </div>
 

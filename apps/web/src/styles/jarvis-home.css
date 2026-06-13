@@ -514,3 +514,86 @@
   color: var(--text-secondary);
   font-size: 0.78rem;
 }
+
+/* ── Hands-free voice loop (Wave 8) ────────────────────── */
+.jarvis-voice-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.jarvis-voice-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.jarvis-voice-phase-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6a7080;
+  flex-shrink: 0;
+}
+.jarvis-voice-phase[data-phase="listening"] .jarvis-voice-phase-dot {
+  background: #4ec9b0;
+  box-shadow: 0 0 8px rgba(78, 201, 176, 0.7);
+  animation: jarvis-voice-pulse 1.2s ease-in-out infinite;
+}
+.jarvis-voice-phase[data-phase="thinking"] .jarvis-voice-phase-dot {
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold-glow);
+  animation: jarvis-voice-pulse 0.8s ease-in-out infinite;
+}
+.jarvis-voice-phase[data-phase="speaking"] .jarvis-voice-phase-dot {
+  background: #5aa9ff;
+  box-shadow: 0 0 8px rgba(90, 169, 255, 0.7);
+  animation: jarvis-voice-pulse 0.6s ease-in-out infinite;
+}
+.jarvis-voice-phase[data-phase="muted"] .jarvis-voice-phase-dot {
+  background: #e05555;
+}
+@keyframes jarvis-voice-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.jarvis-voice-mute {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+.jarvis-voice-mute[data-muted="true"] {
+  border-color: #e05555;
+  color: #e05555;
+}
+.jarvis-voice-modes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+.jarvis-voice-continuous {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
