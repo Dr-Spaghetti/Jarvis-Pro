@@ -64,6 +64,35 @@ const getDeepgramApiKey = (): string | null => {
   return value && value.length > 0 ? value : null;
 };
 const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-thalia-en";
+const getDeepgramSttModel = (): string => process.env.DEEPGRAM_STT_MODEL?.trim() || "nova-2";
+
+// Speech-to-text via Deepgram. Used as the primary transcriber because it has a
+// working account/credit; OpenAI Whisper is the fallback. Deepgram accepts the
+// raw recorder audio (webm/opus) directly with the matching Content-Type.
+const transcribeViaDeepgram = async (
+  apiKey: string,
+  audio: Buffer,
+  contentType: string,
+): Promise<{ ok: true; text: string } | { ok: false; status: number; detail: string }> => {
+  const url = `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(
+    getDeepgramSttModel(),
+  )}&smart_format=true&punctuate=true`;
+  const body = new ArrayBuffer(audio.byteLength);
+  new Uint8Array(body).set(audio);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Token ${apiKey}`, "Content-Type": contentType },
+    body,
+  });
+  if (!res.ok) {
+    return { ok: false, status: res.status, detail: (await res.text()).slice(0, 500) };
+  }
+  const data = (await res.json()) as {
+    results?: { channels?: { alternatives?: { transcript?: unknown }[] }[] };
+  };
+  const transcript = data.results?.channels?.[0]?.alternatives?.[0]?.transcript;
+  return { ok: true, text: typeof transcript === "string" ? transcript.trim() : "" };
+};
 
 const getPiperConfig = (): { bin: string; model: string } | null => {
   const bin = process.env.PIPER_BIN?.trim();
@@ -193,11 +222,12 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
         phrases: getJarvisWakePhrases(),
       },
       transcription: {
-        provider: "openai",
-        configured: getOpenAiApiKey() !== null,
-        defaultModel: getDefaultTranscriptionModel(),
+        // Deepgram is used first when configured; OpenAI Whisper is the fallback.
+        provider: getDeepgramApiKey() ? "deepgram" : "openai",
+        configured: getDeepgramApiKey() !== null || getOpenAiApiKey() !== null,
+        defaultModel: getDeepgramApiKey() ? getDeepgramSttModel() : getDefaultTranscriptionModel(),
         models: TRANSCRIPTION_MODELS,
-        whisperSupported: true,
+        whisperSupported: getOpenAiApiKey() !== null,
       },
       tts: {
         // `configured` = a server (non-browser) provider is available.
@@ -250,9 +280,15 @@ export const handleVoiceTranscribeRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const apiKey = getOpenAiApiKey();
-  if (!apiKey) {
-    writeJson(response, 400, { error: "OPENAI_API_KEY is not configured." }, corsOrigin);
+  const deepgramKey = getDeepgramApiKey();
+  const openAiKey = getOpenAiApiKey();
+  if (!deepgramKey && !openAiKey) {
+    writeJson(
+      response,
+      400,
+      { error: "No transcription provider configured (set DEEPGRAM_API_KEY or OPENAI_API_KEY)." },
+      corsOrigin,
+    );
     return true;
   }
 
@@ -279,6 +315,26 @@ export const handleVoiceTranscribeRoute: ApiRouteHandler = async ({
   }
 
   const contentType = sanitizeAudioContentType(request.headers["content-type"]);
+
+  // Deepgram is preferred (working credit); OpenAI Whisper is the fallback.
+  if (deepgramKey) {
+    const dg = await transcribeViaDeepgram(deepgramKey, audio, contentType);
+    if (dg.ok) {
+      writeJson(response, 200, { text: dg.text, model: getDeepgramSttModel() }, corsOrigin);
+      return true;
+    }
+    if (!openAiKey) {
+      writeJson(
+        response,
+        dg.status,
+        { error: "Transcription failed.", detail: dg.detail },
+        corsOrigin,
+      );
+      return true;
+    }
+    // Deepgram failed but an OpenAI key exists — fall through and try it.
+  }
+
   const audioArrayBuffer = new ArrayBuffer(audio.byteLength);
   new Uint8Array(audioArrayBuffer).set(audio);
   const formData = new FormData();
@@ -292,7 +348,7 @@ export const handleVoiceTranscribeRoute: ApiRouteHandler = async ({
   const upstreamResponse = await fetch(OPENAI_TRANSCRIPTIONS_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${openAiKey}`,
     },
     body: formData,
   });

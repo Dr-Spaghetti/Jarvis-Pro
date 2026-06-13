@@ -830,7 +830,7 @@ describe("createApiServer", () => {
             "gpt-4o-transcribe-diarize",
             "whisper-1",
           ],
-          whisperSupported: true,
+          whisperSupported: false,
         },
         tts: {
           configured: false,
@@ -844,8 +844,9 @@ describe("createApiServer", () => {
     }
   });
 
-  it("rejects voice transcription when OpenAI credentials are missing", async () => {
+  it("rejects voice transcription when no provider is configured", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("DEEPGRAM_API_KEY", "");
     const baseUrl = await startServer();
 
     try {
@@ -860,7 +861,7 @@ describe("createApiServer", () => {
 
       expect(response.status).toBe(400);
       await expect(response.json()).resolves.toEqual({
-        error: "OPENAI_API_KEY is not configured.",
+        error: "No transcription provider configured (set DEEPGRAM_API_KEY or OPENAI_API_KEY).",
       });
     } finally {
       vi.unstubAllEnvs();
