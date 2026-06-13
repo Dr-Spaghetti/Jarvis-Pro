@@ -151,6 +151,16 @@ type CreateApiRequestHandlerOptions = {
 //   carry an Authorization header; it is protected by its own OAuth state.
 const AUTH_EXEMPT_PATHS = new Set(["/api/auth/status", "/api/gmail/callback"]);
 
+// Normalize a single trailing slash before the exempt lookup so that
+// "/api/auth/status/" is treated the same as "/api/auth/status". Without this
+// the lookup fails closed (denies), which is safe but a future foot-gun if a
+// handler ever adds a trailing-slash route variant.
+const isAuthExemptPath = (pathname: string): boolean => {
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return AUTH_EXEMPT_PATHS.has(normalized);
+};
+
 const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ["auth", [handleAuthStatusRoute, handleAuthVerifyRoute]],
   [
@@ -356,6 +366,9 @@ export const createApiRequestHandler = ({
     try {
       const requestUrl = new URL(request.url ?? "/", "http://localhost");
 
+      // CORS preflight stays open by design: an OPTIONS request returns an
+      // identical empty 204 for every path regardless of auth, so it discloses
+      // nothing, and keeping it open preserves standard cross-origin behavior.
       if (request.method === "OPTIONS") {
         writeNoContent(response, 204, corsOrigin);
         logRequest(request.method ?? "OPTIONS", requestUrl.pathname, statusCode, startTime);
@@ -365,7 +378,7 @@ export const createApiRequestHandler = ({
       if (
         authToken !== null &&
         requestUrl.pathname.startsWith("/api/") &&
-        !AUTH_EXEMPT_PATHS.has(requestUrl.pathname) &&
+        !isAuthExemptPath(requestUrl.pathname) &&
         !isAuthorizedRequest(authToken, request, requestUrl)
       ) {
         writeJson(response, 401, { error: "Authentication required." }, corsOrigin);

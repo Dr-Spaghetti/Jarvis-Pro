@@ -2,6 +2,39 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Post-verification hardening (2026-06-13)
+
+Independent 3-reviewer audit of all waves (security / data-honesty / connector
+alignment). Data-honesty: spotless. Security: fundamentally sound. Two minor items
+applied, one reviewer finding deliberately NOT applied.
+
+### Applied
+1. **Trailing-slash normalization on the auth exempt-path check**
+   (`requestHandler.ts` `isAuthExemptPath`). `/api/auth/status/` now normalizes to
+   the exempt path instead of failing closed. Was already safe (denied), so this is
+   pure future-proofing against a trailing-slash route variant. Test added.
+2. **Token-visibility note in `docs/remote-access.md`.** `?token=` rides in WS /
+   download URLs (browsers can't header them) and can land in Cloudflare / browser
+   logs — documented the rotate-on-leak guidance.
+
+### Considered and rejected (with reason)
+- **"Gate OPTIONS behind auth" (reviewer graded HIGH).** Rejected as overstated:
+  an OPTIONS request returns an identical empty `204` for every path regardless of
+  auth, so it discloses nothing (no route enumeration). An explicit existing test
+  (`createApiServer.test.ts` "answers OPTIONS preflight without a token") encodes the
+  intentional decision to keep CORS preflight open. Gating it would trade real
+  CORS-correctness for closing a non-leak. **Lesson: a reviewer's severity label is a
+  hypothesis — verify the actual disclosure before acting; don't break intentional,
+  tested behavior to satisfy an overstated finding.**
+
+### Known limitation confirmed (not a bug)
+- Apollo / Local Falcon **home tiles** gate on `.env` keys (`APOLLO_API_KEY`,
+  `LOCALFALCON_API_KEY`) the user doesn't have — they use those services via MCP
+  connectors instead. Tiles correctly show "not configured"; the **skills**
+  (local-falcon-seo, lead-prospecting, review-repair-outreach) work fully via MCP.
+  Lighting up the tiles would need either `.env` keys or an MCP-backed tile rewrite
+  (scoped as future work, not done).
+
 ## Wave 1 — Recent Agents command center + global UX polish (2026-06-10)
 
 Scope reviewed: commits `9aca49c..82095e8` (core deck fields, opened/pinned API,

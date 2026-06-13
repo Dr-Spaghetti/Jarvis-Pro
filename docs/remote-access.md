@@ -13,6 +13,14 @@ and use the full HUD from anywhere.
 - The tunnel is outbound-only — no ports are opened on your router.
 - Never share the token. Anyone with it can run agents on your PC.
 
+> ⚠️ **Token visibility in URLs.** Browsers can't attach a header to WebSocket
+> connections or file-download links, so for those the token rides in the URL
+> as `?token=…`. That means it can show up in Cloudflare's request logs and in
+> your browser history. This is normal and acceptable for a single-user tunnel,
+> but it's why you should use a **unique** token here and **rotate it
+> immediately** (change `OCTOGENT_AUTH_TOKEN` in `.env`, restart Jarvis) if a
+> log or screen recording containing one of these URLs is ever shared.
+
 Total setup time: about 20 minutes, one time only.
 
 ---

@@ -562,6 +562,16 @@ describe("createApiServer", () => {
       expect(preflightResponse.status).toBe(204);
     });
 
+    it("treats an exempt path with a trailing slash as exempt (not a 401)", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      // "/api/auth/status/" normalizes to the exempt "/api/auth/status", so the
+      // gate must not reject it with 401 (it 404s — no exact handler match —
+      // which still proves the trailing slash was treated as exempt).
+      const slashResponse = await fetch(`${baseUrl}/api/auth/status/`);
+      expect(slashResponse.status).not.toBe(401);
+    });
+
     it("serves the static web bundle without a token so the token prompt can load", async () => {
       const webDistDir = mkdtempSync(join(tmpdir(), "octogent-webdist-test-"));
       temporaryDirectories.push(webDistDir);
