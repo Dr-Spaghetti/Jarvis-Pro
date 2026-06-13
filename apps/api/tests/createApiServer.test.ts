@@ -4034,6 +4034,55 @@ describe("createApiServer", () => {
     expect(res.status).toBe(405);
   });
 
+  it("POST /api/skills/run returns 403 with requiresConfirmation for sensitive skills", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    const skillDir = join(workspaceCwd, ".claude", "skills", "outreach-skill");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      "---\nname: Outreach Skill\nsensitive: true\n---\n\nSend outreach emails.\n",
+      "utf8",
+    );
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: "outreach skill" }),
+    });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { requiresConfirmation: boolean; skillName: string };
+    expect(body.requiresConfirmation).toBe(true);
+    expect(body.skillName).toBe("Outreach Skill");
+  });
+
+  it("POST /api/skills/run runs sensitive skill when confirmed: true is passed", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    const skillDir = join(workspaceCwd, ".claude", "skills", "outreach-skill");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      "---\nname: Outreach Skill\nsensitive: true\n---\n\nSend outreach emails.\n",
+      "utf8",
+    );
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: "outreach skill", confirmed: true }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { terminalId: string; skillName: string };
+    expect(body.skillName).toBe("Outreach Skill");
+  });
+
   it("POST /api/skills/run launches a terminal when skill is found", async () => {
     const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
     temporaryDirectories.push(workspaceCwd);

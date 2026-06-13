@@ -79,7 +79,7 @@ const parseFrontMatterFields = (frontMatter: string): Record<string, string> => 
 
 export const readSkillMetadata = (
   skillFilePath: string,
-): { name: string; description: string; title: string | null } => {
+): { name: string; description: string; title: string | null; sensitive: boolean } => {
   const fallbackName =
     basename(skillFilePath, ".md") === "SKILL"
       ? basename(dirname(skillFilePath))
@@ -90,17 +90,20 @@ export const readSkillMetadata = (
     const fields = frontMatterMatch ? parseFrontMatterFields(frontMatterMatch[1] ?? "") : {};
     const name = fields.name && fields.name.length > 0 ? fields.name : null;
     const description = fields.description ?? "";
+    const sensitive = fields.sensitive === "true";
 
     const title = content.match(H1_PATTERN)?.[1]?.trim() ?? null;
     return {
       name: name ?? title ?? fallbackName,
       description,
+      sensitive,
       title,
     };
   } catch {
     return {
       name: fallbackName,
       description: "",
+      sensitive: false,
       title: null,
     };
   }

@@ -1035,6 +1035,41 @@
   padding-bottom: 0.3rem;
 }
 
+/* ─── Skill run approval gate ────────────────────────────────────────────── */
+
+.deck-skill-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(250, 163, 44, 0.06);
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  margin: 0 0 0.75rem;
+  flex-wrap: wrap;
+}
+
+.deck-skill-confirm-msg {
+  flex: 1;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin: 0;
+  min-width: 0;
+}
+
+.deck-skill-confirm-msg strong {
+  color: var(--accent-primary);
+  font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+}
+
+.deck-skill-confirm-actions {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+
 /* ─── Progress bar ────────────────────────────────────────────────────────── */
 
 .deck-pod-progress {

@@ -88,5 +88,15 @@ describe("resolveJarvisVoiceIntent", () => {
       const { intent } = resolveJarvisVoiceIntent("what skill should I run");
       expect(intent.type).toBe("ask");
     });
+
+    it("does not treat 'run the skill' (no name) as run-skill", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis run the skill");
+      expect(intent.type).not.toBe("run-skill");
+    });
+
+    it("does not treat 'run skills' as run-skill", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis run skills");
+      expect(intent.type).not.toBe("run-skill");
+    });
   });
 });

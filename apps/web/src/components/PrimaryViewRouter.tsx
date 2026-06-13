@@ -57,7 +57,7 @@ export const PrimaryViewRouter = ({
   }
 
   if (activePrimaryNav === 2) {
-    return <DeckPrimaryView {...deckPrimaryViewProps} />;
+    return <DeckPrimaryView {...deckPrimaryViewProps} onNavigate={onPrimaryNavChange} />;
   }
 
   if (activePrimaryNav === 3) {

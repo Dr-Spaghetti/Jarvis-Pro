@@ -9,7 +9,7 @@ import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./ro
 const normalizeSkillName = (name: string): string =>
   name.toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
 
-type SkillEntry = { name: string; filePath: string };
+type SkillEntry = { name: string; filePath: string; sensitive: boolean };
 
 const buildSkillFileList = (workspaceCwd: string): SkillEntry[] => {
   const results: SkillEntry[] = [];
@@ -17,9 +17,9 @@ const buildSkillFileList = (workspaceCwd: string): SkillEntry[] => {
   // Project skills (.claude/skills/) take priority.
   const projectRoot = join(workspaceCwd, ".claude", "skills");
   for (const filePath of listSkillDefinitionFiles(projectRoot)) {
-    const { name } = readSkillMetadata(filePath);
+    const { name, sensitive } = readSkillMetadata(filePath);
     if (name.trim().length > 0) {
-      results.push({ name: name.trim(), filePath });
+      results.push({ name: name.trim(), filePath, sensitive });
     }
   }
 
@@ -29,11 +29,11 @@ const buildSkillFileList = (workspaceCwd: string): SkillEntry[] => {
   const catalogDir = resolveSkillsCatalogDir();
   if (catalogDir) {
     for (const filePath of listSkillDefinitionFiles(catalogDir)) {
-      const { name } = readSkillMetadata(filePath);
+      const { name, sensitive } = readSkillMetadata(filePath);
       const normalized = normalizeSkillName(name);
       if (name.trim().length > 0 && !seenNames.has(normalized)) {
         seenNames.add(normalized);
-        results.push({ name: name.trim(), filePath });
+        results.push({ name: name.trim(), filePath, sensitive });
       }
     }
   }
@@ -93,12 +93,18 @@ export const handleSkillsRunRoute: ApiRouteHandler = async (
     writeJson(response, 400, { error: "skillName is required" }, corsOrigin);
     return true;
   }
+  const confirmed = body?.confirmed === true;
 
   const skills = buildSkillFileList(workspaceCwd);
   const matched = fuzzyFindSkill(spokenName, skills);
 
   if (!matched) {
     writeJson(response, 404, { error: `Skill not found: "${spokenName}"` }, corsOrigin);
+    return true;
+  }
+
+  if (matched.sensitive && !confirmed) {
+    writeJson(response, 403, { requiresConfirmation: true, skillName: matched.name }, corsOrigin);
     return true;
   }
 

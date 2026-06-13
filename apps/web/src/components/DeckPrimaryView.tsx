@@ -7,6 +7,7 @@ import type {
   WorkspaceSetupSnapshot,
   WorkspaceSetupStepId,
 } from "@octogent/core";
+import type { PrimaryNavIndex } from "../app/constants";
 import { useClickOutside } from "../app/hooks/useClickOutside";
 import type { TerminalAgentProvider } from "../app/types";
 import {
@@ -74,6 +75,7 @@ type EmptyViewMode = "idle" | "adding";
 
 type DeckPrimaryViewProps = {
   onSidebarContent?: ((content: ReactNode) => void) | undefined;
+  onNavigate?: ((index: PrimaryNavIndex) => void) | undefined;
   workspaceSetup: WorkspaceSetupSnapshot | null;
   isWorkspaceSetupLoading: boolean;
   workspaceSetupError: string | null;
@@ -86,6 +88,7 @@ type DeckPrimaryViewProps = {
 
 export const DeckPrimaryView = ({
   onSidebarContent,
+  onNavigate,
   workspaceSetup,
   isWorkspaceSetupLoading,
   workspaceSetupError,
@@ -107,6 +110,7 @@ export const DeckPrimaryView = ({
   const [createError, setCreateError] = useState<string | null>(null);
   const [availableSkills, setAvailableSkills] = useState<DeckAvailableSkill[]>([]);
   const [savingTentacleSkillsId, setSavingTentacleSkillsId] = useState<string | null>(null);
+  const [pendingRunSkill, setPendingRunSkill] = useState<string | null>(null);
 
   const [selectedAgent, setSelectedAgent] = useState<TerminalAgentProvider>("claude-code");
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
@@ -412,24 +416,35 @@ export const DeckPrimaryView = ({
   );
 
   const handleRunSkill = useCallback(
-    async (skillName: string) => {
+    async (skillName: string, confirmed?: boolean) => {
       try {
         const res = await apiFetch(buildSkillsRunUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ skillName }),
+          body: JSON.stringify(confirmed ? { skillName, confirmed: true } : { skillName }),
         });
+        if (res.status === 403) {
+          const data = (await res.json().catch(() => null)) as {
+            requiresConfirmation?: boolean;
+            skillName?: string;
+          } | null;
+          if (data?.requiresConfirmation) {
+            setPendingRunSkill(data.skillName ?? skillName);
+            return;
+          }
+        }
         if (!res.ok) {
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
           showToast(data?.error ?? `Could not run skill: ${skillName}`, "error");
           return;
         }
+        onNavigate?.(1);
         showToast(`Running ${skillName}`, "ok");
       } catch {
         showToast(`Could not run skill: ${skillName}`, "error");
       }
     },
-    [showToast],
+    [showToast, onNavigate],
   );
 
   const handleTogglePin = useCallback(
@@ -638,6 +653,34 @@ export const DeckPrimaryView = ({
         sortMode={deckSortMode}
         onSortModeChange={onDeckSortModeChange ?? (() => {})}
       />
+
+      {pendingRunSkill && (
+        <div className="deck-skill-confirm" role="alertdialog" aria-label="Approval required">
+          <p className="deck-skill-confirm-msg">
+            Run <strong>{pendingRunSkill}</strong>? This skill may send emails or outreach.
+          </p>
+          <div className="deck-skill-confirm-actions">
+            <button
+              type="button"
+              className="deck-pod-btn"
+              onClick={() => {
+                const name = pendingRunSkill;
+                setPendingRunSkill(null);
+                void handleRunSkill(name, true);
+              }}
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              className="deck-pod-btn deck-pod-btn--secondary"
+              onClick={() => setPendingRunSkill(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="deck-pods-container">
         {tentacles.map((t) => {
