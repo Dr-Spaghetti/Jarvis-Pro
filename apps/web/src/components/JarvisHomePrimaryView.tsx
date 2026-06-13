@@ -460,6 +460,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 };
                 audio.addEventListener("ended", cleanup, { once: true });
                 audio.addEventListener("error", cleanup, { once: true });
+                // A hard mute pauses the element; resolve so the loop/await
+                // never hangs waiting for an "ended" that won't come.
+                audio.addEventListener("pause", cleanup, { once: true });
                 audio.play().catch(cleanup);
               });
               return;
