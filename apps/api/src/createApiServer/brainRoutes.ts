@@ -845,6 +845,164 @@ export const handleBrainDigestRoute: ApiRouteHandler = async ({
   return true;
 };
 
+// ── Claude-powered ask (fast path, with optional web search) ────────────────
+
+const getAnthropicApiKey = (): string | null => {
+  const v = process.env.ANTHROPIC_API_KEY?.trim();
+  return v && v.length > 0 ? v : null;
+};
+
+const getBraveSearchApiKey = (): string | null => {
+  const v = process.env.BRAVE_SEARCH_API_KEY?.trim();
+  return v && v.length > 0 ? v : null;
+};
+
+const getTavilyApiKey = (): string | null => {
+  const v = process.env.TAVILY_API_KEY?.trim();
+  return v && v.length > 0 ? v : null;
+};
+
+const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
+
+type WebSnippet = { title: string; url: string; snippet: string };
+
+const searchWeb = async (query: string): Promise<WebSnippet[]> => {
+  const braveKey = getBraveSearchApiKey();
+  if (braveKey) {
+    try {
+      const res = await fetch(
+        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+        {
+          headers: {
+            Accept: "application/json",
+            "Accept-Encoding": "gzip",
+            Authorization: `Bearer ${braveKey}`,
+          },
+        },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as {
+          web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
+        };
+        return (data.web?.results ?? []).slice(0, 5).map((r) => ({
+          title: r.title ?? "",
+          url: r.url ?? "",
+          snippet: r.description ?? "",
+        }));
+      }
+    } catch {
+      // fall through to Tavily
+    }
+  }
+  const tavilyKey = getTavilyApiKey();
+  if (tavilyKey) {
+    try {
+      const res = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: tavilyKey, query, max_results: 5 }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          results?: Array<{ title?: string; url?: string; content?: string }>;
+        };
+        return (data.results ?? []).slice(0, 5).map((r) => ({
+          title: r.title ?? "",
+          url: r.url ?? "",
+          snippet: r.content ?? "",
+        }));
+      }
+    } catch {
+      // no search available
+    }
+  }
+  return [];
+};
+
+type AnthrContent =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+  | { type: "tool_result"; tool_use_id: string; content: string };
+
+type AnthrMessage = { role: "user" | "assistant"; content: string | AnthrContent[] };
+type AnthrResponse = { stop_reason: string; content: AnthrContent[] };
+
+const JARVIS_VOICE_SYSTEM =
+  "You are Jarvis, Nick's sharp personal AI. Be concise and conversational — like a " +
+  "knowledgeable friend, not a formal assistant. One or two sentences for voice answers; " +
+  "never use bullet points or headers. If you call web_search, weave the result naturally " +
+  "into your answer. Never say you cannot access real-time data — use web_search instead.";
+
+const askViaClaude = async (question: string, context: string): Promise<string | null> => {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) return null;
+
+  const hasSearch = Boolean(getBraveSearchApiKey() || getTavilyApiKey());
+  const tools = hasSearch
+    ? [
+        {
+          name: "web_search",
+          description:
+            "Search the web for current info: weather, news, stock prices, sports scores, event times. Use whenever the question needs up-to-date data.",
+          input_schema: {
+            type: "object",
+            properties: { query: { type: "string", description: "A focused search query" } },
+            required: ["query"],
+          },
+        },
+      ]
+    : undefined;
+
+  const messages: AnthrMessage[] = [
+    { role: "user", content: `${context}\n\nQuestion: ${question}` },
+  ];
+
+  for (let turn = 0; turn < 3; turn += 1) {
+    const body: Record<string, unknown> = {
+      model: CLAUDE_VOICE_MODEL,
+      max_tokens: 512,
+      system: JARVIS_VOICE_SYSTEM,
+      messages,
+    };
+    if (tools) body.tools = tools;
+
+    const fetchRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }).catch(() => null);
+
+    if (!fetchRes || !fetchRes.ok) return null;
+    const response = (await fetchRes.json()) as AnthrResponse;
+
+    if (response.stop_reason !== "tool_use") {
+      const textBlock = response.content.find((b) => b.type === "text");
+      return textBlock && textBlock.type === "text" ? textBlock.text : null;
+    }
+
+    messages.push({ role: "assistant", content: response.content });
+    const toolResults: AnthrContent[] = [];
+    for (const block of response.content) {
+      if (block.type !== "tool_use" || block.name !== "web_search") continue;
+      const query = typeof block.input.query === "string" ? block.input.query : question;
+      const hits = await searchWeb(query);
+      const resultText =
+        hits.length > 0
+          ? hits.map((h) => `${h.title}\n${h.url}\n${h.snippet}`).join("\n\n")
+          : "No results found.";
+      toolResults.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
+    }
+    if (toolResults.length === 0) break;
+    messages.push({ role: "user", content: toolResults });
+  }
+
+  return null;
+};
+
 // ── Ask Jarvis: local RAG over the brain (free, via Ollama chat) ────────────
 const readMemoryFacts = (vaultDir: string, limit: number): string[] => {
   const file = join(vaultDir, MEMORY_PATH);
@@ -942,16 +1100,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
     writeMethodNotAllowed(response, corsOrigin);
     return true;
   }
-  const vaultDir = resolveVaultDir();
-  if (!vaultDir) {
-    writeJson(
-      response,
-      400,
-      { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." },
-      corsOrigin,
-    );
-    return true;
-  }
+
   const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
   if (!body.ok) return true;
   const payload = asRecord(body.payload);
@@ -963,17 +1112,41 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
   const model =
     typeof payload.model === "string" && payload.model.trim() ? payload.model.trim() : undefined;
 
-  const notes = await retrieveContext(vaultDir, question, 6);
-  const facts = readMemoryFacts(vaultDir, 20);
+  const vaultDir = resolveVaultDir();
+  const notes = vaultDir ? await retrieveContext(vaultDir, question, 6) : [];
+  const facts = vaultDir ? readMemoryFacts(vaultDir, 20) : [];
   const sources = notes.map((note) => ({ title: note.title, path: note.rel }));
 
-  const memoryBlock = facts.length > 0 ? facts.map((fact) => `- ${fact}`).join("\n") : "(none)";
+  const memoryBlock = facts.length > 0 ? facts.map((f) => `- ${f}`).join("\n") : "(none)";
   const contextBlock =
     notes.length > 0
-      ? notes.map((note) => `### ${note.title} (${note.rel})\n${note.body}`).join("\n\n")
+      ? notes.map((n) => `### ${n.title} (${n.rel})\n${n.body}`).join("\n\n")
       : "(no matching notes)";
-  const prompt = `MEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
 
+  // Fast path: Claude Haiku with optional web search for real-time data.
+  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
+  const claudeAnswer = await askViaClaude(question, claudeContext);
+  if (claudeAnswer) {
+    writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
+    return true;
+  }
+
+  // Slow path: local Ollama (requires vault).
+  if (!vaultDir) {
+    writeJson(
+      response,
+      400,
+      {
+        available: false,
+        error: "No AI provider configured.",
+        hint: "Set ANTHROPIC_API_KEY for instant answers, or set OBSIDIAN_VAULT_PATH and run Ollama.",
+      },
+      corsOrigin,
+    );
+    return true;
+  }
+
+  const prompt = `MEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
   const answer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
     ...(model ? { model } : {}),
@@ -985,7 +1158,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       {
         available: false,
         reason: "no-chat-model",
-        hint: "Start Ollama and pull a chat model (e.g. `ollama pull qwen2.5:7b`), or set OLLAMA_CHAT_MODEL.",
+        hint: "Set ANTHROPIC_API_KEY for instant answers, or pull an Ollama chat model: `ollama pull qwen2.5:7b`",
         sources,
       },
       corsOrigin,

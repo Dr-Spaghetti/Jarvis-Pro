@@ -702,16 +702,27 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       if (intent.type === "ask") {
         setVoiceStatus("Thinking");
         setIsThinking(true);
+        // Detect queries that need real-time lookup so we can say the right thing.
+        const REALTIME_RE =
+          /\b(weather|temp(erature)?|forecast|today|tonight|current(ly)?|right now|latest|live|news|score|game|price|stock|crypto|what time|open now|happening)\b/i;
+        const ackText = REALTIME_RE.test(intent.question)
+          ? "One sec, let me look that up."
+          : "Let me think about that.";
         try {
-          const res = await apiFetch(buildBrainAskUrl(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(
-              chatModelRef.current
-                ? { question: intent.question, model: chatModelRef.current }
-                : { question: intent.question },
-            ),
-          });
+          // Fire the acknowledgment and the API call in parallel. The user hears
+          // something instantly; the answer starts speaking right after the ack finishes.
+          const [, res] = await Promise.all([
+            speakJarvis(ackText).catch(() => {}),
+            apiFetch(buildBrainAskUrl(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(
+                chatModelRef.current
+                  ? { question: intent.question, model: chatModelRef.current }
+                  : { question: intent.question },
+              ),
+            }),
+          ]);
           if (!res.ok) {
             setVoiceError("Ask failed");
             setIsThinking(false);
@@ -730,11 +741,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             await speakJarvis(data.answer);
           } else {
             setAskNote(
-              data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
+              data.hint ??
+                "Set ANTHROPIC_API_KEY for instant answers, or run Ollama with a chat model.",
             );
             setVoiceStatus("No answer model");
             setIsThinking(false);
-            await speakJarvis("I don't have a local answer model running right now.");
           }
         } catch {
           setVoiceError("Ask failed");
