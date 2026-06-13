@@ -226,3 +226,47 @@ Adversarial review of the wave diff. **No critical or real findings.**
   into `computeBrainDigest()` (returning the payload) let the route shrink to a
   one-liner and gave the scheduler an honest, identical data source — no
   HTTP-self-call, no duplicated scan logic.
+
+---
+
+## Wave 6 — Live home tiles — commit 1a1a812
+
+Adversarial review of the wave diff. **No critical or real findings.**
+
+### What held up
+- **No fabricated data, ever.** Every tile carries an explicit `status`. Only
+  `ok` tiles render a `value`; `not-configured` and `error` tiles render their
+  status text and carry `value: null` (asserted in tests). A vault with zero
+  tasks honestly shows `0`, distinct from an unconfigured vault showing
+  "Not configured".
+- **Gmail token freshness.** The unread tile never reuses the stored
+  `GMAIL_ACCESS_TOKEN` (expires ~hourly) — `fetchGmailUnreadCount` always calls
+  `refreshAccessToken()` to mint a fresh one from the refresh token, and reports
+  an honest `error` tile if the refresh or API call fails.
+- **Phase B is genuinely key-gated.** Apollo / Local Falcon tiles read their key
+  from `.env`; absent (the current reality) → "not configured"; present → a real
+  health call decides ok/error. No invented pipeline counts. QuickBooks is
+  deferred with a code comment, per the plan.
+- **Failure isolation + bounded cost.** The three async tiles run under
+  `Promise.all`, each catching its own errors, so one slow/broken provider can't
+  break the others. With no external keys set, the route makes zero network
+  calls; the panel fetches once on mount (no polling), so Gmail's 2-call refresh
+  only happens on explicit load/refresh.
+- **Auth + robustness.** `/api/tiles` is under `/api/` and not exempt →
+  token-protected. The client guards a malformed payload (`Array.isArray`) so a
+  non-conforming response renders an empty grid, never a `.map` crash (tested).
+
+### Follow-up (honest boundary, not a defect)
+- The Apollo (`/v1/auth/health`) and Local Falcon (`/v1/whoami`) endpoints are
+  best-effort from public docs and **could not be verified** (no keys available
+  to test). With a valid key, a wrong endpoint surfaces as an honest "error"
+  tile — never fake data — but the exact health endpoint should be confirmed
+  when Nick adds a key. Logged here so it isn't mistaken for verified.
+
+### Lessons
+- **A new self-contained panel that fetches on mount can break sibling view
+  tests via the catch-all mock.** `JarvisHomePrimaryView.test.tsx` returns
+  `jsonResponse({})` for unmatched URLs, so `/api/tiles` resolved to `{}` and
+  `data.tiles` was `undefined`. The fix is defensive parsing in the component
+  (`Array.isArray(data.tiles) ? … : []`) — good practice regardless, and it
+  kept the existing test green without modifying it.
