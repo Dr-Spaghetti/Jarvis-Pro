@@ -182,3 +182,47 @@ Adversarial review of the wave diff. **No critical or real findings.**
   threading** through `PrimaryViewRouter`/`App` — `JournalTimeline` was the
   template for both `AgentAnalyticsPanel` and `AgentAlertsPanel`. Keeps wave
   increments small and the view router untouched.
+
+---
+
+## Wave 5 — Proactive morning briefs — commit fab3e5d
+
+Adversarial review of the wave diff. **No critical or real findings.**
+
+### What held up
+- **Deterministic, no agent.** The brief is rendered from `computeBrainDigest()`
+  (pure vault filesystem read) — the same function the GET digest route now uses
+  after the refactor. No Claude process is ever spawned; UI copy says so.
+- **Idempotent three ways.** A brief is written at most once per date because:
+  (1) the note filename is date-stamped, (2) an existing note file is never
+  overwritten (and the run records the date so checks stop), and (3)
+  `config.lastBriefDate === today` short-circuits `shouldWriteBrief`. Tested.
+- **Missed days are never back-filled.** `shouldWriteBrief` only ever considers
+  the current date — a machine that was off all day yesterday gets today's brief
+  once it passes the configured time, not a backlog. Matches the spec.
+- **Lifecycle-safe.** The scheduler starts on `listen` and stops on `stop()`;
+  the interval is `unref()`'d so it never keeps the process alive on its own.
+  With the default (disabled) config the per-minute tick is a cheap file read.
+- **Auth intact.** `/api/brief/config` is under `/api/` and not exempt →
+  protected when a token is set. PATCH validates the `HH:MM` time and the
+  boolean `enabled`; the running scheduler re-reads config each tick so a config
+  change takes effect without a restart.
+
+### Nit (logged, not fixed)
+- The startup catch-up tick runs synchronously inside `start()`. It only does
+  real work when a brief is genuinely due (enabled + past time + vault present),
+  and the vault scan is bounded by `MAX_FILES_SCANNED`, so worst case is one
+  bounded synchronous scan before `listen` resolves. Acceptable; revisit with a
+  `setTimeout(0)` deferral if a very large vault ever makes startup feel slow.
+
+### Lessons
+- **Embedding a self-contained, toast-using panel into a presentational view
+  breaks that view's existing bare-render tests.** `MorningBriefPanel` uses
+  `useToasts()` + fetches on mount, so `gmailSettings.test.tsx` (which rendered
+  `SettingsPrimaryView` directly) had to be wrapped in `ToastProvider` and given
+  a `fetch` stub. When adding a stateful child to a previously-pure component,
+  grep its test files for bare `render(<Component …>)` and wrap them.
+- **Refactor-extract before adding a second caller.** Pulling the digest body
+  into `computeBrainDigest()` (returning the payload) let the route shrink to a
+  one-liner and gave the scheduler an honest, identical data source — no
+  HTTP-self-call, no duplicated scan logic.
