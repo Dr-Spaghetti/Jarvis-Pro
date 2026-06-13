@@ -72,3 +72,61 @@ endpoint builders, RecentAgentsPanel, "?" shortcuts overlay, tooltips/toasts/Pan
   canvas) — integration tests must click the right tab.
 - Row buttons containing multiple spans have a concatenated accessible name; query rows
   by visible text (`getByText`) instead of `getByRole("button", { name })`.
+
+---
+
+## Wave 7 — Phone/remote access (bearer-token auth) — commits 753a382..7f8515f
+
+Adversarial review of the wave diff. Hunted for auth bypasses, header-less
+callers, fake UI, and migration regressions. **No critical or real findings** —
+fixes were applied during the build (live-smoke-tested), leaving only nits.
+
+### What held up under attack
+- **No parser-differential bypass.** The auth gate and the route dispatcher both
+  read the *same* `requestUrl.pathname` from one `new URL(request.url, base)`.
+  `/api/../x`, `//api/x`, and trailing-slash tricks all normalize identically for
+  the gate and the router, and the gate fails closed (`startsWith("/api/")` +
+  exempt-set is case-sensitive, so any casing trick that dodges the gate also
+  fails to route → static/404, never an authed handler).
+- **Every header-less channel carries `?token=`:** both `new WebSocket` sites,
+  the settings-export `<a download>`. Audio playback uses a blob from an
+  `apiFetch` response, not a direct URL. Gmail "Connect" does an `apiFetch` then
+  `window.open`s the *Google* URL; the only header-less `/api/` navigation is
+  `/api/gmail/callback`, which is correctly in `AUTH_EXEMPT_PATHS` (Google's
+  redirect can't carry a header; protected by OAuth state instead).
+- **Token never reaches app logs:** `logRequest` logs `pathname` only, never the
+  query string.
+- **AuthGate gates the whole app:** `<App/>` doesn't mount until `gateState ===
+  "ready"`, so no storm of 401s fires on load — only the gate's own exempt
+  `status` + `verify` calls run pre-auth.
+
+### Nits (logged, not fixed — inherent / cosmetic)
+- **N1 — query-param token visibility.** `?token=` on WS upgrades and the export
+  link can land in upstream proxy/CDN access logs and browser history. Inherent
+  to header-less channels; acceptable because it's the user's own token on their
+  own infra. If ever exposed to shared infra, rotate to short-lived signed URLs.
+- **N2 — redundant prompt trigger.** On a stale stored token, the initial
+  `verify` 401 both fires `apiFetch`'s unauthorized listener *and* the explicit
+  `clearStoredAuthToken()/setGateState("prompt")` path. Converges to the same
+  prompt; harmless.
+
+### Lessons
+- **`build-package.mjs` does NOT rebuild the API bundle** — it only copies
+  `prompts`, `skills-catalog`, and the web `dist` into `dist/`. The API is bundled
+  separately by `vite build --config vite.api.bundle.config.mts` (wired into the
+  `build` npm script). A green test/lint/web-build gate can still ship a **stale
+  `dist/api`** to `node bin/octogent`. For any API-route change, run the API
+  bundle step before functional smoke, or the running server won't have the new
+  routes (cost us a confusing "route returns index.html" moment).
+- **Bearer-via-env-expansion in hooks is auth-state-safe.** Curl hooks send
+  `Authorization: Bearer $OCTOGENT_AUTH_TOKEN`; when auth is off the var expands
+  empty and the server ignores it (`authToken === null` short-circuit); when on,
+  `.env` → `process.env` → forwarded to the PTY, so it expands correctly. http
+  hooks must also list the var in `allowedEnvVars`.
+- **Re-running the server reinstalls hooks** — the merge now prunes prior
+  octogent-owned entries (matched by `/api/hooks/` or `/api/code-intel/events` in
+  the serialized entry) before re-adding, so a port/token change no longer
+  accumulates duplicate hooks. User-authored hooks to other URLs are preserved.
+- **A central `apiFetch` + a Biome `noRestrictedGlobals: ["fetch"]` override on
+  `apps/web/src/**` is the durable guard** against a future raw-`fetch` call site
+  silently skipping auth. The lint gate now enforces it.
