@@ -195,7 +195,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [isWakeArmed, setIsWakeArmed] = useState(false);
   const [isRecordingCommand, setIsRecordingCommand] = useState(false);
   const [lastVoiceTranscript, setLastVoiceTranscript] = useState("");
-  const [isContinuousMode, setIsContinuousMode] = useState(false);
+  // Persistent hands-free mode: one click starts it, then Jarvis keeps listening
+  // for the wake word, answers, and goes back to listening — no more clicking.
+  const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -206,9 +208,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const recordingTimerRef = useRef<number | null>(null);
   // Live mirrors of loop state so async callbacks read current values, not
   // stale closures. Plus a handle on in-flight audio for hard mute.
-  const isContinuousModeRef = useRef(false);
+  const isListeningRef = useRef(false);
+  const isRecordingCommandRef = useRef(false);
   const isMutedRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const startWakeListeningRef = useRef<(() => void) | null>(null);
   const startCommandRecordingRef = useRef<(() => void) | null>(null);
   const speakJarvisRef = useRef<((text: string) => Promise<void>) | null>(null);
 
@@ -315,11 +319,14 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   }, []);
 
   useEffect(() => {
-    isContinuousModeRef.current = isContinuousMode;
-  }, [isContinuousMode]);
+    isListeningRef.current = isListening;
+  }, [isListening]);
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+  useEffect(() => {
+    isRecordingCommandRef.current = isRecordingCommand;
+  }, [isRecordingCommand]);
 
   useEffect(() => {
     return () => {
@@ -411,9 +418,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       if (data.available && typeof data.answer === "string") {
         setAnswer(data.answer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
-        // Auto-speak the answer when running hands-free (continuous mode), so
-        // the user doesn't have to click. Never speaks while muted.
-        if (isContinuousModeRef.current && !isMutedRef.current) {
+        // Auto-speak the answer when running hands-free, so the user doesn't
+        // have to click. Never speaks while muted.
+        if (isListeningRef.current && !isMutedRef.current) {
           void speakJarvisRef.current?.(data.answer);
         }
       } else {
@@ -516,6 +523,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
+    isRecordingCommandRef.current = false;
     setIsWakeArmed(false);
     setIsRecordingCommand(false);
     setIsThinking(false);
@@ -525,8 +533,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const hardMute = useCallback(() => {
     setIsMuted(true);
     isMutedRef.current = true;
-    setIsContinuousMode(false);
-    isContinuousModeRef.current = false;
+    setIsListening(false);
+    isListeningRef.current = false;
     stopAllVoiceActivity();
     setVoiceStatus("Muted");
   }, [stopAllVoiceActivity]);
@@ -537,15 +545,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     setVoiceStatus("Voice idle");
   }, []);
 
-  // After a command fully resolves, re-arm the mic for the next one when
-  // continuous mode is on, not muted, and the tab is visible.
+  // After a command fully resolves, go back to listening for the wake word so
+  // the next request needs no click. Only while hands-free, not muted, visible.
   const maybeContinueLoop = useCallback(() => {
-    if (
-      isContinuousModeRef.current &&
-      !isMutedRef.current &&
-      document.visibilityState === "visible"
-    ) {
-      startCommandRecordingRef.current?.();
+    if (isListeningRef.current && !isMutedRef.current && document.visibilityState === "visible") {
+      startWakeListeningRef.current?.();
     }
   }, []);
 
@@ -739,6 +743,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       }
     });
     recorder.addEventListener("stop", () => {
+      isRecordingCommandRef.current = false;
       setIsRecordingCommand(false);
       for (const track of stream.getTracks()) {
         track.stop();
@@ -749,6 +754,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       });
       void transcribeCommandAudio(audio);
     });
+    isRecordingCommandRef.current = true;
     setIsRecordingCommand(true);
     recorder.start();
     recordingTimerRef.current = window.setTimeout(() => {
@@ -768,8 +774,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   // so the mic is never left listening in the background.
   useEffect(() => {
     const stopLoop = () => {
-      setIsContinuousMode(false);
-      isContinuousModeRef.current = false;
+      setIsListening(false);
+      isListeningRef.current = false;
       stopAllVoiceActivity();
       setVoiceStatus("Voice idle");
     };
@@ -786,17 +792,26 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     };
   }, [stopAllVoiceActivity]);
 
-  const stopWakeListening = useCallback(() => {
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setIsWakeArmed(false);
+  // Stop the whole hands-free loop (the "Stop listening" button).
+  const stopListening = useCallback(() => {
+    setIsListening(false);
+    isListeningRef.current = false;
+    stopAllVoiceActivity();
     setVoiceStatus("Voice idle");
-  }, []);
+  }, [stopAllVoiceActivity]);
 
+  // Start (or restart) the wake-word listener. Browser speech recognition ends
+  // itself after a pause, so onend RESTARTS it whenever we're still in
+  // hands-free mode — that's what keeps Jarvis always listening with no clicks.
   const startWakeListening = useCallback(() => {
+    if (isMutedRef.current || isRecordingCommandRef.current) {
+      return;
+    }
     const Recognition = getSpeechRecognitionConstructor();
     if (!Recognition) {
-      setVoiceError("Wake phrase detection is unavailable in this browser");
+      setVoiceError("Voice needs Chrome or Edge — open Jarvis in one of those.");
+      setIsListening(false);
+      isListeningRef.current = false;
       return;
     }
     setVoiceError(null);
@@ -819,6 +834,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       const commandAfterWake = extractCommandAfterWake(transcript, phrases);
       recognition.stop();
       setIsWakeArmed(false);
+      // If the wake phrase and the command came together ("jarvis what's my
+      // schedule"), handle it directly; otherwise record the follow-up speech.
       if (commandAfterWake && commandAfterWake.split(/\s+/).length >= 2) {
         void runVoiceIntent(commandAfterWake);
         return;
@@ -826,17 +843,46 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       void startCommandRecording();
     };
     recognition.onerror = (event) => {
-      setVoiceError(event.error ?? "Wake listener error");
-      setIsWakeArmed(false);
+      // A blocked mic is fatal to the loop — stop so we don't hammer it.
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setVoiceError("Microphone is blocked. Allow mic access for this page, then Start again.");
+        setIsListening(false);
+        isListeningRef.current = false;
+      }
     };
     recognition.onend = () => {
       setIsWakeArmed(false);
+      // Keep listening: restart unless we're muted, mid-command, or the user
+      // stopped. This is the fix for "it stops working after a few seconds".
+      if (
+        isListeningRef.current &&
+        !isMutedRef.current &&
+        !isRecordingCommandRef.current &&
+        document.visibilityState === "visible"
+      ) {
+        window.setTimeout(() => startWakeListeningRef.current?.(), 250);
+      }
     };
     recognitionRef.current = recognition;
     recognition.start();
     setIsWakeArmed(true);
-    setVoiceStatus("Wake armed");
+    setVoiceStatus("Listening for “Jarvis”…");
   }, [runVoiceIntent, startCommandRecording, voiceConfig]);
+
+  // One click: grant the mic and enter persistent hands-free mode.
+  const startListening = useCallback(() => {
+    setIsMuted(false);
+    isMutedRef.current = false;
+    setIsListening(true);
+    isListeningRef.current = true;
+    startWakeListening();
+  }, [startWakeListening]);
+
+  // Keep the restart handle pointed at the latest startWakeListening so onend
+  // (and the post-command loop) can re-arm without a circular dependency.
+  useEffect(() => {
+    startWakeListeningRef.current = startWakeListening;
+  }, [startWakeListening]);
 
   const openNoteByPath = useCallback(async (path: string) => {
     try {
@@ -1028,22 +1074,6 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           </div>
 
           <div className="jarvis-voice-modes">
-            <label className="jarvis-voice-continuous">
-              <input
-                type="checkbox"
-                checked={isContinuousMode}
-                disabled={isMuted}
-                onChange={(event) => {
-                  const next = event.target.checked;
-                  setIsContinuousMode(next);
-                  isContinuousModeRef.current = next;
-                  if (next && !isRecordingCommand) {
-                    void startCommandRecording();
-                  }
-                }}
-              />
-              Continuous conversation
-            </label>
             <span className="jarvis-voice-status">{voiceStatus}</span>
           </div>
 
@@ -1051,26 +1081,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             <button
               type="button"
               className="jarvis-btn"
-              onClick={isWakeArmed ? stopWakeListening : startWakeListening}
-              disabled={isRecordingCommand}
+              onClick={isListening ? stopListening : startListening}
+              disabled={isMuted}
             >
-              {isWakeArmed ? "Disarm" : "Arm Wake"}
-            </button>
-            <button
-              type="button"
-              className="jarvis-btn jarvis-btn--secondary"
-              onClick={() => void startCommandRecording()}
-              disabled={isRecordingCommand}
-            >
-              Command
-            </button>
-            <button
-              type="button"
-              className="jarvis-btn jarvis-btn--secondary"
-              onClick={stopCommandRecording}
-              disabled={!isRecordingCommand}
-            >
-              Stop
+              {isListening ? "■ Stop listening" : "🎙 Start listening"}
             </button>
             <select
               className="jarvis-select"

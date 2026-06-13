@@ -45,8 +45,7 @@ describe("JarvisHomePrimaryView", () => {
 
     render(<JarvisHomePrimaryView onNavigate={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Arm Wake" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Command" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "🎙 Start listening" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Transcription model" })).toBeInTheDocument();
 
     await waitFor(() => {
