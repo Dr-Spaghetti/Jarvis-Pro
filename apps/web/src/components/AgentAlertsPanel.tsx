@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { apiFetch } from "../runtime/apiClient";
-import { buildAgentAlertConfigUrl, buildAgentAlertsUrl } from "../runtime/runtimeEndpoints";
+import { apiFetch, appendAuthTokenParam } from "../runtime/apiClient";
+import {
+  buildAgentAlertConfigUrl,
+  buildAgentAlertsUrl,
+  buildMonitorExportUrl,
+} from "../runtime/runtimeEndpoints";
 import { PanelState } from "./ui/PanelState";
 import { useToasts } from "./ui/ToastProvider";
 
@@ -132,14 +136,30 @@ export const AgentAlertsPanel = () => {
       <section className="monitor-panel" aria-label="Active alerts">
         <header className="monitor-alerts-header">
           <h3>Active alerts</h3>
-          <button
-            aria-label="Refresh alerts"
-            className="agent-analytics-refresh"
-            onClick={() => void fetchAlerts()}
-            type="button"
-          >
-            ↻
-          </button>
+          <div className="monitor-alerts-actions">
+            <a
+              className="monitor-alerts-export"
+              download="octogent-alerts.json"
+              href={appendAuthTokenParam(buildMonitorExportUrl("json"))}
+            >
+              ↓ JSON
+            </a>
+            <a
+              className="monitor-alerts-export"
+              download="octogent-alerts.md"
+              href={appendAuthTokenParam(buildMonitorExportUrl("md"))}
+            >
+              ↓ MD
+            </a>
+            <button
+              aria-label="Refresh alerts"
+              className="agent-analytics-refresh"
+              onClick={() => void fetchAlerts()}
+              type="button"
+            >
+              ↻
+            </button>
+          </div>
         </header>
 
         {isLoading && <PanelState state="loading" message="Loading alerts…" />}

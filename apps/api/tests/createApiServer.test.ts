@@ -642,6 +642,29 @@ describe("createApiServer", () => {
       });
     });
 
+    it("exports alert state as JSON and Markdown downloads", async () => {
+      const baseUrl = await startServer();
+
+      const jsonResponse = await fetch(`${baseUrl}/api/monitor/export?format=json`);
+      expect(jsonResponse.status).toBe(200);
+      expect(jsonResponse.headers.get("content-type")).toContain("application/json");
+      expect(jsonResponse.headers.get("content-disposition")).toContain("octogent-alerts.json");
+      const exported = (await jsonResponse.json()) as {
+        config: { agentStuckMinutes: number | null };
+        alerts: unknown[];
+        generatedAt: string;
+      };
+      expect(exported.config).toEqual({ agentStuckMinutes: null });
+      expect(exported.alerts).toEqual([]);
+      expect(typeof exported.generatedAt).toBe("string");
+
+      const mdResponse = await fetch(`${baseUrl}/api/monitor/export?format=md`);
+      expect(mdResponse.status).toBe(200);
+      expect(mdResponse.headers.get("content-type")).toContain("text/markdown");
+      const markdown = await mdResponse.text();
+      expect(markdown).toContain("# Octogent — Agent Alerts Export");
+    });
+
     it("persists the stuck-rule threshold via PATCH and rejects bad values", async () => {
       const baseUrl = await startServer();
 

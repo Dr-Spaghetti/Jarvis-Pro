@@ -11,6 +11,7 @@ import {
   readAgentAlertConfig,
   writeAgentAlertConfig,
 } from "../src/createApiServer/agentAlerts";
+import { buildAlertExportMarkdown } from "../src/createApiServer/alertRoutes";
 
 const tempDirs: string[] = [];
 const makeStateDir = () => {
@@ -112,6 +113,40 @@ describe("parseAgentAlertConfigPatch", () => {
       parseAgentAlertConfigPatch(DEFAULT_AGENT_ALERT_CONFIG, { agentStuckMinutes: "ten" }),
     ).toHaveProperty("error");
     expect(parseAgentAlertConfigPatch(DEFAULT_AGENT_ALERT_CONFIG, null)).toHaveProperty("error");
+  });
+});
+
+describe("buildAlertExportMarkdown", () => {
+  it("reports the disabled rule and no alerts", () => {
+    const md = buildAlertExportMarkdown(
+      { agentStuckMinutes: null },
+      [],
+      "2026-06-12T10:00:00.000Z",
+    );
+    expect(md).toContain("Stuck-agent alerts: **off**");
+    expect(md).toContain("_No active alerts at export time._");
+  });
+
+  it("lists active alerts and the configured threshold", () => {
+    const md = buildAlertExportMarkdown(
+      { agentStuckMinutes: 10 },
+      [
+        {
+          id: "agent-stuck:terminal-1",
+          type: "agent-stuck",
+          severity: "warning",
+          terminalId: "terminal-1",
+          tentacleId: "alpha",
+          label: "Alpha",
+          message: "Alpha has been waiting for input for 12 min.",
+          since: "2026-06-12T09:48:00.000Z",
+        },
+      ],
+      "2026-06-12T10:00:00.000Z",
+    );
+    expect(md).toContain("fire after **10 min**");
+    expect(md).toContain("Active alerts (1)");
+    expect(md).toContain("**Alpha**");
   });
 });
 

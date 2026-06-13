@@ -520,6 +520,15 @@ export const buildAgentAlertConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) 
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/monitor/alerts/config");
 };
 
+export const buildMonitorExportUrl = (
+  format: "json" | "md",
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/monitor/export?format=${format}`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildAuthStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/auth/status";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/auth/status");
