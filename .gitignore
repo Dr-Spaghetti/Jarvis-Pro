@@ -12,3 +12,6 @@
 **/coverage/
 
 .octogent
+
+# Local secrets — never commit
+.env
