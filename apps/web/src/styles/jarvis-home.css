@@ -272,6 +272,25 @@
   color: var(--text-primary);
   border-bottom-left-radius: 4px;
 }
+/* What Jarvis remembers — durable taught facts/rules. */
+.jarvis-memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.jarvis-memory-item {
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px 12px;
+}
 .jarvis-voice {
   display: flex;
   flex-direction: column;

@@ -14,6 +14,7 @@ export type JarvisVoiceIntent =
     }
   | { type: "brain-search"; query: string }
   | { type: "brain-capture"; text: string }
+  | { type: "remember"; text: string }
   | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
   | { type: "run-skill"; skillName: string }
   | { type: "ask"; question: string }
@@ -104,6 +105,29 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
   ]);
   if (captureText !== null && captureText.length > 0) {
     return { transcript, commandText, intent: { type: "brain-capture", text: captureText } };
+  }
+
+  // Teach / correct: durable facts, preferences, and rules Jarvis should obey
+  // from now on. Saved to long-term memory and injected into every answer — this
+  // is the "tell it once and it sticks" learning loop. Checked before nav/ask so
+  // "always answer briefly" is learned, not treated as a question.
+  const rememberText = afterAnyPrefix(command, [
+    "remember that",
+    "remember to",
+    "remember i",
+    "remember my",
+    "from now on",
+    "for future reference",
+    "for the future",
+    "keep in mind",
+    "note that",
+    "correction",
+    "always",
+    "never",
+    "remember",
+  ]);
+  if (rememberText !== null && rememberText.length > 0) {
+    return { transcript, commandText, intent: { type: "remember", text: rememberText } };
   }
 
   if (/\b(worktree|isolated)\b.*\b(agent|terminal|session)\b/.test(command)) {

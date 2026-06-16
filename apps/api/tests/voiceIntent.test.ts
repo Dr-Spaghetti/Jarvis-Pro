@@ -55,6 +55,36 @@ describe("resolveJarvisVoiceIntent", () => {
     expect(intent).toEqual({ type: "unknown", text: "" });
   });
 
+  describe("remember (teach/correct) intent", () => {
+    it("routes 'always …' to remember", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis always answer in one sentence");
+      expect(intent).toEqual({ type: "remember", text: "answer in one sentence" });
+    });
+
+    it("routes 'from now on …' to remember", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis from now on call me boss");
+      expect(intent).toEqual({ type: "remember", text: "call me boss" });
+    });
+
+    it("routes 'remember that …' to remember (not capture)", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis remember that I prefer email only");
+      expect(intent.type).toBe("remember");
+      if (intent.type === "remember") {
+        expect(intent.text).toBe("i prefer email only");
+      }
+    });
+
+    it("keeps 'remember this …' as a quick capture, not a durable rule", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis remember this invoice park place");
+      expect(intent.type).toBe("brain-capture");
+    });
+
+    it("routes 'correction …' to remember", () => {
+      const { intent } = resolveJarvisVoiceIntent("jarvis correction the venue contact is rachel");
+      expect(intent).toEqual({ type: "remember", text: "the venue contact is rachel" });
+    });
+  });
+
   describe("run-skill intent", () => {
     it("routes explicit 'run skill [name]' to run-skill", () => {
       const { intent } = resolveJarvisVoiceIntent("jarvis run skill daily brief");

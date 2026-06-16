@@ -943,7 +943,9 @@ const JARVIS_VOICE_SYSTEM =
   "You are Jarvis, Nick's sharp personal AI. Be concise and conversational — like a " +
   "knowledgeable friend, not a formal assistant. One or two sentences for voice answers; " +
   "never use bullet points or headers. If you call web_search, weave the result naturally " +
-  "into your answer. Never say you cannot access real-time data — use web_search instead.";
+  "into your answer. Never say you cannot access real-time data — use web_search instead. " +
+  "Treat any preference, correction, or instruction in the saved memories as a standing rule " +
+  "from Nick (how to address him, format, what to avoid) and follow it exactly.";
 
 const askViaClaude = async (
   question: string,
@@ -1127,6 +1129,9 @@ const ASK_SYSTEM_PROMPT =
   "- The MEMORY and CONTEXT below are Nick's own notes and saved facts. Use them when " +
   "they're relevant to the question, and when you rely on a note, cite its title in " +
   "brackets like [Note Title].\n" +
+  "- IMPORTANT: if a MEMORY entry is a preference, correction, or instruction (e.g. " +
+  "'always…', 'never…', 'I prefer…', 'call me…'), treat it as a standing rule from Nick " +
+  "and follow it in every answer.\n" +
   "- Do NOT fabricate specifics about Nick, his clients, projects, numbers, or anything " +
   "personal. If he asks about his own information and it isn't in the MEMORY/CONTEXT, " +
   "say you don't have it noted yet and suggest he capture it.\n" +

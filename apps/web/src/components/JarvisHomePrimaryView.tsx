@@ -15,6 +15,7 @@ import {
   buildBrainModelsUrl,
   buildBrainNoteUrl,
   buildBrainRecentUrl,
+  buildBrainRememberUrl,
   buildBrainSemanticUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
@@ -68,6 +69,7 @@ type JarvisIntentResolution = {
       }
     | { type: "brain-search"; query: string }
     | { type: "brain-capture"; text: string }
+    | { type: "remember"; text: string }
     | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
     | { type: "run-skill"; skillName: string }
     | { type: "ask"; question: string }
@@ -186,6 +188,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
+  const [memoryItems, setMemoryItems] = useState<string[]>([]);
   const [skillRunConfirmName, setSkillRunConfirmName] = useState<string | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   // Which local Ollama model answers. Empty = server default. Persisted so the
@@ -281,6 +284,25 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
   }, []);
 
+  // Durable things Jarvis has been taught (facts, preferences, corrections). These
+  // are injected into every answer as standing rules, so showing them builds trust.
+  const loadMemory = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildBrainMemoryUrl(), {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: unknown };
+      if (Array.isArray(data.items)) {
+        const items = data.items.filter((x): x is string => typeof x === "string");
+        setMemoryItems(items);
+        setMemoryCount(items.length);
+      }
+    } catch {
+      // silently ignore
+    }
+  }, []);
+
   useEffect(() => {
     void loadRecent();
     void loadConversation();
@@ -318,17 +340,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       } catch {
         /* ignore */
       }
-      try {
-        const res = await apiFetch(buildBrainMemoryUrl(), {
-          headers: { Accept: "application/json" },
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { items?: unknown };
-          if (Array.isArray(data.items)) setMemoryCount(data.items.length);
-        }
-      } catch {
-        /* ignore */
-      }
+      void loadMemory();
       try {
         const res = await apiFetch(buildBrainDigestUrl(), {
           headers: { Accept: "application/json" },
@@ -341,7 +353,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
     })();
-  }, [loadRecent, loadConversation]);
+  }, [loadRecent, loadConversation, loadMemory]);
 
   useEffect(() => {
     (async () => {
@@ -751,6 +763,23 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           return;
         }
 
+        if (intent.type === "remember") {
+          const response = await apiFetch(buildBrainRememberUrl(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: intent.text }),
+          });
+          if (!response.ok) {
+            setVoiceError("Couldn't save that to memory");
+            await speakJarvis("I couldn't save that. Try again.").catch(() => {});
+            return;
+          }
+          void loadMemory();
+          setVoiceStatus("Saved to memory");
+          await speakJarvis("Got it. I'll remember that from now on.");
+          return;
+        }
+
         if (intent.type === "create-terminal") {
           const response = await apiFetch("/api/terminals", {
             method: "POST",
@@ -859,7 +888,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         setIsThinking(false);
       }
     },
-    [loadConversation, loadRecent, onNavigate, speakJarvis],
+    [loadConversation, loadMemory, loadRecent, onNavigate, speakJarvis],
   );
 
   const transcribeCommandAudio = useCallback(
@@ -1343,6 +1372,25 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 </div>
               ))}
             </div>
+          )}
+        </section>
+
+        <section className="jarvis-panel jarvis-memory" aria-label="What Jarvis has learned">
+          <p className="jarvis-panel-title">🧠 What Jarvis remembers</p>
+          {memoryItems.length === 0 ? (
+            <p className="jarvis-empty">
+              Nothing taught yet. Say things like “Jarvis, always answer in one sentence” or
+              “remember that the Venue contact is Rachel” — it sticks and is applied to every
+              answer.
+            </p>
+          ) : (
+            <ul className="jarvis-memory-list">
+              {memoryItems.map((item) => (
+                <li className="jarvis-memory-item" key={item}>
+                  {item}
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
