@@ -865,14 +865,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             void loadConversation();
             await speakJarvis(data.answer);
           } else {
-            // Never go silent: tell the user (out loud) why there's no answer.
-            const note =
-              data.hint ??
-              "I couldn't reach an answer model. Add an Anthropic API key for fast, accurate answers.";
+            // Never go silent: tell the user (out loud) why there's no answer,
+            // and show the exact provider error under the ask box.
+            const note = data.hint ?? "I couldn't reach an answer model. Check your API keys.";
             setAskNote(note);
             setVoiceStatus("No answer model");
             await speakJarvis(
-              "I couldn't get an answer. To look things up live I need an Anthropic API key in your settings.",
+              "I couldn't reach an answer model. The reason is on the screen below your question.",
             );
           }
           return;

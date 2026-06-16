@@ -1055,13 +1055,15 @@ const askViaClaude = async (
 // any failure (no key, bad params, network) so the caller falls through.
 type OpenAiChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
+type OpenAiResult = { answer: string | null; error: string | null };
+
 const askViaOpenAi = async (
   question: string,
   context: string,
   history: ConversationTurn[] = [],
-): Promise<string | null> => {
+): Promise<OpenAiResult> => {
   const apiKey = getOpenAiApiKey();
-  if (!apiKey) return null;
+  if (!apiKey) return { answer: null, error: null };
 
   const messages: OpenAiChatMessage[] = [{ role: "system", content: JARVIS_VOICE_SYSTEM }];
   for (const turn of history) {
@@ -1070,27 +1072,47 @@ const askViaOpenAi = async (
   }
   messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
 
-  // Minimal body: the search-preview models reject temperature/top_p, so we send
-  // only model + messages and let the system prompt keep answers short.
-  const fetchRes = await fetchWithTimeout(
-    "https://api.openai.com/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ model: getOpenAiChatModel(), messages }),
-    },
-    25000,
-  );
+  // Try the web-search model first (live data). If the account can't use it,
+  // fall back to a standard model so general questions still answer. Minimal
+  // body: search-preview models reject temperature/top_p.
+  const primary = getOpenAiChatModel();
+  const models = primary === "gpt-4o-mini" ? ["gpt-4o-mini"] : [primary, "gpt-4o-mini"];
+  let firstError: string | null = null;
 
-  if (!fetchRes || !fetchRes.ok) return null;
-  const data = (await fetchRes.json().catch(() => null)) as {
-    choices?: Array<{ message?: { content?: unknown } }>;
-  } | null;
-  const content = data?.choices?.[0]?.message?.content;
-  return typeof content === "string" && content.trim().length > 0 ? content.trim() : null;
+  for (const candidate of models) {
+    const fetchRes = await fetchWithTimeout(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ model: candidate, messages }),
+      },
+      25000,
+    );
+    if (!fetchRes) {
+      firstError ??= `${candidate}: request timed out`;
+      continue;
+    }
+    if (!fetchRes.ok) {
+      const detail = (await fetchRes.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
+      const message = `${candidate}: ${fetchRes.status} ${detail}`.trim();
+      firstError ??= message;
+      console.warn(`[jarvis] OpenAI ask failed — ${message}`);
+      continue;
+    }
+    const data = (await fetchRes.json().catch(() => null)) as {
+      choices?: Array<{ message?: { content?: unknown } }>;
+    } | null;
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === "string" && content.trim().length > 0) {
+      return { answer: content.trim(), error: null };
+    }
+    firstError ??= `${candidate}: empty response`;
+  }
+  return { answer: null, error: firstError };
 };
 
 // ── Ask Jarvis: local RAG over the brain (free, via Ollama chat) ────────────
@@ -1299,12 +1321,15 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
   }
 
   // Fast path 2: OpenAI web-search model (uses the existing STT/TTS key).
-  const openAiAnswer = await askViaOpenAi(question, claudeContext, history);
-  if (openAiAnswer) {
-    if (vaultDir) appendConversationTurn(vaultDir, question, openAiAnswer);
-    writeJson(response, 200, { available: true, answer: openAiAnswer, sources }, corsOrigin);
+  const openAi = await askViaOpenAi(question, claudeContext, history);
+  if (openAi.answer) {
+    if (vaultDir) appendConversationTurn(vaultDir, question, openAi.answer);
+    writeJson(response, 200, { available: true, answer: openAi.answer, sources }, corsOrigin);
     return true;
   }
+  // Surface the real OpenAI failure (status + message) so it's diagnosable
+  // instead of silently blaming a missing Anthropic key.
+  const providerNote = openAi.error ? ` (OpenAI: ${openAi.error})` : "";
 
   // Slow path: local Ollama (requires vault).
   if (!vaultDir) {
@@ -1313,8 +1338,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       400,
       {
         available: false,
-        error: "No AI provider configured.",
-        hint: "Set ANTHROPIC_API_KEY for instant answers, or set OBSIDIAN_VAULT_PATH and run Ollama.",
+        error: "No AI provider could answer.",
+        hint: `Your OpenAI key couldn't answer${providerNote}. Enable a web-search model on your OpenAI account, add an Anthropic key, or set OBSIDIAN_VAULT_PATH + run Ollama.`,
       },
       corsOrigin,
     );
@@ -1339,7 +1364,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       {
         available: false,
         reason: "no-chat-model",
-        hint: "Set ANTHROPIC_API_KEY for instant answers, or pull an Ollama chat model: `ollama pull qwen2.5:7b`",
+        hint: `Couldn't reach a cloud model${providerNote}, and the local model didn't respond. Check your OpenAI/Anthropic key, or pull an Ollama model: \`ollama pull qwen2.5:7b\`.`,
         sources,
       },
       corsOrigin,
