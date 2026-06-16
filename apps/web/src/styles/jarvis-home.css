@@ -239,6 +239,47 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+/* Primary push-to-talk button — big, obvious, always available. */
+.jarvis-voice-talk {
+  width: 100%;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: #1a1404;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.05s;
+}
+.jarvis-voice-talk:hover {
+  box-shadow: 0 0 22px var(--gold-glow);
+}
+.jarvis-voice-talk:active {
+  transform: translateY(1px);
+}
+.jarvis-voice-talk[data-recording="true"] {
+  background: linear-gradient(180deg, #ff6b6b, #d64545);
+  color: #fff;
+  animation: jarvis-talk-pulse 1.2s ease-out infinite;
+}
+@keyframes jarvis-talk-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(214, 69, 69, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(214, 69, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 69, 69, 0);
+  }
+}
+.jarvis-voice-replay {
+  align-self: flex-start;
+}
 .jarvis-voice-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(110px, auto)) minmax(220px, 1fr);

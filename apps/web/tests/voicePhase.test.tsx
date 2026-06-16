@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { VOICE_PHASE_LABELS, deriveVoicePhase } from "../src/app/voicePhase";
+import { VOICE_PHASE_LABELS, deriveVoicePhase, shouldResumeWakeLoop } from "../src/app/voicePhase";
 
 const base = {
   isMuted: false,
@@ -48,5 +48,27 @@ describe("deriveVoicePhase", () => {
     for (const phase of ["idle", "listening", "thinking", "speaking", "muted"] as const) {
       expect(VOICE_PHASE_LABELS[phase]).toBeTruthy();
     }
+  });
+});
+
+describe("shouldResumeWakeLoop", () => {
+  it("resumes only when hands-free is on, not muted, and the tab is visible", () => {
+    expect(shouldResumeWakeLoop({ handsFreeOn: true, isMuted: false, isVisible: true })).toBe(true);
+  });
+
+  it("does not resume when the user never started hands-free", () => {
+    expect(shouldResumeWakeLoop({ handsFreeOn: false, isMuted: false, isVisible: true })).toBe(
+      false,
+    );
+  });
+
+  it("does not resume while muted", () => {
+    expect(shouldResumeWakeLoop({ handsFreeOn: true, isMuted: true, isVisible: true })).toBe(false);
+  });
+
+  it("does not resume while the tab is hidden", () => {
+    expect(shouldResumeWakeLoop({ handsFreeOn: true, isMuted: false, isVisible: false })).toBe(
+      false,
+    );
   });
 });

@@ -40,3 +40,16 @@ export const VOICE_PHASE_LABELS: Record<VoicePhase, string> = {
   speaking: "Speaking",
   muted: "Muted",
 };
+
+// Whether the hands-free wake-word loop should (re)arm right now. Pulled out so
+// the tab-visibility resume logic is a pure, unit-testable decision: only resume
+// when the user actually turned hands-free on, isn't muted, and the tab is shown.
+export const shouldResumeWakeLoop = ({
+  handsFreeOn,
+  isMuted,
+  isVisible,
+}: {
+  handsFreeOn: boolean;
+  isMuted: boolean;
+  isVisible: boolean;
+}): boolean => handsFreeOn && !isMuted && isVisible;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
-import { VOICE_PHASE_LABELS, deriveVoicePhase } from "../app/voicePhase";
+import { VOICE_PHASE_LABELS, deriveVoicePhase, shouldResumeWakeLoop } from "../app/voicePhase";
 import { apiFetch } from "../runtime/apiClient";
 import { HomeTilesPanel } from "./HomeTilesPanel";
 
@@ -216,6 +216,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  // When autoplay is blocked, we keep the last answer's audio so the user can
+  // play it with a direct tap (which browsers always allow).
+  const [canReplay, setCanReplay] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -230,6 +233,12 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const startWakeListeningRef = useRef<(() => void) | null>(null);
   const startCommandRecordingRef = useRef<(() => void) | null>(null);
   const speakJarvisRef = useRef<((text: string) => Promise<void>) | null>(null);
+  // Audio unlock: the first user gesture (any voice button) primes audio so
+  // later TTS playback is never blocked by the browser's autoplay policy.
+  const audioUnlockedRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  // Last spoken answer's audio, kept for the manual "Replay" affordance.
+  const pendingAudioBlobRef = useRef<Blob | null>(null);
 
   const voicePhase = deriveVoicePhase({
     isMuted,
@@ -469,6 +478,55 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
   }, [ask, chatModel]);
 
+  // Prime audio playback inside a real user gesture so the browser's autoplay
+  // policy never blocks Jarvis from speaking later (TTS fires from async
+  // callbacks, long after the click, which browsers would otherwise mute).
+  // Resuming an AudioContext + flagging that we've had a gesture is enough for
+  // Chrome/Edge to allow all subsequent HTMLAudioElement playback this session.
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    try {
+      const Ctor =
+        window.AudioContext ??
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctor) {
+        const ctx = audioContextRef.current ?? new Ctor();
+        audioContextRef.current = ctx;
+        void ctx.resume?.();
+      }
+    } catch {
+      // Best-effort; a failure here just means we rely on the gesture itself.
+    }
+  }, []);
+
+  // Play the kept-back answer audio from a direct user tap (always allowed).
+  const playPending = useCallback(async () => {
+    const blob = pendingAudioBlobRef.current;
+    if (!blob) return;
+    setVoiceError(null);
+    setCanReplay(false);
+    setIsSpeaking(true);
+    try {
+      const objectUrl = URL.createObjectURL(blob);
+      const audio = new Audio(objectUrl);
+      currentAudioRef.current = audio;
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          URL.revokeObjectURL(objectUrl);
+          if (currentAudioRef.current === audio) currentAudioRef.current = null;
+          resolve();
+        };
+        audio.addEventListener("ended", done, { once: true });
+        audio.addEventListener("error", done, { once: true });
+        audio.addEventListener("pause", done, { once: true });
+        audio.play().catch(done);
+      });
+    } finally {
+      setIsSpeaking(false);
+    }
+  }, []);
+
   // Resolves when speech finishes so the hands-free loop can re-arm afterwards.
   // Tracks isSpeaking for the indicator and keeps a handle on the audio element
   // so a hard mute can cut playback instantly. A hard mute skips speaking.
@@ -480,25 +538,33 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       // Speaking supersedes the thinking indicator.
       setIsThinking(false);
       setIsSpeaking(true);
+      // A fresh utterance clears any stale "replay" offer.
+      setCanReplay(false);
+      pendingAudioBlobRef.current = null;
 
-      const playBlob = async (blob: Blob): Promise<void> => {
+      // Returns true if playback actually started/finished, false if the
+      // browser blocked it (autoplay) so the caller can offer a manual replay.
+      const playBlob = async (blob: Blob): Promise<boolean> => {
         const objectUrl = URL.createObjectURL(blob);
         const audio = new Audio(objectUrl);
         currentAudioRef.current = audio;
-        await new Promise<void>((resolve) => {
-          const cleanup = () => {
+        return await new Promise<boolean>((resolve) => {
+          let settled = false;
+          const finish = (ok: boolean) => {
+            if (settled) return;
+            settled = true;
             URL.revokeObjectURL(objectUrl);
             if (currentAudioRef.current === audio) {
               currentAudioRef.current = null;
             }
-            resolve();
+            resolve(ok);
           };
-          audio.addEventListener("ended", cleanup, { once: true });
-          audio.addEventListener("error", cleanup, { once: true });
+          audio.addEventListener("ended", () => finish(true), { once: true });
+          audio.addEventListener("error", () => finish(false), { once: true });
           // A hard mute pauses the element; resolve so the loop/await never
           // hangs waiting for an "ended" that won't come.
-          audio.addEventListener("pause", cleanup, { once: true });
-          audio.play().catch(cleanup);
+          audio.addEventListener("pause", () => finish(true), { once: true });
+          audio.play().catch(() => finish(false));
         });
       };
 
@@ -519,7 +585,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
               body: JSON.stringify({ text, provider }),
             });
             if (response.ok && !isMutedRef.current) {
-              await playBlob(await response.blob());
+              const blob = await response.blob();
+              const played = await playBlob(blob);
+              if (played) return;
+              // The audio arrived but the browser blocked playback. Other
+              // providers would hit the same wall, so stop and let the user
+              // start it with a tap instead of failing silently.
+              pendingAudioBlobRef.current = blob;
+              setCanReplay(true);
+              setVoiceError("Tap 🔊 Replay to hear the answer.");
               return;
             }
           } catch {
@@ -536,6 +610,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             utterance.addEventListener("error", () => resolve(), { once: true });
             window.speechSynthesis.speak(utterance);
           });
+        } else if (!isMutedRef.current) {
+          // No server provider worked and no browser speech available — say so
+          // visibly rather than leaving the user wondering why it's silent.
+          setVoiceError("Voice output unavailable — check your TTS provider in Settings.");
         }
       } finally {
         setIsSpeaking(false);
@@ -606,109 +684,106 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       setVoiceError(null);
       setIsThinking(true);
       setLastVoiceTranscript(transcript);
-      const intentResponse = await apiFetch(buildVoiceIntentUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript }),
-      });
-      if (!intentResponse.ok) {
-        setVoiceError("Unable to resolve command");
-        setIsThinking(false);
-        return;
-      }
-      const resolution = (await intentResponse.json()) as JarvisIntentResolution;
-      const intent = resolution.intent;
-
-      if (intent.type === "navigate") {
-        onNavigate(voiceNavTargets[intent.target]);
-        setVoiceStatus(`Opened ${intent.target}`);
-        await speakJarvis(`Opening ${intent.target}.`);
-        return;
-      }
-
-      if (intent.type === "brain-search") {
-        setQuery(intent.query);
-        setVoiceStatus("Searching brain");
-        await speakJarvis("Searching your brain.");
-        return;
-      }
-
-      if (intent.type === "brain-capture") {
-        const response = await apiFetch(buildBrainCaptureUrl(), {
+      // Everything below runs inside try/finally so a thrown await (network
+      // drop, bad JSON) can never leave the indicator stuck on "Thinking" and
+      // freeze the hands-free loop. The finally always clears it.
+      try {
+        const intentResponse = await apiFetch(buildVoiceIntentUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: intent.text }),
+          body: JSON.stringify({ transcript }),
         });
-        if (!response.ok) {
-          setVoiceError("Capture failed");
-          setIsThinking(false);
+        if (!intentResponse.ok) {
+          setVoiceError("Unable to resolve command");
           return;
         }
-        setCaptureMsg("Captured to Inbox");
-        void loadRecent();
-        setVoiceStatus("Captured");
-        await speakJarvis("Captured.");
-        return;
-      }
+        const resolution = (await intentResponse.json()) as JarvisIntentResolution;
+        const intent = resolution.intent;
 
-      if (intent.type === "create-terminal") {
-        const response = await apiFetch("/api/terminals", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workspaceMode: intent.workspaceMode,
-            tentacleId: "octoboss",
-          }),
-        });
-        if (!response.ok) {
-          setVoiceError("Unable to create agent");
-          setIsThinking(false);
+        if (intent.type === "navigate") {
+          onNavigate(voiceNavTargets[intent.target]);
+          setVoiceStatus(`Opened ${intent.target}`);
+          await speakJarvis(`Opening ${intent.target}.`);
           return;
         }
-        onNavigate(1);
-        setVoiceStatus("Agent created");
-        await speakJarvis("Agent created.");
-        return;
-      }
 
-      if (intent.type === "run-skill") {
-        const needsApproval = /\b(outreach|email.assist)\b/.test(intent.skillName.toLowerCase());
-        if (needsApproval) {
-          setSkillRunConfirmName(intent.skillName);
-          setVoiceStatus(`Approval needed: ${intent.skillName}`);
-          setIsThinking(false);
-          await speakJarvis(
-            `I need your approval to run ${intent.skillName}. Tap Confirm to proceed.`,
-          );
+        if (intent.type === "brain-search") {
+          setQuery(intent.query);
+          setVoiceStatus("Searching brain");
+          await speakJarvis("Searching your brain.");
           return;
         }
-        const res = await apiFetch(buildSkillsRunUrl(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ skillName: intent.skillName }),
-        });
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          setVoiceError(data?.error ?? `Could not run skill: ${intent.skillName}`);
-          setIsThinking(false);
-          return;
-        }
-        onNavigate(1);
-        setVoiceStatus(`Running skill: ${intent.skillName}`);
-        await speakJarvis(`Running ${intent.skillName}.`);
-        return;
-      }
 
-      if (intent.type === "ask") {
-        setVoiceStatus("Thinking");
-        setIsThinking(true);
-        // Detect queries that need real-time lookup so we can say the right thing.
-        const REALTIME_RE =
-          /\b(weather|temp(erature)?|forecast|today|tonight|current(ly)?|right now|latest|live|news|score|game|price|stock|crypto|what time|open now|happening)\b/i;
-        const ackText = REALTIME_RE.test(intent.question)
-          ? "One sec, let me look that up."
-          : "Let me think about that.";
-        try {
+        if (intent.type === "brain-capture") {
+          const response = await apiFetch(buildBrainCaptureUrl(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: intent.text }),
+          });
+          if (!response.ok) {
+            setVoiceError("Capture failed");
+            return;
+          }
+          setCaptureMsg("Captured to Inbox");
+          void loadRecent();
+          setVoiceStatus("Captured");
+          await speakJarvis("Captured.");
+          return;
+        }
+
+        if (intent.type === "create-terminal") {
+          const response = await apiFetch("/api/terminals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workspaceMode: intent.workspaceMode,
+              tentacleId: "octoboss",
+            }),
+          });
+          if (!response.ok) {
+            setVoiceError("Unable to create agent");
+            return;
+          }
+          onNavigate(1);
+          setVoiceStatus("Agent created");
+          await speakJarvis("Agent created.");
+          return;
+        }
+
+        if (intent.type === "run-skill") {
+          const needsApproval = /\b(outreach|email.assist)\b/.test(intent.skillName.toLowerCase());
+          if (needsApproval) {
+            setSkillRunConfirmName(intent.skillName);
+            setVoiceStatus(`Approval needed: ${intent.skillName}`);
+            await speakJarvis(
+              `I need your approval to run ${intent.skillName}. Tap Confirm to proceed.`,
+            );
+            return;
+          }
+          const res = await apiFetch(buildSkillsRunUrl(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ skillName: intent.skillName }),
+          });
+          if (!res.ok) {
+            const data = (await res.json().catch(() => null)) as { error?: string } | null;
+            setVoiceError(data?.error ?? `Could not run skill: ${intent.skillName}`);
+            return;
+          }
+          onNavigate(1);
+          setVoiceStatus(`Running skill: ${intent.skillName}`);
+          await speakJarvis(`Running ${intent.skillName}.`);
+          return;
+        }
+
+        if (intent.type === "ask") {
+          setVoiceStatus("Thinking");
+          // Detect queries that need real-time lookup so we can say the right thing.
+          const REALTIME_RE =
+            /\b(weather|temp(erature)?|forecast|today|tonight|current(ly)?|right now|latest|live|news|score|game|price|stock|crypto|what time|open now|happening)\b/i;
+          const ackText = REALTIME_RE.test(intent.question)
+            ? "One sec, let me look that up."
+            : "Let me think about that.";
           // Fire the acknowledgment and the API call in parallel. The user hears
           // something instantly; the answer starts speaking right after the ack finishes.
           const [, res] = await Promise.all([
@@ -725,7 +800,6 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           ]);
           if (!res.ok) {
             setVoiceError("Ask failed");
-            setIsThinking(false);
             return;
           }
           const data = (await res.json()) as {
@@ -745,19 +819,19 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 "Set ANTHROPIC_API_KEY for instant answers, or run Ollama with a chat model.",
             );
             setVoiceStatus("No answer model");
-            setIsThinking(false);
           }
-        } catch {
-          setVoiceError("Ask failed");
-          setIsThinking(false);
+          return;
         }
-        return;
-      }
 
-      setVoiceStatus("Command captured");
-      setVoiceError("I didn't catch a question or command.");
-      setIsThinking(false);
-      await speakJarvis("I didn't catch that — try asking me a question.");
+        setVoiceStatus("Command captured");
+        setVoiceError("I didn't catch a question or command.");
+        await speakJarvis("I didn't catch that — try asking me a question.");
+      } catch {
+        setVoiceError("Something went wrong handling that. Try again.");
+        setVoiceStatus("Voice idle");
+      } finally {
+        setIsThinking(false);
+      }
     },
     [loadRecent, onNavigate, speakJarvis],
   );
@@ -823,7 +897,18 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
     setVoiceError(null);
     setVoiceStatus("Listening for command");
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      // Permission denied or no device — surface it instead of stalling.
+      setVoiceError("Microphone blocked — allow mic access for this page, then try again.");
+      setVoiceStatus("Voice idle");
+      isRecordingCommandRef.current = false;
+      setIsRecordingCommand(false);
+      setIsThinking(false);
+      return;
+    }
     mediaStreamRef.current = stream;
     const recorder = new MediaRecorder(stream);
     audioChunksRef.current = [];
@@ -861,25 +946,33 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     };
   }, [startCommandRecording]);
 
-  // Stop the hands-free loop cleanly when the tab is hidden or loses focus,
-  // so the mic is never left listening in the background.
+  // Pause the mic when the tab is hidden (privacy + battery), but REMEMBER the
+  // user's hands-free intent (isListeningRef stays set) and silently re-arm when
+  // the tab is shown again. We deliberately do NOT listen for window "blur":
+  // blur fires on harmless focus changes (devtools, a second monitor, an alt-tab
+  // that doesn't hide the tab) and was the main cause of "voice just stopped".
   useEffect(() => {
-    const stopLoop = () => {
-      setIsListening(false);
-      isListeningRef.current = false;
-      stopAllVoiceActivity();
-      setVoiceStatus("Voice idle");
-    };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
-        stopLoop();
+        if (isListeningRef.current) {
+          stopAllVoiceActivity();
+          setVoiceStatus("Paused — tab hidden");
+        }
+        return;
+      }
+      if (
+        shouldResumeWakeLoop({
+          handsFreeOn: isListeningRef.current,
+          isMuted: isMutedRef.current,
+          isVisible: true,
+        })
+      ) {
+        startWakeListeningRef.current?.();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", stopLoop);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", stopLoop);
     };
   }, [stopAllVoiceActivity]);
 
@@ -939,6 +1032,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         setVoiceError("Microphone is blocked. Allow mic access for this page, then Start again.");
         setIsListening(false);
         isListeningRef.current = false;
+        return;
+      }
+      // Everything else (network, audio-capture, aborted) is transient: surface
+      // it so failures aren't silent, but let onend restart the loop so a brief
+      // hiccup doesn't permanently stop voice. "no-speech" is normal silence.
+      if (event.error && event.error !== "no-speech") {
+        setVoiceStatus(`Voice hiccup (${event.error}) — retrying…`);
       }
     };
     recognition.onend = () => {
@@ -962,12 +1062,31 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   // One click: grant the mic and enter persistent hands-free mode.
   const startListening = useCallback(() => {
+    unlockAudio();
     setIsMuted(false);
     isMutedRef.current = false;
     setIsListening(true);
     isListeningRef.current = true;
     startWakeListening();
-  }, [startWakeListening]);
+  }, [startWakeListening, unlockAudio]);
+
+  // Push-to-talk: the simple, reliable path. One tap unlocks audio and records a
+  // single turn (auto-stops after 7s); tapping again sends early. No wake word
+  // and no always-on loop, so it can't get stuck or die on a tab switch.
+  // maybeContinueLoop() won't arm the hands-free loop here because isListeningRef
+  // stays false unless the user explicitly started hands-free mode.
+  const togglePushToTalk = useCallback(() => {
+    unlockAudio();
+    if (isMutedRef.current) {
+      setIsMuted(false);
+      isMutedRef.current = false;
+    }
+    if (isRecordingCommandRef.current) {
+      stopCommandRecording();
+      return;
+    }
+    void startCommandRecording();
+  }, [startCommandRecording, stopCommandRecording, unlockAudio]);
 
   // Keep the restart handle pointed at the latest startWakeListening so onend
   // (and the post-command loop) can re-arm without a circular dependency.
@@ -1200,14 +1319,23 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             <span className="jarvis-voice-status">{voiceStatus}</span>
           </div>
 
+          <button
+            type="button"
+            className="jarvis-voice-talk"
+            data-recording={isRecordingCommand}
+            onClick={togglePushToTalk}
+          >
+            {isRecordingCommand ? "● Listening… tap to send" : "🎙 Tap to talk"}
+          </button>
+
           <div className="jarvis-voice-controls">
             <button
               type="button"
-              className="jarvis-btn"
+              className="jarvis-btn jarvis-btn--secondary"
               onClick={isListening ? stopListening : startListening}
               disabled={isMuted}
             >
-              {isListening ? "■ Stop listening" : "🎙 Start listening"}
+              {isListening ? "■ Stop hands-free" : "Hands-free mode"}
             </button>
             <select
               className="jarvis-select"
@@ -1271,6 +1399,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
           {lastVoiceTranscript && <p className="jarvis-voice-transcript">{lastVoiceTranscript}</p>}
           {voiceError && <p className="jarvis-empty">{voiceError}</p>}
+          {canReplay && (
+            <button
+              type="button"
+              className="jarvis-btn jarvis-voice-replay"
+              onClick={() => void playPending()}
+            >
+              🔊 Replay answer
+            </button>
+          )}
           {skillRunConfirmName && (
             <div className="jarvis-skill-confirm" role="alertdialog" aria-label="Approval required">
               <p className="jarvis-skill-confirm-msg">
