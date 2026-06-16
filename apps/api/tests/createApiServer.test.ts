@@ -806,6 +806,9 @@ describe("createApiServer", () => {
     vi.stubEnv("DEEPGRAM_API_KEY", "");
     vi.stubEnv("PIPER_BIN", "");
     vi.stubEnv("PIPER_MODEL", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "");
+    vi.stubEnv("TAVILY_API_KEY", "");
     const baseUrl = await startServer();
 
     try {
@@ -837,6 +840,10 @@ describe("createApiServer", () => {
           providers: ["browser"],
           recommended: "browser",
           fallback: "browser-speech-synthesis",
+        },
+        brain: {
+          provider: "local",
+          webSearch: false,
         },
       });
     } finally {

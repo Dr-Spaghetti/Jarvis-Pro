@@ -49,6 +49,7 @@ type VoiceConfig = {
     providers?: string[];
     recommended?: string;
   };
+  brain?: { provider: string; webSearch: boolean };
 };
 type JarvisIntentResolution = {
   transcript: string;
@@ -1499,6 +1500,18 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 : "needs OPENAI_API_KEY"}
             </span>
             <span>TTS: {voiceConfig?.tts.configured ? "ElevenLabs" : "browser fallback"}</span>
+            <span>
+              Brain:{" "}
+              {voiceConfig?.brain
+                ? `${
+                    voiceConfig.brain.provider === "anthropic"
+                      ? "Claude"
+                      : voiceConfig.brain.provider === "openai"
+                        ? "OpenAI"
+                        : "Local model"
+                  }${voiceConfig.brain.webSearch ? " · live web" : ""}`
+                : "—"}
+            </span>
           </div>
 
           {lastVoiceTranscript && <p className="jarvis-voice-transcript">{lastVoiceTranscript}</p>}

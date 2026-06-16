@@ -876,11 +876,26 @@ const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
 
 type WebSnippet = { title: string; url: string; snippet: string };
 
+// Abort a provider call after `ms` so a slow/hung upstream can never freeze the
+// answer — the UI would otherwise sit on "Thinking" forever. Resolves to null on
+// timeout or network error so callers fall through to the next provider cleanly.
+const fetchWithTimeout = async (
+  url: string,
+  init: RequestInit,
+  ms: number,
+): Promise<Response | null> => {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+  } catch {
+    return null;
+  }
+};
+
 const searchWeb = async (query: string): Promise<WebSnippet[]> => {
   const braveKey = getBraveSearchApiKey();
   if (braveKey) {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
         {
           headers: {
@@ -889,8 +904,9 @@ const searchWeb = async (query: string): Promise<WebSnippet[]> => {
             Authorization: `Bearer ${braveKey}`,
           },
         },
+        8000,
       );
-      if (res.ok) {
+      if (res?.ok) {
         const data = (await res.json()) as {
           web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
         };
@@ -907,12 +923,16 @@ const searchWeb = async (query: string): Promise<WebSnippet[]> => {
   const tavilyKey = getTavilyApiKey();
   if (tavilyKey) {
     try {
-      const res = await fetch("https://api.tavily.com/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: tavilyKey, query, max_results: 5 }),
-      });
-      if (res.ok) {
+      const res = await fetchWithTimeout(
+        "https://api.tavily.com/search",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: tavilyKey, query, max_results: 5 }),
+        },
+        8000,
+      );
+      if (res?.ok) {
         const data = (await res.json()) as {
           results?: Array<{ title?: string; url?: string; content?: string }>;
         };
@@ -989,15 +1009,19 @@ const askViaClaude = async (
     };
     if (tools) body.tools = tools;
 
-    const fetchRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const fetchRes = await fetchWithTimeout(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    }).catch(() => null);
+      15000,
+    );
 
     if (!fetchRes || !fetchRes.ok) return null;
     const response = (await fetchRes.json()) as AnthrResponse;
@@ -1048,14 +1072,18 @@ const askViaOpenAi = async (
 
   // Minimal body: the search-preview models reject temperature/top_p, so we send
   // only model + messages and let the system prompt keep answers short.
-  const fetchRes = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
+  const fetchRes = await fetchWithTimeout(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ model: getOpenAiChatModel(), messages }),
     },
-    body: JSON.stringify({ model: getOpenAiChatModel(), messages }),
-  }).catch(() => null);
+    25000,
+  );
 
   if (!fetchRes || !fetchRes.ok) return null;
   const data = (await fetchRes.json().catch(() => null)) as {
@@ -1300,6 +1328,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
   const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
   const answer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
+    // Cap the local model so a slow CPU generation can't hang the answer.
+    signal: AbortSignal.timeout(30000),
     ...(model ? { model } : {}),
   });
   if (!answer) {

@@ -213,6 +213,22 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
   }
 
   const ttsProviders = availableTtsProviders();
+
+  // Which brain answers questions, so the UI can show it's wired (and confirm a
+  // fresh build is actually running). Order mirrors handleBrainAskRoute:
+  // Claude → OpenAI web-search → local Ollama.
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const braveKey = process.env.BRAVE_SEARCH_API_KEY?.trim();
+  const tavilyKey = process.env.TAVILY_API_KEY?.trim();
+  const openAiKey = getOpenAiApiKey();
+  const brainProvider = anthropicKey ? "anthropic" : openAiKey ? "openai" : "local";
+  const brainWebSearch =
+    brainProvider === "openai"
+      ? true
+      : brainProvider === "anthropic"
+        ? Boolean(braveKey || tavilyKey)
+        : false;
+
   writeJson(
     response,
     200,
@@ -235,6 +251,10 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
         providers: ttsProviders,
         recommended: ttsProviders[0],
         fallback: "browser-speech-synthesis",
+      },
+      brain: {
+        provider: brainProvider,
+        webSearch: brainWebSearch,
       },
     },
     corsOrigin,
