@@ -8,6 +8,7 @@ import { HomeTilesPanel } from "./HomeTilesPanel";
 import {
   buildBrainAskUrl,
   buildBrainCaptureUrl,
+  buildBrainConversationUrl,
   buildBrainDigestUrl,
   buildBrainJournalUrl,
   buildBrainMemoryUrl,
@@ -25,6 +26,7 @@ import {
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
+type ConversationTurn = { time: string; question: string; answer: string };
 type JournalEntry = {
   ts: string;
   status: "ok" | "warn" | "error";
@@ -183,6 +185,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
+  const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [skillRunConfirmName, setSkillRunConfirmName] = useState<string | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   // Which local Ollama model answers. Empty = server default. Persisted so the
@@ -263,8 +266,24 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
   }, []);
 
+  // Pull today's conversation thread so the user can see the whole exchange and
+  // Obsidian keeps the record. Refreshed after each ask.
+  const loadConversation = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildBrainConversationUrl(50), {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { turns?: ConversationTurn[] };
+      if (Array.isArray(data.turns)) setConversation(data.turns);
+    } catch {
+      // silently ignore
+    }
+  }, []);
+
   useEffect(() => {
     void loadRecent();
+    void loadConversation();
     (async () => {
       try {
         const res = await apiFetch(buildDeckSkillsUrl(), {
@@ -322,7 +341,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
     })();
-  }, [loadRecent]);
+  }, [loadRecent, loadConversation]);
 
   useEffect(() => {
     (async () => {
@@ -461,6 +480,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       if (data.available && typeof data.answer === "string") {
         setAnswer(data.answer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+        void loadConversation();
         // Auto-speak the answer when running hands-free, so the user doesn't
         // have to click. Never speaks while muted.
         if (isListeningRef.current && !isMutedRef.current) {
@@ -476,7 +496,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     } finally {
       setAsking(false);
     }
-  }, [ask, chatModel]);
+  }, [ask, chatModel, loadConversation]);
 
   // Prime audio playback inside a real user gesture so the browser's autoplay
   // policy never blocks Jarvis from speaking later (TTS fires from async
@@ -812,13 +832,18 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             setAnswer(data.answer);
             setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
             setVoiceStatus("Answered");
+            void loadConversation();
             await speakJarvis(data.answer);
           } else {
-            setAskNote(
+            // Never go silent: tell the user (out loud) why there's no answer.
+            const note =
               data.hint ??
-                "Set ANTHROPIC_API_KEY for instant answers, or run Ollama with a chat model.",
-            );
+              "I couldn't reach an answer model. Add an Anthropic API key for fast, accurate answers.";
+            setAskNote(note);
             setVoiceStatus("No answer model");
+            await speakJarvis(
+              "I couldn't get an answer. To look things up live I need an Anthropic API key in your settings.",
+            );
           }
           return;
         }
@@ -829,11 +854,12 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       } catch {
         setVoiceError("Something went wrong handling that. Try again.");
         setVoiceStatus("Voice idle");
+        await speakJarvis("Sorry, something went wrong. Please try again.").catch(() => {});
       } finally {
         setIsThinking(false);
       }
     },
-    [loadRecent, onNavigate, speakJarvis],
+    [loadConversation, loadRecent, onNavigate, speakJarvis],
   );
 
   const transcribeCommandAudio = useCallback(
@@ -1021,7 +1047,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       // If the wake phrase and the command came together ("jarvis what's my
       // schedule"), handle it directly; otherwise record the follow-up speech.
       if (commandAfterWake && commandAfterWake.split(/\s+/).length >= 2) {
-        void runVoiceIntent(commandAfterWake);
+        // Inline "Jarvis <command>": this path bypasses transcribeCommandAudio,
+        // so re-arm the wake loop ourselves once the command resolves — without
+        // this, hands-free stops after one spoken-together command.
+        void runVoiceIntent(commandAfterWake).finally(() => maybeContinueLoop());
         return;
       }
       void startCommandRecording();
@@ -1058,7 +1087,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     recognition.start();
     setIsWakeArmed(true);
     setVoiceStatus("Listening for “Jarvis”…");
-  }, [runVoiceIntent, startCommandRecording, voiceConfig]);
+  }, [maybeContinueLoop, runVoiceIntent, startCommandRecording, voiceConfig]);
 
   // One click: grant the mic and enter persistent hands-free mode.
   const startListening = useCallback(() => {
@@ -1287,6 +1316,33 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
               </div>
               {captureMsg && <p className="jarvis-empty">{captureMsg}</p>}
             </>
+          )}
+        </section>
+
+        <section className="jarvis-panel jarvis-conversation" aria-label="Conversation history">
+          <p className="jarvis-panel-title">💬 Conversation</p>
+          {conversation.length === 0 ? (
+            <p className="jarvis-empty">
+              No conversation yet today. Ask Jarvis something — it appears here and is saved to your
+              brain (Jarvis/Conversations) so it remembers the thread.
+            </p>
+          ) : (
+            <div className="jarvis-thread">
+              {conversation.map((turn) => (
+                <div className="jarvis-thread-turn" key={`${turn.time}-${turn.question}`}>
+                  <div className="jarvis-bubble jarvis-bubble--you">
+                    <span className="jarvis-bubble-who">You</span>
+                    <span className="jarvis-bubble-text">{turn.question}</span>
+                  </div>
+                  <div className="jarvis-bubble jarvis-bubble--jarvis">
+                    <span className="jarvis-bubble-who">
+                      Jarvis{turn.time ? ` · ${turn.time}` : ""}
+                    </span>
+                    <span className="jarvis-bubble-text">{turn.answer}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </section>
 

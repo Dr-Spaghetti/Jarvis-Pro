@@ -359,6 +359,12 @@ export const buildBrainAskUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
 export const buildBrainModelsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/brain/models", runtimeBaseUrl);
 
+export const buildBrainConversationUrl = (limit = 50, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(
+    `/api/brain/conversation?limit=${encodeURIComponent(String(limit))}`,
+    runtimeBaseUrl,
+  );
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 

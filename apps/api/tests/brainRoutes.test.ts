@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   handleBrainAskRoute,
   handleBrainCaptureRoute,
+  handleBrainConversationRoute,
   handleBrainDigestRoute,
   handleBrainJournalRoute,
   handleBrainMemoryRoute,
@@ -16,6 +17,8 @@ import {
   handleBrainRememberRoute,
   handleBrainSearchRoute,
   handleBrainSemanticRoute,
+  localDateStamp,
+  parseConversationMarkdown,
 } from "../src/createApiServer/brainRoutes";
 import type {
   RouteHandlerContext,
@@ -280,5 +283,60 @@ describe("brainRoutes", () => {
       if (previousHost === undefined) Reflect.deleteProperty(process.env, "OLLAMA_HOST");
       else process.env.OLLAMA_HOST = previousHost;
     }
+  });
+
+  it("conversation route returns parsed turns from today's transcript", async () => {
+    const dir = join(vault, "Jarvis", "Conversations");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, `${localDateStamp()}.md`),
+      "# Jarvis Conversations\n\nintro\n\n" +
+        "## 09:15\n\n**You:** what's the weather\n\n**Jarvis:** Sunny, 75.\n\n" +
+        "## 09:16\n\n**You:** and tomorrow\n\n**Jarvis:** Rain likely.\n\n",
+    );
+    const res = await call(handleBrainConversationRoute, "GET", "/api/brain/conversation");
+    expect(res.status).toBe(200);
+    expect(res.json.configured).toBe(true);
+    expect(res.json.turns).toHaveLength(2);
+    expect(res.json.turns[0]).toEqual({
+      time: "09:15",
+      question: "what's the weather",
+      answer: "Sunny, 75.",
+    });
+    expect(res.json.turns[1].answer).toBe("Rain likely.");
+  });
+
+  it("conversation route reports unconfigured when no vault is set", async () => {
+    Reflect.deleteProperty(process.env, "OBSIDIAN_VAULT_PATH");
+    const res = await call(handleBrainConversationRoute, "GET", "/api/brain/conversation");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ configured: false, turns: [] });
+  });
+});
+
+describe("parseConversationMarkdown", () => {
+  it("extracts You/Jarvis pairs and skips the header block", () => {
+    const turns = parseConversationMarkdown(
+      "# Jarvis Conversations\n\nintro text\n\n" +
+        "## 14:02\n\n**You:** hello there\n\n**Jarvis:** Hi Nick, how can I help?\n\n",
+    );
+    expect(turns).toHaveLength(1);
+    expect(turns[0]).toEqual({
+      time: "14:02",
+      question: "hello there",
+      answer: "Hi Nick, how can I help?",
+    });
+  });
+
+  it("keeps multi-line answers intact", () => {
+    const turns = parseConversationMarkdown(
+      "## 10:00\n\n**You:** summarize\n\n**Jarvis:** Line one.\nLine two.\n\n",
+    );
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.answer).toBe("Line one.\nLine two.");
+  });
+
+  it("returns nothing for content without turns", () => {
+    expect(parseConversationMarkdown("# Just a header\n\nno turns here")).toEqual([]);
   });
 });

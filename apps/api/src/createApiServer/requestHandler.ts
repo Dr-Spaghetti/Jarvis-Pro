@@ -19,6 +19,7 @@ import { handleAuthStatusRoute, handleAuthVerifyRoute } from "./authRoutes";
 import {
   handleBrainAskRoute,
   handleBrainCaptureRoute,
+  handleBrainConversationRoute,
   handleBrainDigestRoute,
   handleBrainJournalRoute,
   handleBrainMemoryRoute,
@@ -179,6 +180,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainSemanticRoute,
       handleBrainAskRoute,
       handleBrainModelsRoute,
+      handleBrainConversationRoute,
     ],
   ],
   ["brief", [handleBriefConfigRoute]],

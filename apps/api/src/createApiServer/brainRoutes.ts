@@ -927,13 +927,19 @@ type AnthrContent =
 type AnthrMessage = { role: "user" | "assistant"; content: string | AnthrContent[] };
 type AnthrResponse = { stop_reason: string; content: AnthrContent[] };
 
+export type ConversationTurn = { time: string; question: string; answer: string };
+
 const JARVIS_VOICE_SYSTEM =
   "You are Jarvis, Nick's sharp personal AI. Be concise and conversational — like a " +
   "knowledgeable friend, not a formal assistant. One or two sentences for voice answers; " +
   "never use bullet points or headers. If you call web_search, weave the result naturally " +
   "into your answer. Never say you cannot access real-time data — use web_search instead.";
 
-const askViaClaude = async (question: string, context: string): Promise<string | null> => {
+const askViaClaude = async (
+  question: string,
+  context: string,
+  history: ConversationTurn[] = [],
+): Promise<string | null> => {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) return null;
 
@@ -953,9 +959,14 @@ const askViaClaude = async (question: string, context: string): Promise<string |
       ]
     : undefined;
 
-  const messages: AnthrMessage[] = [
-    { role: "user", content: `${context}\n\nQuestion: ${question}` },
-  ];
+  // Replay recent turns as real conversation so Jarvis has continuity — it can
+  // resolve "what about him?" and build on earlier answers, not just one-shot.
+  const messages: AnthrMessage[] = [];
+  for (const turn of history) {
+    messages.push({ role: "user", content: turn.question });
+    messages.push({ role: "assistant", content: turn.answer });
+  }
+  messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
 
   for (let turn = 0; turn < 3; turn += 1) {
     const body: Record<string, unknown> = {
@@ -1072,6 +1083,78 @@ const ASK_SYSTEM_PROMPT =
   "say you don't have it noted yet and suggest he capture it.\n" +
   "Never refuse a general question just because it isn't in his notes.";
 
+// ── Conversation transcript (Obsidian-stored, for review + continuity) ──────
+// Every Q&A is appended to Jarvis/Conversations/<date>.md so the whole thread
+// is reviewable in Obsidian ("what worked"), and recent turns are replayed into
+// each prompt so Jarvis carries context forward instead of answering blind.
+const CONVERSATION_DIR = "Jarvis/Conversations";
+const CONVERSATION_HEADER =
+  "# Jarvis Conversations\n\nRunning transcript of voice & text chats (newest at the bottom).\n" +
+  "Jarvis replays recent turns for continuity — review here to see what works.\n\n";
+
+const conversationRelPath = (): string => `${CONVERSATION_DIR}/${localDateStamp()}.md`;
+
+// Pure parser (unit-tested): pulls You/Jarvis pairs out of a day's markdown log.
+export const parseConversationMarkdown = (content: string): ConversationTurn[] => {
+  const turns: ConversationTurn[] = [];
+  for (const block of content.split(/\n(?=## )/)) {
+    const you = block.match(/\*\*You:\*\*\s*([\s\S]*?)\n\n\*\*Jarvis:\*\*/)?.[1];
+    const jarvis = block.match(/\*\*Jarvis:\*\*\s*([\s\S]*)$/)?.[1];
+    if (you === undefined || jarvis === undefined) continue;
+    const time = block.match(/^##\s*(.+)$/m)?.[1]?.trim() ?? "";
+    turns.push({ time, question: you.trim(), answer: jarvis.trim() });
+  }
+  return turns;
+};
+
+const readConversationTurns = (vaultDir: string, limit: number): ConversationTurn[] => {
+  const file = join(vaultDir, conversationRelPath());
+  if (!existsSync(file)) return [];
+  try {
+    return parseConversationMarkdown(readFileSync(file, "utf8")).slice(-limit);
+  } catch {
+    return [];
+  }
+};
+
+const appendConversationTurn = (vaultDir: string, question: string, answer: string): void => {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const block = `## ${hh}:${mm}\n\n**You:** ${oneLine(question)}\n\n**Jarvis:** ${answer.trim()}\n\n`;
+  try {
+    ensureAndAppend(vaultDir, conversationRelPath(), CONVERSATION_HEADER, block);
+  } catch {
+    // Best-effort logging; never block the answer if the vault write fails.
+  }
+};
+
+export const handleBrainConversationRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
+  if (requestUrl.pathname !== "/api/brain/conversation") return false;
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+  const vaultDir = resolveVaultDir();
+  if (!vaultDir) {
+    writeJson(response, 200, { configured: false, turns: [] }, corsOrigin);
+    return true;
+  }
+  const limit = Math.min(200, Math.max(1, Number(requestUrl.searchParams.get("limit")) || 50));
+  writeJson(
+    response,
+    200,
+    { configured: true, date: localDateStamp(), turns: readConversationTurns(vaultDir, limit) },
+    corsOrigin,
+  );
+  return true;
+};
+
 // Lists the local Ollama chat models the user can pick from, plus the default.
 export const handleBrainModelsRoute: ApiRouteHandler = async ({
   request,
@@ -1115,6 +1198,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
   const vaultDir = resolveVaultDir();
   const notes = vaultDir ? await retrieveContext(vaultDir, question, 6) : [];
   const facts = vaultDir ? readMemoryFacts(vaultDir, 20) : [];
+  const history = vaultDir ? readConversationTurns(vaultDir, 6) : [];
   const sources = notes.map((note) => ({ title: note.title, path: note.rel }));
 
   const memoryBlock = facts.length > 0 ? facts.map((f) => `- ${f}`).join("\n") : "(none)";
@@ -1125,8 +1209,9 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
 
   // Fast path: Claude Haiku with optional web search for real-time data.
   const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
-  const claudeAnswer = await askViaClaude(question, claudeContext);
+  const claudeAnswer = await askViaClaude(question, claudeContext, history);
   if (claudeAnswer) {
+    if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
     writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
     return true;
   }
@@ -1146,7 +1231,11 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const prompt = `MEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
+  const historyBlock =
+    history.length > 0
+      ? history.map((t) => `You: ${t.question}\nJarvis: ${t.answer}`).join("\n\n")
+      : "(none)";
+  const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
   const answer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
     ...(model ? { model } : {}),
@@ -1165,6 +1254,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
     );
     return true;
   }
+  appendConversationTurn(vaultDir, question, answer);
   writeJson(response, 200, { available: true, answer, sources }, corsOrigin);
   return true;
 };
