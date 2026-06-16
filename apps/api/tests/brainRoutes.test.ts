@@ -245,8 +245,14 @@ describe("brainRoutes", () => {
   });
 
   it("ask returns available:false with retrieved sources when no chat model is reachable", async () => {
+    // Force every cloud + local provider unreachable so the test is deterministic
+    // regardless of which keys happen to be exported in the shell.
     const previousHost = process.env.OLLAMA_HOST;
+    const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+    const previousOpenAi = process.env.OPENAI_API_KEY;
     process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+    Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    Reflect.deleteProperty(process.env, "OPENAI_API_KEY");
     try {
       const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
         question: "What did I write about the Venue?",
@@ -259,6 +265,8 @@ describe("brainRoutes", () => {
     } finally {
       if (previousHost === undefined) Reflect.deleteProperty(process.env, "OLLAMA_HOST");
       else process.env.OLLAMA_HOST = previousHost;
+      if (previousAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = previousAnthropic;
+      if (previousOpenAi !== undefined) process.env.OPENAI_API_KEY = previousOpenAi;
     }
   });
 

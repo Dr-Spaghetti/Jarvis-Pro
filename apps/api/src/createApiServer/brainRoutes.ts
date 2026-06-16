@@ -852,6 +852,16 @@ const getAnthropicApiKey = (): string | null => {
   return v && v.length > 0 ? v : null;
 };
 
+const getOpenAiApiKey = (): string | null => {
+  const v = process.env.OPENAI_API_KEY?.trim();
+  return v && v.length > 0 ? v : null;
+};
+
+// OpenAI's *-search-preview models web-search automatically on the standard
+// chat endpoint, so live questions work with the key the user already has.
+const getOpenAiChatModel = (): string =>
+  process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini-search-preview";
+
 const getBraveSearchApiKey = (): string | null => {
   const v = process.env.BRAVE_SEARCH_API_KEY?.trim();
   return v && v.length > 0 ? v : null;
@@ -1012,6 +1022,45 @@ const askViaClaude = async (
   }
 
   return null;
+};
+
+// Second cloud path: OpenAI's web-search model. Uses the key the user already
+// has for STT/TTS, so live questions work with no extra signup. Returns null on
+// any failure (no key, bad params, network) so the caller falls through.
+type OpenAiChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+const askViaOpenAi = async (
+  question: string,
+  context: string,
+  history: ConversationTurn[] = [],
+): Promise<string | null> => {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) return null;
+
+  const messages: OpenAiChatMessage[] = [{ role: "system", content: JARVIS_VOICE_SYSTEM }];
+  for (const turn of history) {
+    messages.push({ role: "user", content: turn.question });
+    messages.push({ role: "assistant", content: turn.answer });
+  }
+  messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
+
+  // Minimal body: the search-preview models reject temperature/top_p, so we send
+  // only model + messages and let the system prompt keep answers short.
+  const fetchRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: getOpenAiChatModel(), messages }),
+  }).catch(() => null);
+
+  if (!fetchRes || !fetchRes.ok) return null;
+  const data = (await fetchRes.json().catch(() => null)) as {
+    choices?: Array<{ message?: { content?: unknown } }>;
+  } | null;
+  const content = data?.choices?.[0]?.message?.content;
+  return typeof content === "string" && content.trim().length > 0 ? content.trim() : null;
 };
 
 // ── Ask Jarvis: local RAG over the brain (free, via Ollama chat) ────────────
@@ -1207,12 +1256,20 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       ? notes.map((n) => `### ${n.title} (${n.rel})\n${n.body}`).join("\n\n")
       : "(no matching notes)";
 
-  // Fast path: Claude Haiku with optional web search for real-time data.
+  // Fast path 1: Claude Haiku with optional web search (preferred when keyed).
   const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
   const claudeAnswer = await askViaClaude(question, claudeContext, history);
   if (claudeAnswer) {
     if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
     writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
+    return true;
+  }
+
+  // Fast path 2: OpenAI web-search model (uses the existing STT/TTS key).
+  const openAiAnswer = await askViaOpenAi(question, claudeContext, history);
+  if (openAiAnswer) {
+    if (vaultDir) appendConversationTurn(vaultDir, question, openAiAnswer);
+    writeJson(response, 200, { available: true, answer: openAiAnswer, sources }, corsOrigin);
     return true;
   }
 
