@@ -1394,7 +1394,9 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       {
         available: false,
         reason: "no-chat-model",
-        hint: `Couldn't reach a cloud model${providerNote}, and the local model didn't respond. Check your OpenAI/Anthropic key, or pull an Ollama model: \`ollama pull qwen2.5:7b\`.`,
+        hint: model
+          ? `The local model '${model}' did not respond. Check that Ollama is running and the model is pulled: \`ollama pull ${model}\`.`
+          : `Couldn't reach a cloud model${providerNote}, and the local model didn't respond. Check your OpenAI/Anthropic key, or pull an Ollama model: \`ollama pull qwen2.5:7b\`.`,
         sources,
       },
       corsOrigin,
