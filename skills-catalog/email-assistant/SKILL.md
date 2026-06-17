@@ -1,5 +1,6 @@
 ---
 name: email-assistant
+sensitive: true
 description: >
   Draft, review, reply to, and triage email — and send only with explicit
   confirmation. Trigger whenever the user asks to: write/draft an email, reply to

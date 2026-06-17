@@ -1,5 +1,6 @@
 ---
 name: review-repair-outreach
+sensitive: true
 description: >
   Run Nick's review-repair client-acquisition engine end-to-end and AUTOMATED:
   discover local businesses + their Google ratings via the Local Falcon API, rank
