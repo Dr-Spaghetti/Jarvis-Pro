@@ -1,6 +1,6 @@
 # Jarvis (octogent-skills) — Project Handoff
 
-> Handoff doc for a new agent (Codex) taking over development. Read this top-to-bottom first, then `REVIEW_LOG.md`, then the roadmap plan file (path below). Verify every claim against the live code before acting — this doc is a point-in-time snapshot (2026-06-16).
+> Handoff doc for a new agent (Codex) taking over development. Read this top-to-bottom first, then `REVIEW_LOG.md`, then the roadmap plan file (path below). Verify every claim against the live code before acting — this doc is a point-in-time snapshot (2026-06-17).
 
 ---
 
@@ -54,38 +54,45 @@ Biome is strict: it rejects bare `role="dialog|status|group"` (use `<dialog>`/`<
 
 ---
 
-## 4. Current state (git `main`, snapshot 2026-06-16)
+## 4. Current state (git `main`, snapshot 2026-06-17)
 
 **Shipped (recent commits, newest first):**
-- `57ecea3` voice: hard timeouts on every brain call + visible "Brain" readiness readout
-- `6fdfd6e` voice: teach-and-it-sticks learning loop (spoken corrections obeyed)
-- `51dd2fa` voice: OpenAI web-search answer path
-- `b374a5a` voice: never-silent answers, hands-free re-arm, conversation transcript
-- `377cf0b` voice: push-to-talk button + reliability hardening
-- `35eb8c7` replace Ollama ask with **Claude Haiku + web search**; instant voice ack
-- `21f49d2`,`1340283`,`8424c5c` **Wave 9** — voice `run-skill` intent + `POST /api/skills/run` + Deck "Run" button + server-side sensitive-skill approval gate
-- `8f789be` model picker; `69ab251` general-question answers; `7f8031e`/`2ba4455`/`60e3971`/`5c34e3d` voice fixes
-- Waves 1–8 + hardening + Gmail OAuth all shipped earlier (see `REVIEW_LOG.md` and the plan file).
+- `6e864eb` docs: Wave 12 adversarial review → REVIEW_LOG.md
+- `2c4b178` fix(wave-12): harden voice skill-run approval gate (post-review)
+- `3219a23` feat(wave-12): add `sensitive:true` to email/outreach skills so Deck Run gate triggers
+- `c0611d6` fix(brain): Wave 11 hardening — security, correctness, classifier fixes
+- `91ddff1` feat(brain): Wave 11 — agentic Ask Jarvis with live MCP data
+- `2c56faa` / `17d8ffc` Wave 10 — user-selectable Claude model in Answer-model dropdown
+- Earlier: Waves 1–9 + Gmail OAuth + remote access — see `REVIEW_LOG.md` and the plan file.
 
-**⚠️ Uncommitted working-tree changes right now** (decide whether to keep/commit/discard before building on top): `apps/api/src/createApiServer/brainRoutes.ts`, `apps/web/src/components/JarvisHomePrimaryView.tsx`, and `.env` (untracked/local — never commit `.env`). Run `git diff` to assess; they appear to be in-progress voice/brain tweaks.
+**Working tree:** clean (no uncommitted changes).
 
 **Environment / credentials (in `.env`, do NOT print values):**
 - ✅ `OBSIDIAN_VAULT_PATH`, `OCTOGENT_API_PORT=8787`
-- ✅ Gmail OAuth live (`GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN/USER_EMAIL`)
-- ✅ `DEEPGRAM_API_KEY` (STT + TTS, ~$200 credit, WORKS) ; `PIPER_BIN`/`PIPER_MODEL` (free local TTS)
-- ✅ `OLLAMA_CHAT_MODEL=qwen3.6:latest` (default). Installed chat models: qwen3.6, gemma3:12b, phi4, deepseek-r1, llama3.1, qwen2.5-coder, hermes3, openchat, qwen2.5 (+ nomic-embed-text for embeddings).
-- ⚠️ `OPENAI_API_KEY` set but **out of quota (429)** — used only for web-search path; expect failures.
-- ⚠️ `ELEVENLABS_API_KEY` set but **free plan blocks library voices (402)**.
-- ❌ No `APOLLO_API_KEY` / `LOCALFALCON_API_KEY` (Nick uses those as MCP connectors, not REST keys) → their dashboard tiles correctly show "not configured".
-- **Claude** is used via the `claude` CLI (Nick's `claude login` plan), not an API key.
+- ✅ Gmail OAuth live (`GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN/USER_EMAIL`) — confirmed set
+- ✅ `ANTHROPIC_API_KEY` set and credited (Claude Haiku + Sonnet answer paths work)
+- ✅ `DEEPGRAM_API_KEY` (STT + TTS, ~$200 credit, WORKS); `PIPER_BIN`/`PIPER_MODEL` (free local TTS)
+- ✅ `OLLAMA_CHAT_MODEL=qwen3.6:latest` (default). Installed: qwen3.6, gemma3:12b, phi4, deepseek-r1, llama3.1, qwen2.5-coder, hermes3, openchat, qwen2.5 (+ nomic-embed-text for embeddings)
+- ⚠️ `OPENAI_API_KEY` set but **out of quota (429)** — used only for web-search path; expect failures
+- ⚠️ `ELEVENLABS_API_KEY` set but **free plan blocks library voices (402)**
+- ❌ No `APOLLO_API_KEY` / `LOCALFALCON_API_KEY` — tiles correctly show "not configured"; data available via Wave 11 agentic path on demand
+- **Claude** is used via the `claude` CLI (Nick's `claude login` plan) + `ANTHROPIC_API_KEY` for direct API calls
 
 ---
 
-## 5. Roadmap (approved, not yet built) — Waves 10–12
-Full detail in **`C:\Users\nicks\.claude\plans\wdym-by-that-crystalline-pine.md`** (the plan of record). Summary:
-- **Wave 10 — Claude answer model** in the Answer-model dropdown via `claude -p` print mode (uses Nick's plan, no API key). *Note: much of the brain may already route to Claude Haiku per commit `35eb8c7` — verify what's done vs. remaining.*
-- **Wave 11 — Agentic Ask Jarvis** (live data + reasoning). **Start with a spike:** can headless `claude -p` reach Nick's MCP connectors? If yes → route data/hard questions through it. If no → direct vendor REST keys for services Nick can get keys for. Never fabricate data.
-- **Wave 12 — Tiles + money engine.** Apollo/Local Falcon tiles need direct API keys (or deliver via Wave 11 on-demand). Operational: run `review-repair-outreach` against the Tampa/USF list — **approval-gated, email-only** (Nick's standing rule).
+## 5. Roadmap status — ALL WAVES COMPLETE
+
+Full detail in **`C:\Users\nicks\.claude\plans\wdym-by-that-crystalline-pine.md`** (the plan of record).
+
+- **Wave 9** ✅ voice/deck `run-skill`, approval gate, `POST /api/skills/run`
+- **Wave 10** ✅ Claude Haiku/Sonnet in Answer-model dropdown, stale-model validation
+- **Wave 11** ✅ agentic Ask Jarvis — classifier routes hard/live-data questions through `claude -p` with MCP connectors; security hardened (env allowlist, Windows spawn fix, 30 s timeout)
+- **Wave 12** ✅ tiles honest "not-configured" for missing keys; `sensitive:true` on email/outreach skills; voice approval gate hardened to server-driven 403 pattern
+
+**What's left for Nick to do manually:**
+1. To run `review-repair-outreach` end-to-end: say "run review-repair-outreach" via voice → approval dialog → Confirm → a Claude Code agent spawns with the skill. The agent has MCP access to Local Falcon and Apollo. It will draft outreach (never sends without Nick's explicit OK in the agent terminal).
+2. To light up Apollo/Local Falcon tiles: add `APOLLO_API_KEY` and/or `LOCALFALCON_API_KEY` to `.env` and restart Jarvis — the tile code already supports them.
+3. OPENAI_API_KEY is out of quota — refill if web-search voice answers are needed.
 
 Quality bar (verbatim): no fake buttons/data, empty+loading+error states everywhere, black/gold HUD + 1–9 nav preserved, UI text says "Agents" but code identifiers stay `tentacle*`.
 
