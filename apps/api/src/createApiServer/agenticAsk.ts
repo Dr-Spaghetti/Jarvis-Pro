@@ -30,26 +30,51 @@ const AGENTIC_SYSTEM =
   "lookups, a brief list only if the data naturally calls for it. Never fabricate data: " +
   "if a tool call fails or returns no data, say exactly what went wrong.";
 
-// Strip CLAUDECODE and ANTHROPIC_* vars to avoid confusing the child claude process.
+// Pass only the OS vars the claude CLI needs — avoids leaking OPENAI_API_KEY,
+// DEEPGRAM_API_KEY, and every other secret the parent API server holds.
+const ENV_ALLOWLIST = new Set([
+  "PATH",
+  "HOME",
+  "USERPROFILE",
+  "TEMP",
+  "TMP",
+  "TMPDIR",
+  "SystemRoot",
+  "COMSPEC",
+  "PATHEXT",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "APPDATA",
+  "LOCALAPPDATA",
+]);
+
 const buildChildEnv = (): NodeJS.ProcessEnv => {
   const env: NodeJS.ProcessEnv = {};
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k === "CLAUDECODE") continue;
-    if (k.startsWith("ANTHROPIC_")) continue;
-    env[k] = v;
+  for (const key of ENV_ALLOWLIST) {
+    if (process.env[key] !== undefined) env[key] = process.env[key];
   }
   return env;
 };
 
+// Cache the result so we only shell out once per server lifetime.
+let cachedBinary: string | null | undefined;
+
 const resolveClaudeBinary = (): string | null => {
+  if (cachedBinary !== undefined) return cachedBinary;
   const lookupCmd = process.platform === "win32" ? "where.exe" : "which";
   try {
     const raw = execFileSync(lookupCmd, ["claude"], { timeout: 3_000, encoding: "utf8" }).trim();
     // where.exe may return multiple matches; take the first line.
-    return raw.split(/\r?\n/)[0]?.trim() || null;
+    cachedBinary = raw.split(/\r?\n/)[0]?.trim() || null;
   } catch {
-    return null;
+    cachedBinary = null;
   }
+  return cachedBinary;
+};
+
+/** Reset the cached binary path (used in tests). */
+export const resetClaudeBinaryCache = (): void => {
+  cachedBinary = undefined;
 };
 
 export type AgenticAskResult =
@@ -82,14 +107,20 @@ export const agenticAsk = (
     const toolPatterns = valid.map((c) => CONNECTOR_CONFIG[c].toolPattern).join(",");
     const viaLabel = valid.map((c) => CONNECTOR_CONFIG[c].label).join(", ");
 
-    // Prompt is written to stdin to avoid Windows command-line length limits
-    // and shell quoting issues with user-supplied text.
+    // Prompt is written to stdin to avoid command-line length limits and shell
+    // quoting issues with user-supplied text.
     const fullPrompt = `${AGENTIC_SYSTEM}\n\nContext:\n${context}\n\nQuestion: ${question}`;
 
-    // On Windows, .cmd files require shell:true. On Unix, call the resolved binary directly.
+    // On Windows, .cmd scripts can't be executed directly — use cmd.exe /c with
+    // the resolved binary path so we avoid shell:true (which would discard the
+    // resolved path and risk picking up a local claude.cmd/bat from cwd).
     const isWin = process.platform === "win32";
-    const proc = spawn(isWin ? "claude" : binary, ["-p", "--allowedTools", toolPatterns], {
-      shell: isWin,
+    const [spawnCmd, spawnArgs] = isWin
+      ? (["cmd.exe", ["/c", binary, "-p", "--allowedTools", toolPatterns]] as const)
+      : ([binary, ["-p", "--allowedTools", toolPatterns]] as const);
+
+    const proc = spawn(spawnCmd, [...spawnArgs], {
+      shell: false,
       stdio: ["pipe", "pipe", "pipe"],
       env: buildChildEnv(),
     });
@@ -130,7 +161,7 @@ export const agenticAsk = (
       // stdin may already be closed if the process errored at startup
     }
 
-    // Hard timeout — 60 s is generous for a single MCP call.
+    // Hard timeout — 30 s covers typical MCP round-trips with room to spare.
     const deadline = setTimeout(() => {
       try {
         proc.kill();
@@ -140,12 +171,13 @@ export const agenticAsk = (
       finish({
         ok: false,
         reason: "timeout",
-        hint: "The agentic lookup timed out after 60 s. Try again.",
+        hint: "The live-data lookup timed out after 30 s. Try again.",
       });
-    }, 60_000);
+    }, 30_000);
 
-    proc.on("close", (code) => {
+    proc.on("close", () => {
       clearTimeout(deadline);
+      // Flush any buffered stdout that arrived before the close event.
       const answer = stdout.trim();
       if (answer) {
         finish({ ok: true, answer, via: viaLabel });
@@ -167,7 +199,7 @@ export const agenticAsk = (
       finish({
         ok: false,
         reason: "claude-error",
-        hint: `Agentic lookup returned no answer (exit ${String(code)}).${reAuthSuffix}`,
+        hint: `Live-data lookup returned no answer.${reAuthSuffix}`,
       });
     });
   });

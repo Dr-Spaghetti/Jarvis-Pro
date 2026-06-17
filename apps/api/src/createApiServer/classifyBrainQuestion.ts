@@ -45,7 +45,7 @@ const APOLLO_KEYWORDS = [
 ];
 
 const containsAny = (lower: string, keywords: readonly string[]): boolean =>
-  keywords.some((kw) => lower.includes(kw));
+  keywords.some((kw) => new RegExp(`\\b${kw}\\b`).test(lower));
 
 export const classifyBrainQuestion = (question: string): BrainQuestionRoute => {
   const lower = question.toLowerCase();

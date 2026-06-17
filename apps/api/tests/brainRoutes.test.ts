@@ -479,7 +479,7 @@ describe("handleBrainAskRoute — agentic path", () => {
     expect(typeof res.json.hint).toBe("string");
   });
 
-  it("skips agentic path when an explicit Ollama model is chosen", async () => {
+  it("returns agentic-skipped when an explicit Ollama model is chosen for a live-data question", async () => {
     const { agenticAsk } = await import("../src/createApiServer/agenticAsk");
 
     // question would normally classify as agentic (has "ranking")
@@ -488,11 +488,12 @@ describe("handleBrainAskRoute — agentic path", () => {
       model: "qwen3.6:latest",
     });
 
-    // agenticAsk must NOT be called — should fall through to Ollama path (no-chat-model
-    // because Ollama isn't running in the test environment)
+    // agenticAsk must NOT be called — H-1: warn instead of silently falling through to Ollama
     expect(vi.mocked(agenticAsk)).not.toHaveBeenCalled();
     expect(res.status).toBe(200);
-    expect(res.json.reason).toBe("no-chat-model");
+    expect(res.json.available).toBe(false);
+    expect(res.json.reason).toBe("agentic-skipped");
+    expect(typeof res.json.hint).toBe("string");
   });
 });
 

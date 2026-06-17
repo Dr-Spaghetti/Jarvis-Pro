@@ -2,6 +2,101 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 11 — Agentic Ask Jarvis — hardening (2026-06-17)
+
+Adversarial review of Wave 11 diff. **All CRITICAL and HIGH findings applied in this hardening commit. MEDIUM and LOW findings applied where safe; one LOW test change required to match new correct behavior.**
+
+### Summary
+
+Two commits: feature (`feat(brain): Wave 11 — agentic Ask Jarvis with live MCP data`) and this hardening commit. All 315 API + 195 web tests pass, lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
+
+### Applied (CRITICAL)
+
+**C-1 — Windows `shell:true` with unresolved binary**
+Spawning `"claude"` with `shell:true` on Windows bypassed the resolved binary path and risked picking up a rogue `claude.bat` from cwd. Fixed to `cmd.exe /c <resolved_path>` with `shell:false`.
+
+**C-2 — Child process inherited all parent secrets**
+`buildChildEnv()` used a denylist that still passed `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, and every other server secret. Replaced with an OS-var allowlist (`PATH`, `HOME`, `USERPROFILE`, `TEMP`, `TMP`, `TMPDIR`, `SystemRoot`, `COMSPEC`, `PATHEXT`, `HOMEDRIVE`, `HOMEPATH`, `APPDATA`, `LOCALAPPDATA`).
+
+### Applied (HIGH)
+
+**H-1 — Explicit Ollama + agentic question silently fell through to hallucination**
+When `model` was an explicit Ollama model and the question classified as agentic, the code fell through to Ollama, which would fabricate a live-data answer. Now returns `reason: "agentic-skipped"` with a clear hint to switch to Auto.
+
+**H-2 — Voice path missing `via` field**
+The `runVoiceIntent` "ask" branch's `data` type cast lacked `via?: string` and never called `setAnswerVia`. Fixed to match the text-ask path.
+
+**H-3 — 60 s timeout too long**
+Reduced from 60 s to 30 s to keep the UI from hanging.
+
+### Applied (MEDIUM)
+
+**M-2 — "rank" and "leads" matched substrings ("frank", "misleads")**
+Changed `containsAny` from `string.includes(kw)` to `new RegExp(\`\\b${kw}\\b\`).test(lower)` so single-word keywords only match at word boundaries.
+
+**M-3 — `.jarvis-answer-via` used `--text-muted` (undefined in theme)**
+Changed to `var(--text-secondary)` which is defined in the design system.
+
+### Applied (LOW)
+
+**L-2 — Binary resolution shelled out on every request**
+Added module-level `cachedBinary` cache. Also exported `resetClaudeBinaryCache()` for test isolation.
+
+### Test update
+
+The "skips agentic path when explicit Ollama" test was updated to assert `reason: "agentic-skipped"` instead of `"no-chat-model"` — the old assertion described the old (incorrect) fall-through behavior that H-1 eliminated.
+
+### Lessons
+
+- **Allowlists beat denylists for env scrubbing** — a denylist always misses new secrets; an allowlist of OS-required vars is complete by design.
+- **Windows spawn requires explicit `cmd.exe /c <path>` pattern** — `shell:true` with a relative name silently discards any resolved absolute path.
+- **Never silently fall through to a model that can't answer correctly** — an explicit "I can't fetch that" is always better than a plausible hallucination.
+- **Word-boundary regexes for short keywords prevent false positives** — `\b` is cheap and eliminates the "frank" / "misleads" class of classifier bugs.
+
+---
+
+## Wave 10 — Claude answer-model picker — commits feat + fix (2026-06-17)
+
+Adversarial review of Wave 10 diff. **Two MEDIUM findings applied in a hardening commit. Two MEDIUM and two LOW findings documented but not applied (reasons below).**
+
+### Summary
+
+Two commits: feature (`feat(brain): Wave 10 — user-selectable Claude answer model`) and hardening (`fix(brain): harden Wave 10 post-review`). Tests pass (303 API, 195 web), lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
+
+Changes: `brainRoutes.ts` (routing logic, `claudeModels` field in `/api/brain/models`, `askViaClaude` model param), `JarvisHomePrimaryView.tsx` (Claude model dropdown options, `claudeModels` state), `brainRoutes.test.ts` (4 new tests covering new routing branches).
+
+### Applied (MEDIUM)
+
+**MEDIUM-1 — Stale localStorage not reset when API key removed**
+After `ANTHROPIC_API_KEY` is removed from `.env`, the persisted `jarvis.chatModel` could still be `claude-haiku-*` or `claude-sonnet-*` — causing every ask to hit the explicit-Claude branch and return `no-chat-model` silently. **Fix:** validate the persisted selection against the combined `[...claudeModels, ...chatModels]` list after each models fetch; clear localStorage and reset to `""` (Auto) if the stored value is no longer available.
+
+**MEDIUM-2 — Wrong Ollama failure hint when model is explicit**
+When an explicit Ollama model (e.g. `qwen3.6:latest`) fails to respond, the error message said "Couldn't reach a cloud model" — even though cloud was deliberately skipped. **Fix:** conditional hint: explicit-model path says "The local model X did not respond — pull it" while the auto-cascade path keeps the original cloud-failure wording.
+
+### Considered and not applied (with reason)
+
+**MEDIUM-3 — Ollama-skip test does not prove cloud skipping via call inspection**
+The test verifying explicit-Ollama model skips cloud uses response-shape difference (400 auto-cascade vs 200 explicit-Ollama), not mock call counts. This means it does not technically prove that `askViaClaude` / `askViaOpenAI` are never called on the explicit-Ollama path. **Why not applied:** Adding fetch mocking to this test suite would require restructuring the module to inject providers rather than calling module-level closures. The routing logic is clear from the code (`model?.startsWith("claude-")` short-circuits first; no-key auto-cascade exits with 400 before reaching Ollama). The test is accepted as a behavior-contract test, not a call-isolation test. **Lesson:** annotate the test comment so the next reader knows the limitation is intentional.
+
+**MEDIUM-4 — No `sources` field in Ollama slow-path when `vaultDir` is null (pre-existing)**
+When `vaultDir` is null and no cloud model answers, the 400 response lacks `sources`. This was pre-existing before Wave 10; the Wave 10 routing code preserves it. Addressing it correctly requires threading `sources` through the early-exit path, which is a broader refactor. Scoped as a future cleanup, not a Wave 10 regression.
+
+### LOW findings (not applied)
+
+**LOW-1 — `CLAUDE_MODEL_IDS` `as const` + spread loses readonly type**
+`[...CLAUDE_MODEL_IDS]` returns `string[]`, discarding the `readonly` narrowing. No runtime impact; a future loop over the array already has correct values. Not worth a separate refactor commit.
+
+**LOW-2 — No loading / error state for models fetch failure**
+If `/api/brain/models` returns a network error, `claudeModels` stays `[]` silently and the Claude options disappear without explanation. Pre-existing pattern for all model selects; fixing it uniformly is Wave 11 scope.
+
+### Lessons
+
+- **PowerShell `@'...'@` here-strings split on embedded single quotes in some tool invocations** — write commit messages to a temp file and use `git commit -F` as a reliable cross-platform fallback. The `$(cat <<'EOF'...'@` hybrid is a non-starter.
+- **Stale localStorage after credential removal is an easy miss** — any picker whose options are key-gated must validate the stored value at load time, not just on change.
+- **Conditional error messages pay off** — the same "no-chat-model" response shape looks right to the client; the human-readable hint is where context matters. Branch the hint on `model` being set vs auto-cascade.
+
+---
+
 ## Post-verification hardening (2026-06-13)
 
 Independent 3-reviewer audit of all waves (security / data-honesty / connector

@@ -1348,6 +1348,29 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
     }
   }
 
+  // Explicit local model but the question needs live data — warn rather than fall through
+  // to Ollama which would fabricate an answer instead of fetching real data.
+  if (isExplicitOllama) {
+    const warnClassification = classifyBrainQuestion(question);
+    if (warnClassification.type === "agentic") {
+      const connectorLabels = warnClassification.connectors
+        .map((c) => (c === "localfalcon" ? "Local Falcon" : "Apollo"))
+        .join(" / ");
+      writeJson(
+        response,
+        200,
+        {
+          available: false,
+          reason: "agentic-skipped",
+          hint: `"${model}" is a local model and cannot fetch live data. Switch the Answer model to Auto to let ${connectorLabels} answer this question.`,
+          sources,
+        },
+        corsOrigin,
+      );
+      return true;
+    }
+  }
+
   // Explicit Claude model: use that model directly, no cascade to OpenAI/Ollama.
   if (model?.startsWith("claude-")) {
     const ans = await askViaClaude(question, claudeContext, history, model);

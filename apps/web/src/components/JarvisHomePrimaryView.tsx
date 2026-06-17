@@ -874,11 +874,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             available?: boolean;
             answer?: string;
             hint?: string;
+            via?: string;
             sources?: { title: string; path: string }[];
           };
           if (data.available && typeof data.answer === "string") {
             setAnswer(data.answer);
             setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+            setAnswerVia(typeof data.via === "string" ? data.via : null);
             setVoiceStatus("Answered");
             void loadConversation();
             await speakJarvis(data.answer);
