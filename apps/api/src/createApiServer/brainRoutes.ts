@@ -9,6 +9,8 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
+import { agenticAsk } from "./agenticAsk";
+import { classifyBrainQuestion } from "./classifyBrainQuestion";
 import { chatViaOllama, getChatModel, listOllamaChatModels } from "./ollamaChat";
 import { cosineSimilarity, embedViaOllama } from "./ollamaEmbed";
 import type { ApiRouteHandler } from "./routeHelpers";
@@ -1316,6 +1318,35 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       : "(no matching notes)";
 
   const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
+
+  // Agentic path: live data from MCP connectors (Local Falcon, Apollo).
+  // Skip when the user explicitly picked a local Ollama model — they want an offline answer.
+  const isExplicitOllama = model !== undefined && !model.startsWith("claude-");
+  if (!isExplicitOllama) {
+    const classification = classifyBrainQuestion(question);
+    if (classification.type === "agentic") {
+      const result = await agenticAsk(question, claudeContext, classification.connectors);
+      if (result.ok) {
+        if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
+        writeJson(
+          response,
+          200,
+          { available: true, answer: result.answer, sources, via: result.via },
+          corsOrigin,
+        );
+        return true;
+      }
+      // Connector unavailable — tell the user specifically why instead of silently
+      // falling through to a general answer that might be fabricated.
+      writeJson(
+        response,
+        200,
+        { available: false, reason: "agentic-failed", hint: result.hint, sources },
+        corsOrigin,
+      );
+      return true;
+    }
+  }
 
   // Explicit Claude model: use that model directly, no cascade to OpenAI/Ollama.
   if (model?.startsWith("claude-")) {

@@ -3,7 +3,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../src/createApiServer/agenticAsk", () => ({
+  agenticAsk: vi.fn(),
+}));
 
 import {
   handleBrainAskRoute,
@@ -403,6 +407,92 @@ describe("handleBrainAskRoute — model routing", () => {
       else Reflect.deleteProperty(process.env, "OLLAMA_HOST");
       process.env.OBSIDIAN_VAULT_PATH = vault;
     }
+  });
+});
+
+describe("handleBrainAskRoute — agentic path", () => {
+  let vault: string;
+  let prevAnthropic: string | undefined;
+  let prevOpenAi: string | undefined;
+  let prevOllama: string | undefined;
+
+  beforeEach(() => {
+    vault = mkdtempSync(join(tmpdir(), "jarvis-agentic-"));
+    process.env.OBSIDIAN_VAULT_PATH = vault;
+    prevAnthropic = process.env.ANTHROPIC_API_KEY;
+    prevOpenAi = process.env.OPENAI_API_KEY;
+    prevOllama = process.env.OLLAMA_HOST;
+    // Remove cloud keys so they don't interfere; point Ollama at an unreachable
+    // address so the Ollama path fails fast instead of waiting 30 s.
+    Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    Reflect.deleteProperty(process.env, "OPENAI_API_KEY");
+    process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+    // Reset mock call counts between tests
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    rmSync(vault, { recursive: true, force: true });
+    Reflect.deleteProperty(process.env, "OBSIDIAN_VAULT_PATH");
+    if (prevAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = prevAnthropic;
+    else Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    if (prevOpenAi !== undefined) process.env.OPENAI_API_KEY = prevOpenAi;
+    else Reflect.deleteProperty(process.env, "OPENAI_API_KEY");
+    if (prevOllama !== undefined) process.env.OLLAMA_HOST = prevOllama;
+    else Reflect.deleteProperty(process.env, "OLLAMA_HOST");
+  });
+
+  it("routes an agentic question to agenticAsk and returns via in response", async () => {
+    const { agenticAsk } = await import("../src/createApiServer/agenticAsk");
+    vi.mocked(agenticAsk).mockResolvedValue({
+      ok: true,
+      answer: "Your Local Falcon rank is #2.",
+      via: "Local Falcon",
+    });
+
+    const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+      question: "what is my ranking for plumber near Tampa",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.available).toBe(true);
+    expect(res.json.answer).toBe("Your Local Falcon rank is #2.");
+    expect(res.json.via).toBe("Local Falcon");
+    expect(vi.mocked(agenticAsk)).toHaveBeenCalledOnce();
+  });
+
+  it("returns agentic-failed when agenticAsk fails", async () => {
+    const { agenticAsk } = await import("../src/createApiServer/agenticAsk");
+    vi.mocked(agenticAsk).mockResolvedValue({
+      ok: false,
+      reason: "claude-error",
+      hint: "Agentic lookup returned no answer.",
+    });
+
+    const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+      question: "what is my local SEO ranking",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.available).toBe(false);
+    expect(res.json.reason).toBe("agentic-failed");
+    expect(typeof res.json.hint).toBe("string");
+  });
+
+  it("skips agentic path when an explicit Ollama model is chosen", async () => {
+    const { agenticAsk } = await import("../src/createApiServer/agenticAsk");
+
+    // question would normally classify as agentic (has "ranking")
+    const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+      question: "what is my ranking for plumber",
+      model: "qwen3.6:latest",
+    });
+
+    // agenticAsk must NOT be called — should fall through to Ollama path (no-chat-model
+    // because Ollama isn't running in the test environment)
+    expect(vi.mocked(agenticAsk)).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(res.json.reason).toBe("no-chat-model");
   });
 });
 

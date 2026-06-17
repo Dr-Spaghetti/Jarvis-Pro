@@ -188,6 +188,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
+  const [answerVia, setAnswerVia] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [memoryItems, setMemoryItems] = useState<string[]>([]);
   const [skillRunConfirmName, setSkillRunConfirmName] = useState<string | null>(null);
@@ -487,6 +488,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     setAsking(true);
     setAnswer(null);
     setAnswerSources([]);
+    setAnswerVia(null);
     setAskNote(null);
     try {
       const res = await apiFetch(buildBrainAskUrl(), {
@@ -502,11 +504,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         available?: boolean;
         answer?: string;
         hint?: string;
+        via?: string;
         sources?: { title: string; path: string }[];
       };
       if (data.available && typeof data.answer === "string") {
         setAnswer(data.answer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+        setAnswerVia(typeof data.via === "string" ? data.via : null);
         void loadConversation();
         // Auto-speak the answer when running hands-free, so the user doesn't
         // have to click. Never speaks while muted.
@@ -1287,6 +1291,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 {answer && (
                   <div className="jarvis-answer">
                     <p className="jarvis-answer-text">{answer}</p>
+                    {answerVia && <p className="jarvis-answer-via">via {answerVia}</p>}
                     {answerSources.length > 0 && (
                       <div className="jarvis-answer-sources">
                         {answerSources.map((source) => (
