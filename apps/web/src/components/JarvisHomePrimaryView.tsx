@@ -195,6 +195,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   // Which local Ollama model answers. Empty = server default. Persisted so the
   // choice sticks; mirrored to a ref so the voice loop reads it without re-binding.
   const [chatModels, setChatModels] = useState<string[]>([]);
+  const [claudeModels, setClaudeModels] = useState<string[]>([]);
   const [chatModel, setChatModel] = useState<string>(() => {
     try {
       return window.localStorage.getItem("jarvis.chatModel") ?? "";
@@ -395,8 +396,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           headers: { Accept: "application/json" },
         });
         if (!res.ok) return;
-        const data = (await res.json()) as { models?: string[] };
+        const data = (await res.json()) as { models?: string[]; claudeModels?: string[] };
         if (Array.isArray(data.models)) setChatModels(data.models);
+        if (Array.isArray(data.claudeModels)) setClaudeModels(data.claudeModels);
       } catch {
         /* ignore — picker just shows the default */
       }
@@ -1230,7 +1232,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                     {asking ? "Thinking…" : "Ask"}
                   </button>
                 </div>
-                {chatModels.length > 0 && (
+                {(claudeModels.length > 0 || chatModels.length > 0) && (
                   <div className="jarvis-ask-model" style={{ marginTop: 8 }}>
                     <label
                       htmlFor="jarvis-chat-model"
@@ -1254,6 +1256,14 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                       aria-label="Answer model"
                     >
                       <option value="">Auto (default)</option>
+                      {claudeModels.includes("claude-haiku-4-5-20251001") && (
+                        <option value="claude-haiku-4-5-20251001">
+                          Claude Haiku — cloud · fast
+                        </option>
+                      )}
+                      {claudeModels.includes("claude-sonnet-4-6") && (
+                        <option value="claude-sonnet-4-6">Claude Sonnet — cloud · smart</option>
+                      )}
                       {chatModels.map((model) => (
                         <option key={model} value={model}>
                           {model}

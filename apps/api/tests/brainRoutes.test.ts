@@ -12,6 +12,7 @@ import {
   handleBrainDigestRoute,
   handleBrainJournalRoute,
   handleBrainMemoryRoute,
+  handleBrainModelsRoute,
   handleBrainNoteRoute,
   handleBrainRecentRoute,
   handleBrainRememberRoute,
@@ -319,6 +320,89 @@ describe("brainRoutes", () => {
     const res = await call(handleBrainConversationRoute, "GET", "/api/brain/conversation");
     expect(res.status).toBe(200);
     expect(res.json).toEqual({ configured: false, turns: [] });
+  });
+});
+
+describe("handleBrainModelsRoute — claudeModels field", () => {
+  it("returns empty claudeModels when no Anthropic key is set", async () => {
+    const prev = process.env.ANTHROPIC_API_KEY;
+    Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    try {
+      const res = await call(handleBrainModelsRoute, "GET", "/api/brain/models");
+      expect(res.status).toBe(200);
+      expect(res.json.claudeModels).toEqual([]);
+    } finally {
+      if (prev !== undefined) process.env.ANTHROPIC_API_KEY = prev;
+    }
+  });
+
+  it("returns Claude model IDs in claudeModels when Anthropic key is set", async () => {
+    const prev = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "sk-test-key";
+    try {
+      const res = await call(handleBrainModelsRoute, "GET", "/api/brain/models");
+      expect(res.status).toBe(200);
+      expect(res.json.claudeModels).toContain("claude-haiku-4-5-20251001");
+      expect(res.json.claudeModels).toContain("claude-sonnet-4-6");
+    } finally {
+      if (prev !== undefined) process.env.ANTHROPIC_API_KEY = prev;
+      else Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    }
+  });
+});
+
+describe("handleBrainAskRoute — model routing", () => {
+  it("explicit claude-* model returns no-chat-model (not Ollama fallthrough) when key is absent", async () => {
+    const prevAnthropic = process.env.ANTHROPIC_API_KEY;
+    const prevOllama = process.env.OLLAMA_HOST;
+    Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+    try {
+      const res = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+        question: "What is 2+2?",
+        model: "claude-haiku-4-5-20251001",
+      });
+      expect(res.status).toBe(200);
+      expect(res.json.available).toBe(false);
+      expect(res.json.reason).toBe("no-chat-model");
+      expect(res.json.hint).toMatch(/ANTHROPIC_API_KEY/);
+    } finally {
+      if (prevAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = prevAnthropic;
+      if (prevOllama !== undefined) process.env.OLLAMA_HOST = prevOllama;
+      else Reflect.deleteProperty(process.env, "OLLAMA_HOST");
+    }
+  });
+
+  it("explicit Ollama model skips cloud cascade (400 vs 200 distinguishes the two paths)", async () => {
+    const prevAnthropic = process.env.ANTHROPIC_API_KEY;
+    const prevOpenAi = process.env.OPENAI_API_KEY;
+    const prevOllama = process.env.OLLAMA_HOST;
+    // No cloud keys + no vault + unreachable Ollama: auto cascade → 400 "No AI provider"
+    //                                                explicit Ollama → 200 "no-chat-model"
+    Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
+    Reflect.deleteProperty(process.env, "OPENAI_API_KEY");
+    Reflect.deleteProperty(process.env, "OBSIDIAN_VAULT_PATH");
+    process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+    try {
+      const autoRes = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+        question: "hello",
+      });
+      expect(autoRes.status).toBe(400);
+      expect(autoRes.json.error).toBe("No AI provider could answer.");
+
+      const explicitRes = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
+        question: "hello",
+        model: "qwen3.6:latest",
+      });
+      expect(explicitRes.status).toBe(200);
+      expect(explicitRes.json.reason).toBe("no-chat-model");
+    } finally {
+      if (prevAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = prevAnthropic;
+      if (prevOpenAi !== undefined) process.env.OPENAI_API_KEY = prevOpenAi;
+      if (prevOllama !== undefined) process.env.OLLAMA_HOST = prevOllama;
+      else Reflect.deleteProperty(process.env, "OLLAMA_HOST");
+      process.env.OBSIDIAN_VAULT_PATH = vault;
+    }
   });
 });
 

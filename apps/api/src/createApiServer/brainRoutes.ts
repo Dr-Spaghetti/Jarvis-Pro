@@ -873,6 +873,8 @@ const getTavilyApiKey = (): string | null => {
 };
 
 const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
+const CLAUDE_SONNET_MODEL = "claude-sonnet-4-6";
+const CLAUDE_MODEL_IDS = [CLAUDE_VOICE_MODEL, CLAUDE_SONNET_MODEL] as const;
 
 type WebSnippet = { title: string; url: string; snippet: string };
 
@@ -971,6 +973,7 @@ const askViaClaude = async (
   question: string,
   context: string,
   history: ConversationTurn[] = [],
+  model?: string,
 ): Promise<string | null> => {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) return null;
@@ -1002,7 +1005,7 @@ const askViaClaude = async (
 
   for (let turn = 0; turn < 3; turn += 1) {
     const body: Record<string, unknown> = {
-      model: CLAUDE_VOICE_MODEL,
+      model: model ?? CLAUDE_VOICE_MODEL,
       max_tokens: 512,
       system: JARVIS_VOICE_SYSTEM,
       messages,
@@ -1272,7 +1275,8 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
     return true;
   }
   const models = await listOllamaChatModels();
-  writeJson(response, 200, { models, default: getChatModel() }, corsOrigin);
+  const claudeModels = getAnthropicApiKey() ? [...CLAUDE_MODEL_IDS] : [];
+  writeJson(response, 200, { models, default: getChatModel(), claudeModels }, corsOrigin);
   return true;
 };
 
@@ -1311,41 +1315,68 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
       ? notes.map((n) => `### ${n.title} (${n.rel})\n${n.body}`).join("\n\n")
       : "(no matching notes)";
 
-  // Fast path 1: Claude Haiku with optional web search (preferred when keyed).
   const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
-  const claudeAnswer = await askViaClaude(question, claudeContext, history);
-  if (claudeAnswer) {
-    if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
-    writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
-    return true;
-  }
 
-  // Fast path 2: OpenAI web-search model (uses the existing STT/TTS key).
-  const openAi = await askViaOpenAi(question, claudeContext, history);
-  if (openAi.answer) {
-    if (vaultDir) appendConversationTurn(vaultDir, question, openAi.answer);
-    writeJson(response, 200, { available: true, answer: openAi.answer, sources }, corsOrigin);
-    return true;
-  }
-  // Surface the real OpenAI failure (status + message) so it's diagnosable
-  // instead of silently blaming a missing Anthropic key.
-  const providerNote = openAi.error ? ` (OpenAI: ${openAi.error})` : "";
-
-  // Slow path: local Ollama (requires vault).
-  if (!vaultDir) {
+  // Explicit Claude model: use that model directly, no cascade to OpenAI/Ollama.
+  if (model?.startsWith("claude-")) {
+    const ans = await askViaClaude(question, claudeContext, history, model);
+    if (ans) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, ans);
+      writeJson(response, 200, { available: true, answer: ans, sources }, corsOrigin);
+      return true;
+    }
     writeJson(
       response,
-      400,
+      200,
       {
         available: false,
-        error: "No AI provider could answer.",
-        hint: `Your OpenAI key couldn't answer${providerNote}. Enable a web-search model on your OpenAI account, add an Anthropic key, or set OBSIDIAN_VAULT_PATH + run Ollama.`,
+        reason: "no-chat-model",
+        hint: "Claude API is unavailable. Check ANTHROPIC_API_KEY in .env.",
+        sources,
       },
       corsOrigin,
     );
     return true;
   }
 
+  // Auto cascade (no explicit model): Claude → OpenAI → Ollama.
+  // Explicit Ollama model: skip cloud providers and go straight to the local model.
+  let providerNote = "";
+  if (!model) {
+    // Fast path 1: Claude with optional web search (preferred when keyed).
+    const claudeAnswer = await askViaClaude(question, claudeContext, history);
+    if (claudeAnswer) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
+      writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
+      return true;
+    }
+
+    // Fast path 2: OpenAI web-search model (uses the existing STT/TTS key).
+    const openAi = await askViaOpenAi(question, claudeContext, history);
+    if (openAi.answer) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, openAi.answer);
+      writeJson(response, 200, { available: true, answer: openAi.answer, sources }, corsOrigin);
+      return true;
+    }
+    providerNote = openAi.error ? ` (OpenAI: ${openAi.error})` : "";
+
+    // Surface "no providers and no vault" before falling to Ollama.
+    if (!vaultDir) {
+      writeJson(
+        response,
+        400,
+        {
+          available: false,
+          error: "No AI provider could answer.",
+          hint: `Your OpenAI key couldn't answer${providerNote}. Enable a web-search model on your OpenAI account, add an Anthropic key, or set OBSIDIAN_VAULT_PATH + run Ollama.`,
+        },
+        corsOrigin,
+      );
+      return true;
+    }
+  }
+
+  // Ollama slow path — also the direct path when an explicit Ollama model is chosen.
   const historyBlock =
     history.length > 0
       ? history.map((t) => `You: ${t.question}\nJarvis: ${t.answer}`).join("\n\n")
@@ -1353,7 +1384,6 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
   const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
   const answer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
-    // Cap the local model so a slow CPU generation can't hang the answer.
     signal: AbortSignal.timeout(30000),
     ...(model ? { model } : {}),
   });
@@ -1371,7 +1401,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
     );
     return true;
   }
-  appendConversationTurn(vaultDir, question, answer);
+  if (vaultDir) appendConversationTurn(vaultDir, question, answer);
   writeJson(response, 200, { available: true, answer, sources }, corsOrigin);
   return true;
 };
