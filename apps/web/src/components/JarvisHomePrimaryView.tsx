@@ -819,20 +819,26 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         }
 
         if (intent.type === "run-skill") {
-          const needsApproval = /\b(outreach|email.assist)\b/.test(intent.skillName.toLowerCase());
-          if (needsApproval) {
-            setSkillRunConfirmName(intent.skillName);
-            setVoiceStatus(`Approval needed: ${intent.skillName}`);
-            await speakJarvis(
-              `I need your approval to run ${intent.skillName}. Tap Confirm to proceed.`,
-            );
-            return;
-          }
           const res = await apiFetch(buildSkillsRunUrl(), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ skillName: intent.skillName }),
           });
+          if (res.status === 403) {
+            const data = (await res.json().catch(() => null)) as {
+              requiresConfirmation?: boolean;
+              skillName?: string;
+            } | null;
+            if (data?.requiresConfirmation) {
+              const displayName = data.skillName ?? intent.skillName;
+              setSkillRunConfirmName(displayName);
+              setVoiceStatus(`Approval needed: ${displayName}`);
+              await speakJarvis(
+                `I need your approval to run ${displayName}. Tap Confirm to proceed.`,
+              );
+              return;
+            }
+          }
           if (!res.ok) {
             const data = (await res.json().catch(() => null)) as { error?: string } | null;
             setVoiceError(data?.error ?? `Could not run skill: ${intent.skillName}`);
@@ -1568,7 +1574,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                     apiFetch(buildSkillsRunUrl(), {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ skillName: name }),
+                      body: JSON.stringify({ skillName: name, confirmed: true }),
                     })
                       .then(async (res) => {
                         if (!res.ok) {
