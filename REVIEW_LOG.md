@@ -2,6 +2,40 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 12 — Tiles + money engine (2026-06-17)
+
+Two commits: `feat(wave-12)` (sensitive flags on skills) and hardening `fix(wave-12)`. All 315 API + 195 web tests pass, lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
+
+### Tile decision (documented)
+
+Nick has no `APOLLO_API_KEY` or `LOCALFALCON_API_KEY` in `.env`. The `tilesRoutes.ts` tile implementation (built in Wave 6) already handles this correctly: Apollo and Local Falcon tiles return `status: "not-configured"` with `value: null` and a clear hint to add the key. QuickBooks stays deferred (OAuth complexity). **Decision:** those tiles stay "not configured" until Nick adds the REST keys. Apollo/Local Falcon data is available on-demand via the Wave 11 agentic Ask Jarvis path — ask "what does my Local Falcon rank look like?" and it routes through `claude -p` with MCP connectors. No fake data anywhere.
+
+### Applied (CRITICAL)
+
+**C-1 — Voice confirm handler missing `confirmed: true`**
+The voice approval dialog Confirm button POSTed `{ skillName }` without `confirmed: true`. The server reads `body?.confirmed === true` and was returning another 403. The user would tap Confirm, see an error, and the skill would never run. Fixed: `{ skillName: name, confirmed: true }` — mirrors the Deck path which was already correct.
+
+### Applied (HIGH)
+
+**H-1 — Hardcoded voice gate regex instead of server-driven 403**
+The voice run-skill handler checked `\b(outreach|email.assist)\b` client-side before hitting the server. Any new `sensitive: true` skill added to the catalog would be unprotected on the voice path (POST without `confirmed: true` → 403 error, not a dialog). Replaced with the same server-driven pattern as DeckPrimaryView: POST first, check for 403 `requiresConfirmation`, then show the dialog and speak the approval request. The voice path is now forward-compatible with any future sensitive skill.
+
+### Not applied (MEDIUM, LOW)
+
+**MEDIUM-1 — `sensitive:` with no value / wrong casing silently reads as false**
+`parseFrontMatterFields` stores an empty value for `sensitive:` (no inline value), and `readSkillMetadata` checks `=== "true"` (case-sensitive). A typo (`sensitive: True`, `sensitive:`) produces `sensitive: false` with no warning. Both deployed SKILL.md files use the correct `sensitive: true` string. Not applying a parser change here — the format is simple and documented; a lint/schema check is future scope.
+
+**LOW-1 — `checkProvider` tile error detail doesn't distinguish bad key from network outage**
+Both a 401 (wrong key) and a connection failure return `status: "error"` with the same `detail` message. No fake data produced; it's a debugging quality issue. Pre-existing pattern; future scope.
+
+### Lessons
+
+- **The voice and Deck paths share the approval dialog UI but had diverged in the protocol** — Deck was correct (server-driven 403 → dialog); voice was using a client-side regex. Always verify both trigger paths when adding an approval gate.
+- **`confirmed: true` must travel with EVERY post-approval POST** — the client has two call sites for skill run (initial + post-confirm), and only one of them was correct. When you change the confirmation protocol, search both call sites.
+- **Server-side gates are forward-compatible; client-side regex gates are not** — adding a new sensitive skill requires no client change when the gate is server-driven.
+
+---
+
 ## Wave 11 — Agentic Ask Jarvis — hardening (2026-06-17)
 
 Adversarial review of Wave 11 diff. **All CRITICAL and HIGH findings applied in this hardening commit. MEDIUM and LOW findings applied where safe; one LOW test change required to match new correct behavior.**
