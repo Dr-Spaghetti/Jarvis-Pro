@@ -2,6 +2,52 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Deferred-hardening audit — all three items resolved (2026-06-17)
+
+Verified that the three items marked "defer — no high risk" in the post-wave-12 security review are all resolved. No code changes required.
+
+### Fix 1 — OPTIONS before auth (intentional design, correct as-is)
+
+The adversarial review flagged the `OPTIONS → 204` handler firing before the auth
+check as a potential "route probing" vector. On audit:
+- The handler returns an **identical `204` for every path** regardless of whether
+  the route exists — no route-specific information is disclosed.
+- A dedicated test (`"answers OPTIONS preflight without a token when auth is
+  enabled"`, `createApiServer.test.ts:556`) verifies this as intentional behavior.
+- A code comment (added during hardening) explicitly documents the rationale:
+  *"an OPTIONS request returns an identical empty 204 for every path regardless of
+  auth, so it discloses nothing, and keeping it open preserves standard
+  cross-origin behavior."*
+- Moving OPTIONS after the auth gate would break CORS preflights (browsers send
+  OPTIONS without credentials; a `401` on the preflight silently aborts the real
+  request). No legitimate security gain justifies that regression.
+- **Decision: leave as-is.** The design is correct and well-documented.
+
+### Fix 2 — Trailing-slash normalization (already implemented)
+
+`isAuthExemptPath` at `requestHandler.ts:161–165` already normalizes a single
+trailing slash before the exempt-path lookup: `pathname.slice(0, -1)` when the
+path ends with `/`. The companion test (`"treats an exempt path with a trailing
+slash as exempt"`, line 565) verifies it. Nothing to change.
+
+### Fix 3 — Token-rotation warning in remote-access doc (already written)
+
+`docs/remote-access.md` lines 16–22 already contain a full `⚠️ Token visibility
+in URLs` callout explaining that `?token=…` appears in logs/history, and
+instructing Nick to rotate the token immediately if any such URL is ever shared.
+The "Day-to-day use" section also has a `Lost or leaked token?` note. Nothing to add.
+
+### Lessons
+
+- **"Defer" items from an adversarial review need a follow-up audit** — they
+  sometimes have already been addressed in a prior increment (Fix 2, Fix 3) or
+  are actually intentional design decisions backed by tests (Fix 1). Applying
+  them mechanically without re-reading the code can break correct behavior.
+- **Always check for a test before changing a security boundary** — the OPTIONS
+  test was the signal that the current behavior is deliberate, not an oversight.
+
+---
+
 ## Wave 11 security follow-up — agenticAsk output overflow — commit 34766a8 (2026-06-17)
 
 All 320 API + 195 web tests pass, lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
