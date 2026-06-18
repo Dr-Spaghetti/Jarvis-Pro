@@ -2,6 +2,43 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 11 security follow-up — agenticAsk output overflow — commit 34766a8 (2026-06-17)
+
+All 320 API + 195 web tests pass, lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
+
+### Applied (MEDIUM)
+
+**M-1 — Unbounded stdout/stderr buffers in `agenticAsk` → local OOM DoS**
+`agenticAsk.ts` buffered the `claude -p` process's stdout and stderr into plain
+strings with no size cap. A runaway model response (or adversarially-crafted MCP
+connector output) could continuously emit data, growing the strings until the
+Node process exhausted its heap and crashed.
+
+Fixed: Added `MAX_OUTPUT_BYTES = 1_000_000`. Each `data` event handler checks the
+accumulated string length after appending the new chunk; if either stream exceeds
+the cap the child is killed (`proc.kill()`) and the `Promise` resolves with
+`{ ok: false, reason: "output-overflow", hint: "...try a more specific question" }`.
+The existing `finished` guard ensures this resolves exactly once regardless of
+which stream overflows first. The 30 s timeout, env allowlist, and stdin-piping
+are untouched.
+
+Added `apps/api/tests/agenticAsk.test.ts` (5 tests) covering:
+- stdout overflow at 1 MB + 1 byte → `reason: "output-overflow"`, `proc.kill` called
+- stderr overflow at 1 MB + 1 byte → same
+- two-chunk accumulation (600 kB + 600 kB) triggers on the second chunk
+- exactly 1 MB does NOT overflow; process closes normally → `ok: true`
+- double-stream overflow is idempotent (promise resolves once)
+
+### Lessons
+- **Any process you `spawn` and buffer into memory is an OOM vector** — cap both
+  streams regardless of how trustworthy the source is. The parent process budget
+  is shared with the HTTP server; unbounded child output is a silent availability
+  risk.
+- **Test the boundary, not just well-past it** — the "exactly 1 MB" test confirms
+  the `>` condition (not `>=`) and that normal close still works at the limit.
+
+---
+
 ## Wave 12 — Tiles + money engine (2026-06-17)
 
 Two commits: `feat(wave-12)` (sensitive flags on skills) and hardening `fix(wave-12)`. All 315 API + 195 web tests pass, lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
