@@ -31,7 +31,7 @@ const LOCALFALCON_KEYWORDS = [
   "local rank",
 ];
 
-const ORCHESTRATE_KEYWORDS = [
+const ORCHESTRATE_PHRASES = [
   "have the team",
   "coordinate multiple agents",
   "deploy agents for",
@@ -39,10 +39,10 @@ const ORCHESTRATE_KEYWORDS = [
   "spin up a team",
   "assemble a team",
   "launch a team",
-  "multi-agent",
-  "orchestrate",
   "deploy a team",
 ];
+
+const ORCHESTRATE_SINGLE_WORDS = ["multi-agent", "orchestrate"];
 
 const APOLLO_KEYWORDS = [
   "apollo",
@@ -64,8 +64,11 @@ const containsAny = (lower: string, keywords: readonly string[]): boolean =>
 export const classifyBrainQuestion = (question: string): BrainQuestionRoute => {
   const lower = question.toLowerCase();
 
-  // Orchestrate intent takes priority — multi-keyword phrases checked as literals
-  if (ORCHESTRATE_KEYWORDS.some((kw) => lower.includes(kw))) {
+  // Orchestrate intent takes priority — multi-word phrases as literals, single words word-bounded
+  if (
+    ORCHESTRATE_PHRASES.some((kw) => lower.includes(kw)) ||
+    containsAny(lower, ORCHESTRATE_SINGLE_WORDS)
+  ) {
     return { type: "orchestrate" };
   }
 

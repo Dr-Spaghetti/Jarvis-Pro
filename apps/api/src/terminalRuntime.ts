@@ -363,7 +363,7 @@ export const createTerminalRuntime = ({
       ...(terminal.exitSignal !== undefined ? { exitSignal: terminal.exitSignal } : {}),
       ...(session
         ? (() => {
-            const raw = session.scrollbackChunks.slice(-5).join("").slice(-300);
+            const raw = session.scrollbackChunks.slice(-5).join("");
             const cleaned = raw ? stripAnsiCodes(raw).trim().slice(-200) : "";
             return cleaned.length > 0 ? { recentOutput: cleaned } : {};
           })()

@@ -2,6 +2,50 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 13 — Agent Arsenal + Surveillance Room + Autonomous Orchestration — commit 37fa059 (2026-06-18)
+
+Adversarial review of Wave 13 diff. **No critical findings. Two important findings, one applied immediately. One minor finding applied. One minor issue documented as low-priority.**
+
+All 329 tests pass, lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
+
+### Applied (IMPORTANT)
+
+**I-1 — `ORCHESTRATE_KEYWORDS` false positive on domain questions containing "orchestrate"**
+`classifyBrainQuestion.ts` used raw `.includes(kw)` for the orchestrate intent check. The keyword list included the bare word `"orchestrate"`, so any user question like "How do I orchestrate containers with Kubernetes?" would silently trigger the orchestrator, deploying live agents and charging Anthropic API credits instead of answering the question. Fixed: moved single-word terms (`"orchestrate"`, `"multi-agent"`) into the `containsAny()` helper which wraps them in `\b...\b` word-boundary regex. Multi-word phrases (`"have the team"`, `"spin up a team"`, etc.) keep `.includes()` since they can't falsely match.
+
+**I-2 (minor) — `recentOutput` ANSI slice order**
+`terminalRuntime.ts` ran `.slice(-300)` on the raw ANSI string before stripping codes, then `.slice(-200)` on the cleaned result. Heavy ANSI output (progress bars) could produce far fewer than 200 visible chars. Fixed: strip ANSI first, then slice the cleaned string to 200 chars.
+
+### Not applied (IMPORTANT — documented)
+
+**I-3 — Silent swallow of `createTerminal` failures in orchestrator partial deployment**
+When `runtime.createTerminal()` throws mid-loop (session cap reached), subsequent agents are silently skipped. The orchestrator returns `ok: true` with the subset that did deploy, giving no indication to the caller that agents were dropped. Mitigation already present: if zero agents deploy, `ok: false` is returned. The partial-success case is lower priority in a local deployment where the session cap is rarely hit. Deferred: add per-agent warn log and surface failed-count in the summary string when there is room to do so without adding a new response field.
+
+### Not applied (MINOR)
+
+**M-1 — Task/context length unbounded before Anthropic API call**
+`orchestrateRoutes.ts` accepts `task` and `context` strings of arbitrary length and embeds them verbatim in the Anthropic API request, with no max-length guard. In a local-only deployment this is low risk (access requires the bearer token), but a very large payload wastes API credits and could produce oversized agent prompts. Deferred: add `task.length > 4000` / `context.length > 2000` → HTTP 400 validation. Low priority until remote access is enabled.
+
+**M-2 — `<pre>` inside `<button>` is invalid HTML**
+`SurveillancePanel.tsx` renders `<pre className="surveillance-output">` as a direct child of the `<button>` surveillance card. Block-level elements inside interactive elements are technically invalid HTML; most browsers handle it fine but screen readers may not correctly associate the output with the button label. No XSS risk (`recentOutput` is React-escaped plain text via `stripAnsiCodes`). Deferred: move `<pre>` outside the `<button>` into the wrapper `<div>` when a layout pass touches the surveillance card.
+
+### Verified clean
+
+- API key handling in `orchestrateRoutes.ts`: read from `process.env` at call time, never logged, never returned in any response.
+- `archetypeId` injection in `arsenalRoutes.ts`: validated by exact lookup against the static in-memory `AGENT_ARCHETYPES` array — no path traversal risk.
+- XSS in `SurveillancePanel.tsx` `recentOutput`: flows through `stripAnsiCodes` and rendered as React text child, not `dangerouslySetInnerHTML`.
+- `coordDir` path traversal: `jobId` is `randomUUID()` (hex + hyphens only); embedded in agent prompt as instruction, not used server-side for FS operations.
+- WebSocket cleanup in `SurveillancePanel.tsx`: `useEffect` cleanup correctly calls `ws.close()` on unmount; no stale closure risk.
+- Archetype test coverage: 9 tests covering count, unique IDs, kebab-case, non-empty fields, valid categories, full category coverage, skills presence, unique names, coordination protocol inclusion.
+
+### Lessons
+
+- **The `containsAny` word-boundary helper exists for exactly this reason** — it was already used for `LOCALFALCON_KEYWORDS` and `APOLLO_KEYWORDS`. Adding a new classifier keyword directly to a raw `.includes()` list instead of routing it through `containsAny` is a reliable footgun. Single-word intent keywords must always use word-boundary matching.
+- **ANSI stripping before slicing avoids invisible budget waste** — slicing first, then stripping can leave the consumer with much less content than intended because the budget is spent on control sequences that disappear. Always strip then slice.
+- **`ok: true` with a partial deployment is a silent-failure mode** — when an orchestration loop can partly succeed, the response needs to communicate what was skipped, not just what was deployed.
+
+---
+
 ## Deferred-hardening audit — all three items resolved (2026-06-17)
 
 Verified that the three items marked "defer — no high risk" in the post-wave-12 security review are all resolved. No code changes required.
