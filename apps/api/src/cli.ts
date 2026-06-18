@@ -14,6 +14,7 @@ import {
   resolveEphemeralProjectStateDir,
   resolveProjectStateDir,
 } from "./projectPersistence";
+import { resolveListenHost, toDisplayHost } from "./resolveListenHost";
 import { clearRuntimeMetadata, readRuntimeMetadata, writeRuntimeMetadata } from "./runtimeMetadata";
 import {
   collectStartupPrerequisiteReport,
@@ -255,8 +256,8 @@ const startServer = async () => {
   process.on("SIGINT", () => void shutdown());
   process.on("SIGTERM", () => void shutdown());
 
-  const { host, port: activePort } = await apiServer.start(port, "127.0.0.1");
-  const apiBaseUrl = `http://${host}:${activePort}`;
+  const { host, port: activePort } = await apiServer.start(port, resolveListenHost());
+  const apiBaseUrl = `http://${toDisplayHost(host)}:${activePort}`;
   writeRuntimeMetadata(projectStateDir, {
     apiBaseUrl,
     host,
