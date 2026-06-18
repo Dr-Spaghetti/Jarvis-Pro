@@ -22,6 +22,7 @@ import {
   buildSkillsRunUrl,
   buildTerminalsUrl,
 } from "../runtime/runtimeEndpoints";
+import { AgentArsenalPanel } from "./AgentArsenalPanel";
 import { OctopusGlyph } from "./EmptyOctopus";
 import { Terminal } from "./Terminal";
 import { ActionCards } from "./deck/ActionCards";
@@ -111,6 +112,7 @@ export const DeckPrimaryView = ({
   const [availableSkills, setAvailableSkills] = useState<DeckAvailableSkill[]>([]);
   const [savingTentacleSkillsId, setSavingTentacleSkillsId] = useState<string | null>(null);
   const [pendingRunSkill, setPendingRunSkill] = useState<string | null>(null);
+  const [arsenalOpen, setArsenalOpen] = useState(true);
 
   const [selectedAgent, setSelectedAgent] = useState<TerminalAgentProvider>("claude-code");
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
@@ -681,6 +683,27 @@ export const DeckPrimaryView = ({
           </div>
         </div>
       )}
+
+      <section className="arsenal-section" aria-label="Agent Arsenal">
+        <header className="arsenal-section-header">
+          <h2 className="arsenal-section-title">Arsenal</h2>
+          <button
+            type="button"
+            className="arsenal-section-toggle"
+            aria-expanded={arsenalOpen}
+            onClick={() => setArsenalOpen((v) => !v)}
+          >
+            {arsenalOpen ? "▲ Collapse" : "▼ Expand"}
+          </button>
+        </header>
+        {arsenalOpen && (
+          <AgentArsenalPanel
+            onDeployed={() => {
+              void fetchTentacles();
+            }}
+          />
+        )}
+      </section>
 
       <div className="deck-pods-container">
         {tentacles.map((t) => {

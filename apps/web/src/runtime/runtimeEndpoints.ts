@@ -68,6 +68,30 @@ export const buildTerminalEventsSocketUrl = (
   return buildAbsoluteUrl(websocketBase, "/api/terminal-events/ws");
 };
 
+export const buildArsenalUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/arsenal";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/arsenal");
+};
+
+export const buildDeployAgentUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/arsenal/deploy";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/arsenal/deploy");
+};
+
+export const buildOrchestrateUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/brain/orchestrate";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/brain/orchestrate");
+};
+
 export const buildTerminalsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/terminals";

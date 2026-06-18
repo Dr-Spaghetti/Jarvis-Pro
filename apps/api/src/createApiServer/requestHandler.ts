@@ -15,6 +15,7 @@ import {
   handleAgentAlertsRoute,
   handleMonitorExportRoute,
 } from "./alertRoutes";
+import { handleArsenalDeployRoute, handleArsenalListRoute } from "./arsenalRoutes";
 import { handleAuthStatusRoute, handleAuthVerifyRoute } from "./authRoutes";
 import {
   handleBrainAskRoute,
@@ -74,6 +75,7 @@ import {
   handleMonitorFeedRoute,
   handleMonitorRefreshRoute,
 } from "./monitorRoutes";
+import { handleOrchestrateRoute } from "./orchestrateRoutes";
 import type {
   ApiRouteHandler,
   RouteHandlerContext,
@@ -181,6 +183,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainAskRoute,
       handleBrainModelsRoute,
       handleBrainConversationRoute,
+      handleOrchestrateRoute,
     ],
   ],
   ["brief", [handleBriefConfigRoute]],
@@ -205,6 +208,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleDeckVaultFileRoute,
     ],
   ],
+  ["arsenal", [handleArsenalListRoute, handleArsenalDeployRoute]],
   ["skills", [handleSkillsRunRoute]],
   ["terminal-snapshots", [handleTerminalSnapshotsRoute]],
   ["codex", [handleCodexUsageRoute]],

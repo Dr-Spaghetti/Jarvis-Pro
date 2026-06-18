@@ -13,6 +13,7 @@ import { agenticAsk } from "./agenticAsk";
 import { classifyBrainQuestion } from "./classifyBrainQuestion";
 import { chatViaOllama, getChatModel, listOllamaChatModels } from "./ollamaChat";
 import { cosineSimilarity, embedViaOllama } from "./ollamaEmbed";
+import { orchestrateTask } from "./orchestrateRoutes";
 import type { ApiRouteHandler } from "./routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
 
@@ -1282,12 +1283,10 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
   return true;
 };
 
-export const handleBrainAskRoute: ApiRouteHandler = async ({
-  request,
-  response,
-  requestUrl,
-  corsOrigin,
-}) => {
+export const handleBrainAskRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { runtime },
+) => {
   if (requestUrl.pathname !== "/api/brain/ask") return false;
   if (request.method !== "POST") {
     writeMethodNotAllowed(response, corsOrigin);
@@ -1324,6 +1323,28 @@ export const handleBrainAskRoute: ApiRouteHandler = async ({
   const isExplicitOllama = model !== undefined && !model.startsWith("claude-");
   if (!isExplicitOllama) {
     const classification = classifyBrainQuestion(question);
+
+    if (classification.type === "orchestrate") {
+      const result = await orchestrateTask(question, runtime);
+      if (result.ok) {
+        if (vaultDir) appendConversationTurn(vaultDir, question, result.summary);
+        writeJson(
+          response,
+          200,
+          { available: true, answer: result.summary, sources, via: "orchestrate" },
+          corsOrigin,
+        );
+      } else {
+        writeJson(
+          response,
+          200,
+          { available: false, reason: "orchestrate-failed", hint: result.error, sources },
+          corsOrigin,
+        );
+      }
+      return true;
+    }
+
     if (classification.type === "agentic") {
       const result = await agenticAsk(question, claudeContext, classification.connectors);
       if (result.ok) {

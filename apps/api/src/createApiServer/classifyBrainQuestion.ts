@@ -10,7 +10,8 @@ export type BrainConnector = "localfalcon" | "apollo";
 
 export type BrainQuestionRoute =
   | { type: "general" }
-  | { type: "agentic"; connectors: BrainConnector[] };
+  | { type: "agentic"; connectors: BrainConnector[] }
+  | { type: "orchestrate" };
 
 const LOCALFALCON_KEYWORDS = [
   "rank",
@@ -28,6 +29,19 @@ const LOCALFALCON_KEYWORDS = [
   "search position",
   "keyword rank",
   "local rank",
+];
+
+const ORCHESTRATE_KEYWORDS = [
+  "have the team",
+  "coordinate multiple agents",
+  "deploy agents for",
+  "get everyone working on",
+  "spin up a team",
+  "assemble a team",
+  "launch a team",
+  "multi-agent",
+  "orchestrate",
+  "deploy a team",
 ];
 
 const APOLLO_KEYWORDS = [
@@ -49,6 +63,12 @@ const containsAny = (lower: string, keywords: readonly string[]): boolean =>
 
 export const classifyBrainQuestion = (question: string): BrainQuestionRoute => {
   const lower = question.toLowerCase();
+
+  // Orchestrate intent takes priority — multi-keyword phrases checked as literals
+  if (ORCHESTRATE_KEYWORDS.some((kw) => lower.includes(kw))) {
+    return { type: "orchestrate" };
+  }
+
   const connectors: BrainConnector[] = [];
 
   if (containsAny(lower, LOCALFALCON_KEYWORDS)) connectors.push("localfalcon");

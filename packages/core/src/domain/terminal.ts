@@ -25,4 +25,6 @@ export type TerminalSnapshot = {
   endedAt?: string;
   exitCode?: number;
   exitSignal?: number | string;
+  /** Last ~200 chars of terminal output, ANSI-stripped, for surveillance display. */
+  recentOutput?: string;
 };
