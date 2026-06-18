@@ -77,6 +77,11 @@ export const resetClaudeBinaryCache = (): void => {
   cachedBinary = undefined;
 };
 
+// Kill the child and resolve with a clear failure once either stream grows
+// beyond this limit — prevents a runaway/giant model response from OOM-ing
+// the server process.
+const MAX_OUTPUT_BYTES = 1_000_000;
+
 export type AgenticAskResult =
   | { ok: true; answer: string; via: string }
   | { ok: false; reason: string; hint: string };
@@ -148,9 +153,33 @@ export const agenticAsk = (
 
     proc.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString("utf8");
+      if (stdout.length > MAX_OUTPUT_BYTES) {
+        try {
+          proc.kill();
+        } catch {
+          /* already dead */
+        }
+        finish({
+          ok: false,
+          reason: "output-overflow",
+          hint: "The live-data response was too large to process. Try a more specific question.",
+        });
+      }
     });
     proc.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
+      if (stderr.length > MAX_OUTPUT_BYTES) {
+        try {
+          proc.kill();
+        } catch {
+          /* already dead */
+        }
+        finish({
+          ok: false,
+          reason: "output-overflow",
+          hint: "The live-data response was too large to process. Try a more specific question.",
+        });
+      }
     });
 
     // Write the prompt to stdin then close so claude knows input is done.
