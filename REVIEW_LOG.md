@@ -2,6 +2,31 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 15 — Silence endpointing + Perplexity + Haiku fast path + Voice picker — commits da8787d, 2852245, ac63729, e797dac (2026-06-19)
+
+Adversarial review of Wave 15 diff. **Two issues found and fixed (HIGH regex, MED XSS). Three LOW findings documented below.**
+
+All 195/196 tests pass (1 pre-existing flaky: `app-github-runtime.test.tsx > renders the Activity view with the GitHub overview graph`), lint clean, web build green, API bundle green, `build-package.mjs` exit 0.
+
+### Applied immediately
+
+**H-1 (fixed) — stripToolMarkup regex had mismatched namespace on invoke/parameter patterns**
+Lines 868-869 had `<invoke[\s\S]*?<\/antml:invoke>` and `<parameter[\s\S]*?<\/antml:parameter>` — the opening tag had no namespace (`<invoke`) but the closing tag used the namespaced form (`</invoke>`). This pattern could never match a real Claude emission. Fixed to `<invoke[^>]*>[\s\S]*?<\/antml:invoke>` and `<parameter[^>]*>[\s\S]*?<\/antml:parameter>` so both opening wildcard and namespaced closing are consistent.
+
+**M-1 (fixed) — Citation href used unvalidated Perplexity API URL**
+`answerCitations` mapped API-sourced URLs directly into `href`. If a citation URL were ever `javascript:` or `data:` the browser would execute it. Added `c.url.startsWith("https://") || c.url.startsWith("http://")` guard; anything else renders `href="#"`.
+
+### Not applied — documented
+
+**L-1 — handleVoiceVoicesRoute serves catalog regardless of DEEPGRAM_API_KEY**
+`GET /api/voice/voices` always returns the 12-voice catalog even when no Deepgram key is configured. The UI only shows the picker when `ttsProvider === "deepgram"` (which requires Deepgram to be available), so this is UI-safe. Deferred: add `if (!getDeepgramApiKey()) { writeJson(response, 404, …); return true; }` guard for API correctness.
+
+**L-2 — TTS status label hardcodes "ElevenLabs"**
+`JarvisHomePrimaryView.tsx` line 1684 shows `"ElevenLabs"` in the status grid regardless of which TTS provider is active. Pre-existing bug, not introduced in Wave 15. Deferred.
+
+**L-3 — Voice catalog is static; no runtime refresh**
+The catalog is compiled into the bundle. Adding new Deepgram voices requires a server update. Acceptable for now; no user-facing impact.
+
 ## Wave 14 — Arsenal on AGENTS tab + WorkspaceSetup dismiss + Surveillance empty state — commit 60676c2 (2026-06-18)
 
 Adversarial review of Wave 14 diff. **No critical findings. One HIGH finding (design decision documented). One MEDIUM finding resolved by adding a toggle test.**
