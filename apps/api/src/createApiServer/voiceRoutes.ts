@@ -218,15 +218,14 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
   // fresh build is actually running). Order mirrors handleBrainAskRoute:
   // Claude → OpenAI web-search → local Ollama.
   const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
-  const braveKey = process.env.BRAVE_SEARCH_API_KEY?.trim();
-  const tavilyKey = process.env.TAVILY_API_KEY?.trim();
+  const perplexityKey = process.env.PERPLEXITY_API_KEY?.trim();
   const openAiKey = getOpenAiApiKey();
   const brainProvider = anthropicKey ? "anthropic" : openAiKey ? "openai" : "local";
   const brainWebSearch =
     brainProvider === "openai"
       ? true
       : brainProvider === "anthropic"
-        ? Boolean(braveKey || tavilyKey)
+        ? Boolean(perplexityKey)
         : false;
 
   writeJson(

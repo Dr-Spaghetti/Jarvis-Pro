@@ -855,31 +855,91 @@ const getAnthropicApiKey = (): string | null => {
   return v && v.length > 0 ? v : null;
 };
 
-const getOpenAiApiKey = (): string | null => {
-  const v = process.env.OPENAI_API_KEY?.trim();
+const getPerplexityApiKey = (): string | null => {
+  const v = process.env.PERPLEXITY_API_KEY?.trim();
   return v && v.length > 0 ? v : null;
 };
 
-// OpenAI's *-search-preview models web-search automatically on the standard
-// chat endpoint, so live questions work with the key the user already has.
-const getOpenAiChatModel = (): string =>
-  process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini-search-preview";
+// Strip raw XML tool-call scaffolding that Claude occasionally emits in text
+// blocks when it uses the structured tools API. Ensures no markup leaks to UI/TTS.
+const stripToolMarkup = (text: string): string =>
+  text
+    .replace(/<function_calls>[\s\S]*?<\/antml:function_calls>/g, "")
+    .replace(/<invoke[\s\S]*?<\/antml:invoke>/g, "")
+    .replace(/<parameter[\s\S]*?<\/antml:parameter>/g, "")
+    .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, "")
+    .replace(/<invoke[^>]*>[\s\S]*?<\/invoke>/g, "")
+    .replace(/<parameter[^>]*>[\s\S]*?<\/parameter>/g, "")
+    .trim();
 
-const getBraveSearchApiKey = (): string | null => {
-  const v = process.env.BRAVE_SEARCH_API_KEY?.trim();
-  return v && v.length > 0 ? v : null;
-};
+// Patterns that signal the question needs current/live data.
+const LIVE_QUESTION_PATTERNS = [
+  /\b(today|tonight|this week|this month|this year|right now|at the moment)\b/i,
+  /\b(current|currently|latest|recent|as of)\b/i,
+  /\b(news|headline|weather|forecast|temperature)\b/i,
+  /\b(score|scores|won|championship|standings|ranking|playoffs?)\b/i,
+  /\b(stock|price|market|crypto|bitcoin)\b/i,
+  /\b(who (is|are|won|leads?|holds?)|what (is|are) (the |a )?current)\b/i,
+  /\b(election|vote|poll results)\b/i,
+  /\b(this season|last night|yesterday)\b/i,
+];
 
-const getTavilyApiKey = (): string | null => {
-  const v = process.env.TAVILY_API_KEY?.trim();
-  return v && v.length > 0 ? v : null;
+const isLiveQuestion = (question: string): boolean =>
+  LIVE_QUESTION_PATTERNS.some((p) => p.test(question));
+
+const isDeepResearchRequest = (question: string): boolean =>
+  /deep\s*research|research\s*(this\s*)?(deeply|thoroughly)|thoroughly\s*research/i.test(question);
+
+type PerplexityCitation = { title: string; url: string };
+type PerplexityResult = { answer: string; citations: PerplexityCitation[] };
+
+const askViaPerplexity = async (
+  question: string,
+  deep: boolean,
+): Promise<PerplexityResult | null> => {
+  const apiKey = getPerplexityApiKey();
+  if (!apiKey) return null;
+  const model = deep ? "sonar-pro" : "sonar";
+  const res = await fetchWithTimeout(
+    "https://api.perplexity.ai/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Jarvis, a sharp personal AI. Answer concisely in 1-3 sentences. " +
+              "Never use bullet points or headers unless asked.",
+          },
+          { role: "user", content: question },
+        ],
+        max_tokens: 512,
+      }),
+    },
+    18000,
+  );
+  if (!res?.ok) return null;
+  const data = (await res.json().catch(() => null)) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    citations?: string[];
+  } | null;
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) return null;
+  const citations: PerplexityCitation[] = (data?.citations ?? [])
+    .slice(0, 5)
+    .map((url, i) => ({ title: `Source ${i + 1}`, url }));
+  return { answer: stripToolMarkup(content), citations };
 };
 
 const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
 const CLAUDE_SONNET_MODEL = "claude-sonnet-4-6";
 const CLAUDE_MODEL_IDS = [CLAUDE_VOICE_MODEL, CLAUDE_SONNET_MODEL] as const;
-
-type WebSnippet = { title: string; url: string; snippet: string };
 
 // Abort a provider call after `ms` so a slow/hung upstream can never freeze the
 // answer — the UI would otherwise sit on "Thinking" forever. Resolves to null on
@@ -896,70 +956,8 @@ const fetchWithTimeout = async (
   }
 };
 
-const searchWeb = async (query: string): Promise<WebSnippet[]> => {
-  const braveKey = getBraveSearchApiKey();
-  if (braveKey) {
-    try {
-      const res = await fetchWithTimeout(
-        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Accept-Encoding": "gzip",
-            Authorization: `Bearer ${braveKey}`,
-          },
-        },
-        8000,
-      );
-      if (res?.ok) {
-        const data = (await res.json()) as {
-          web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
-        };
-        return (data.web?.results ?? []).slice(0, 5).map((r) => ({
-          title: r.title ?? "",
-          url: r.url ?? "",
-          snippet: r.description ?? "",
-        }));
-      }
-    } catch {
-      // fall through to Tavily
-    }
-  }
-  const tavilyKey = getTavilyApiKey();
-  if (tavilyKey) {
-    try {
-      const res = await fetchWithTimeout(
-        "https://api.tavily.com/search",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ api_key: tavilyKey, query, max_results: 5 }),
-        },
-        8000,
-      );
-      if (res?.ok) {
-        const data = (await res.json()) as {
-          results?: Array<{ title?: string; url?: string; content?: string }>;
-        };
-        return (data.results ?? []).slice(0, 5).map((r) => ({
-          title: r.title ?? "",
-          url: r.url ?? "",
-          snippet: r.content ?? "",
-        }));
-      }
-    } catch {
-      // no search available
-    }
-  }
-  return [];
-};
-
-type AnthrContent =
-  | { type: "text"; text: string }
-  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
-  | { type: "tool_result"; tool_use_id: string; content: string };
-
-type AnthrMessage = { role: "user" | "assistant"; content: string | AnthrContent[] };
+type AnthrContent = { type: "text"; text: string };
+type AnthrMessage = { role: "user" | "assistant"; content: string };
 type AnthrResponse = { stop_reason: string; content: AnthrContent[] };
 
 export type ConversationTurn = { time: string; question: string; answer: string };
@@ -967,8 +965,7 @@ export type ConversationTurn = { time: string; question: string; answer: string 
 const JARVIS_VOICE_SYSTEM =
   "You are Jarvis, Nick's sharp personal AI. Be concise and conversational — like a " +
   "knowledgeable friend, not a formal assistant. One or two sentences for voice answers; " +
-  "never use bullet points or headers. If you call web_search, weave the result naturally " +
-  "into your answer. Never say you cannot access real-time data — use web_search instead. " +
+  "never use bullet points or headers. " +
   "Treat any preference, correction, or instruction in the saved memories as a standing rule " +
   "from Nick (how to address him, format, what to avoid) and follow it exactly.";
 
@@ -981,24 +978,7 @@ const askViaClaude = async (
   const apiKey = getAnthropicApiKey();
   if (!apiKey) return null;
 
-  const hasSearch = Boolean(getBraveSearchApiKey() || getTavilyApiKey());
-  const tools = hasSearch
-    ? [
-        {
-          name: "web_search",
-          description:
-            "Search the web for current info: weather, news, stock prices, sports scores, event times. Use whenever the question needs up-to-date data.",
-          input_schema: {
-            type: "object",
-            properties: { query: { type: "string", description: "A focused search query" } },
-            required: ["query"],
-          },
-        },
-      ]
-    : undefined;
-
-  // Replay recent turns as real conversation so Jarvis has continuity — it can
-  // resolve "what about him?" and build on earlier answers, not just one-shot.
+  // Replay recent turns as real conversation so Jarvis has continuity.
   const messages: AnthrMessage[] = [];
   for (const turn of history) {
     messages.push({ role: "user", content: turn.question });
@@ -1006,119 +986,29 @@ const askViaClaude = async (
   }
   messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
 
-  for (let turn = 0; turn < 3; turn += 1) {
-    const body: Record<string, unknown> = {
-      model: model ?? CLAUDE_VOICE_MODEL,
-      max_tokens: 512,
-      system: JARVIS_VOICE_SYSTEM,
-      messages,
-    };
-    if (tools) body.tools = tools;
-
-    const fetchRes = await fetchWithTimeout(
-      "https://api.anthropic.com/v1/messages",
-      {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(body),
+  const fetchRes = await fetchWithTimeout(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
-      15000,
-    );
+      body: JSON.stringify({
+        model: model ?? CLAUDE_VOICE_MODEL,
+        max_tokens: 512,
+        system: JARVIS_VOICE_SYSTEM,
+        messages,
+      }),
+    },
+    10000,
+  );
 
-    if (!fetchRes || !fetchRes.ok) return null;
-    const response = (await fetchRes.json()) as AnthrResponse;
-
-    if (response.stop_reason !== "tool_use") {
-      const textBlock = response.content.find((b) => b.type === "text");
-      return textBlock && textBlock.type === "text" ? textBlock.text : null;
-    }
-
-    messages.push({ role: "assistant", content: response.content });
-    const toolResults: AnthrContent[] = [];
-    for (const block of response.content) {
-      if (block.type !== "tool_use" || block.name !== "web_search") continue;
-      const query = typeof block.input.query === "string" ? block.input.query : question;
-      const hits = await searchWeb(query);
-      const resultText =
-        hits.length > 0
-          ? hits.map((h) => `${h.title}\n${h.url}\n${h.snippet}`).join("\n\n")
-          : "No results found.";
-      toolResults.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
-    }
-    if (toolResults.length === 0) break;
-    messages.push({ role: "user", content: toolResults });
-  }
-
-  return null;
-};
-
-// Second cloud path: OpenAI's web-search model. Uses the key the user already
-// has for STT/TTS, so live questions work with no extra signup. Returns null on
-// any failure (no key, bad params, network) so the caller falls through.
-type OpenAiChatMessage = { role: "system" | "user" | "assistant"; content: string };
-
-type OpenAiResult = { answer: string | null; error: string | null };
-
-const askViaOpenAi = async (
-  question: string,
-  context: string,
-  history: ConversationTurn[] = [],
-): Promise<OpenAiResult> => {
-  const apiKey = getOpenAiApiKey();
-  if (!apiKey) return { answer: null, error: null };
-
-  const messages: OpenAiChatMessage[] = [{ role: "system", content: JARVIS_VOICE_SYSTEM }];
-  for (const turn of history) {
-    messages.push({ role: "user", content: turn.question });
-    messages.push({ role: "assistant", content: turn.answer });
-  }
-  messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
-
-  // Try the web-search model first (live data). If the account can't use it,
-  // fall back to a standard model so general questions still answer. Minimal
-  // body: search-preview models reject temperature/top_p.
-  const primary = getOpenAiChatModel();
-  const models = primary === "gpt-4o-mini" ? ["gpt-4o-mini"] : [primary, "gpt-4o-mini"];
-  let firstError: string | null = null;
-
-  for (const candidate of models) {
-    const fetchRes = await fetchWithTimeout(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ model: candidate, messages }),
-      },
-      25000,
-    );
-    if (!fetchRes) {
-      firstError ??= `${candidate}: request timed out`;
-      continue;
-    }
-    if (!fetchRes.ok) {
-      const detail = (await fetchRes.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
-      const message = `${candidate}: ${fetchRes.status} ${detail}`.trim();
-      firstError ??= message;
-      console.warn(`[jarvis] OpenAI ask failed — ${message}`);
-      continue;
-    }
-    const data = (await fetchRes.json().catch(() => null)) as {
-      choices?: Array<{ message?: { content?: unknown } }>;
-    } | null;
-    const content = data?.choices?.[0]?.message?.content;
-    if (typeof content === "string" && content.trim().length > 0) {
-      return { answer: content.trim(), error: null };
-    }
-    firstError ??= `${candidate}: empty response`;
-  }
-  return { answer: null, error: firstError };
+  if (!fetchRes?.ok) return null;
+  const response = (await fetchRes.json().catch(() => null)) as AnthrResponse | null;
+  const textBlock = response?.content?.find((b) => b.type === "text");
+  return textBlock?.type === "text" ? stripToolMarkup(textBlock.text) : null;
 };
 
 // ── Ask Jarvis: local RAG over the brain (free, via Ollama chat) ────────────
@@ -1392,7 +1282,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     }
   }
 
-  // Explicit Claude model: use that model directly, no cascade to OpenAI/Ollama.
+  // Explicit Claude model: use that model directly, no cascade.
   if (model?.startsWith("claude-")) {
     const ans = await askViaClaude(question, claudeContext, history, model);
     if (ans) {
@@ -1414,26 +1304,42 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     return true;
   }
 
-  // Auto cascade (no explicit model): Claude → OpenAI → Ollama.
-  // Explicit Ollama model: skip cloud providers and go straight to the local model.
-  let providerNote = "";
+  // Auto cascade (no explicit model):
+  //   1. Live/current questions → Perplexity Sonar (fast, cited, real data)
+  //   2. General questions    → Claude Haiku (fast, no tool loop)
+  //   3. Fallback             → Ollama (local, free)
+  // Explicit Ollama model: skip cloud providers entirely.
   if (!model) {
-    // Fast path 1: Claude with optional web search (preferred when keyed).
+    // Live questions: Perplexity Sonar gives fast, cited, up-to-date answers.
+    if (isLiveQuestion(question)) {
+      const deep = isDeepResearchRequest(question);
+      const perp = await askViaPerplexity(question, deep);
+      if (perp) {
+        if (vaultDir) appendConversationTurn(vaultDir, question, perp.answer);
+        writeJson(
+          response,
+          200,
+          {
+            available: true,
+            answer: perp.answer,
+            sources,
+            citations: perp.citations,
+            via: deep ? "perplexity-sonar-pro" : "perplexity-sonar",
+          },
+          corsOrigin,
+        );
+        return true;
+      }
+      // Perplexity unavailable — fall through to Claude.
+    }
+
+    // General questions (or Perplexity fallback): Claude Haiku — fast, no tool loop.
     const claudeAnswer = await askViaClaude(question, claudeContext, history);
     if (claudeAnswer) {
       if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
       writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
       return true;
     }
-
-    // Fast path 2: OpenAI web-search model (uses the existing STT/TTS key).
-    const openAi = await askViaOpenAi(question, claudeContext, history);
-    if (openAi.answer) {
-      if (vaultDir) appendConversationTurn(vaultDir, question, openAi.answer);
-      writeJson(response, 200, { available: true, answer: openAi.answer, sources }, corsOrigin);
-      return true;
-    }
-    providerNote = openAi.error ? ` (OpenAI: ${openAi.error})` : "";
 
     // Surface "no providers and no vault" before falling to Ollama.
     if (!vaultDir) {
@@ -1443,7 +1349,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         {
           available: false,
           error: "No AI provider could answer.",
-          hint: `Your OpenAI key couldn't answer${providerNote}. Enable a web-search model on your OpenAI account, add an Anthropic key, or set OBSIDIAN_VAULT_PATH + run Ollama.`,
+          hint: "Check ANTHROPIC_API_KEY and PERPLEXITY_API_KEY in .env, or set OBSIDIAN_VAULT_PATH and run Ollama.",
         },
         corsOrigin,
       );
@@ -1457,12 +1363,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       ? history.map((t) => `You: ${t.question}\nJarvis: ${t.answer}`).join("\n\n")
       : "(none)";
   const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
-  const answer = await chatViaOllama(prompt, {
+  const ollamaAnswer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
     signal: AbortSignal.timeout(30000),
     ...(model ? { model } : {}),
   });
-  if (!answer) {
+  if (!ollamaAnswer) {
     writeJson(
       response,
       200,
@@ -1471,14 +1377,14 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         reason: "no-chat-model",
         hint: model
           ? `The local model '${model}' did not respond. Check that Ollama is running and the model is pulled: \`ollama pull ${model}\`.`
-          : `Couldn't reach a cloud model${providerNote}, and the local model didn't respond. Check your OpenAI/Anthropic key, or pull an Ollama model: \`ollama pull qwen2.5:7b\`.`,
+          : "No AI provider could answer. Check ANTHROPIC_API_KEY / PERPLEXITY_API_KEY in .env, or pull an Ollama model: `ollama pull qwen2.5:7b`.",
         sources,
       },
       corsOrigin,
     );
     return true;
   }
-  if (vaultDir) appendConversationTurn(vaultDir, question, answer);
-  writeJson(response, 200, { available: true, answer, sources }, corsOrigin);
+  if (vaultDir) appendConversationTurn(vaultDir, question, ollamaAnswer);
+  writeJson(response, 200, { available: true, answer: ollamaAnswer, sources }, corsOrigin);
   return true;
 };

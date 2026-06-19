@@ -188,6 +188,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
+  const [answerCitations, setAnswerCitations] = useState<{ title: string; url: string }[]>([]);
   const [answerVia, setAnswerVia] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [memoryItems, setMemoryItems] = useState<string[]>([]);
@@ -488,6 +489,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     setAsking(true);
     setAnswer(null);
     setAnswerSources([]);
+    setAnswerCitations([]);
     setAnswerVia(null);
     setAskNote(null);
     try {
@@ -506,14 +508,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         hint?: string;
         via?: string;
         sources?: { title: string; path: string }[];
+        citations?: { title: string; url: string }[];
       };
       if (data.available && typeof data.answer === "string") {
         setAnswer(data.answer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
+        setAnswerCitations(Array.isArray(data.citations) ? data.citations : []);
         setAnswerVia(typeof data.via === "string" ? data.via : null);
         void loadConversation();
-        // Auto-speak the answer when running hands-free, so the user doesn't
-        // have to click. Never speaks while muted.
+        // Auto-speak the clean answer when running hands-free.
         if (isListeningRef.current && !isMutedRef.current) {
           void speakJarvisRef.current?.(data.answer);
         }
@@ -1355,6 +1358,22 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                           >
                             {source.title}
                           </button>
+                        ))}
+                      </div>
+                    )}
+                    {answerCitations.length > 0 && (
+                      <div className="jarvis-answer-citations">
+                        <span className="jarvis-answer-citations-label">Sources:</span>
+                        {answerCitations.map((c) => (
+                          <a
+                            key={c.url}
+                            className="jarvis-answer-citation"
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {c.title}
+                          </a>
                         ))}
                       </div>
                     )}
