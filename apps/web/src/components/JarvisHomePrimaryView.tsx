@@ -1400,7 +1400,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                           <a
                             key={c.url}
                             className="jarvis-answer-citation"
-                            href={c.url}
+                            href={
+                              c.url.startsWith("https://") || c.url.startsWith("http://")
+                                ? c.url
+                                : "#"
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
                           >

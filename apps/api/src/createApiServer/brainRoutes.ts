@@ -865,8 +865,8 @@ const getPerplexityApiKey = (): string | null => {
 const stripToolMarkup = (text: string): string =>
   text
     .replace(/<function_calls>[\s\S]*?<\/antml:function_calls>/g, "")
-    .replace(/<invoke[\s\S]*?<\/antml:invoke>/g, "")
-    .replace(/<parameter[\s\S]*?<\/antml:parameter>/g, "")
+    .replace(/<invoke[^>]*>[\s\S]*?<\/antml:invoke>/g, "")
+    .replace(/<parameter[^>]*>[\s\S]*?<\/antml:parameter>/g, "")
     .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, "")
     .replace(/<invoke[^>]*>[\s\S]*?<\/invoke>/g, "")
     .replace(/<parameter[^>]*>[\s\S]*?<\/parameter>/g, "")
