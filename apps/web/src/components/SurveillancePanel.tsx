@@ -187,7 +187,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
       <section className="surveillance-panel" aria-label="Surveillance room">
         <div className="surveillance-empty">
           <span className="surveillance-empty-icon">📡</span>
-          <p>No agents running — deploy one from the Arsenal above.</p>
+          <p>No agents running. Deploy one from the Arsenal on the Agents tab.</p>
         </div>
       </section>
     );

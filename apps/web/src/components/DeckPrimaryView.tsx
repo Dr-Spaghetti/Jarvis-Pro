@@ -112,7 +112,7 @@ export const DeckPrimaryView = ({
   const [availableSkills, setAvailableSkills] = useState<DeckAvailableSkill[]>([]);
   const [savingTentacleSkillsId, setSavingTentacleSkillsId] = useState<string | null>(null);
   const [pendingRunSkill, setPendingRunSkill] = useState<string | null>(null);
-  const [arsenalOpen, setArsenalOpen] = useState(true);
+  const [arsenalOpen, setArsenalOpen] = useState(false);
 
   const [selectedAgent, setSelectedAgent] = useState<TerminalAgentProvider>("claude-code");
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);

@@ -455,6 +455,120 @@
   font-size: 14px;
 }
 
+/* ─── Main area wrapper (canvas + terminals, sits left of Arsenal sidebar) ─── */
+
+.canvas-main-area {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ─── Arsenal sidebar (right-docked on AGENTS tab) ──────────────────────────── */
+
+.canvas-arsenal-sidebar {
+  flex: 0 0 300px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid #2b2f36;
+  background: #0b0d10;
+  overflow: hidden;
+}
+
+.canvas-arsenal-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2b2f36;
+  background: #0d1017;
+  flex-shrink: 0;
+}
+
+.canvas-arsenal-sidebar-title {
+  font-family: "PP Neue Machina Plain", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-primary, #ff6b2b);
+}
+
+.canvas-arsenal-sidebar-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.15s ease;
+}
+
+.canvas-arsenal-sidebar-close:hover {
+  color: #e5e7eb;
+}
+
+/* Arsenal panel inside sidebar fills remaining space and scrolls */
+.canvas-arsenal-sidebar .arsenal-panel {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ─── Workspace-setup card dismiss / restore controls ────────────────────────── */
+
+.canvas-setup-dismiss {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #4b5563;
+  border-radius: 3px;
+  background: rgba(13, 16, 23, 0.85);
+  color: #9ca3af;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.canvas-setup-dismiss:hover {
+  color: #e5e7eb;
+  border-color: #6b7280;
+}
+
+.canvas-setup-restore {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 12;
+  padding: 4px 10px;
+  border: 1px solid var(--accent-primary, #ff6b2b);
+  border-radius: 4px;
+  background: rgba(255, 107, 43, 0.12);
+  color: var(--accent-primary, #ff6b2b);
+  font-family: "PP Neue Machina Plain", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.canvas-setup-restore:hover {
+  background: rgba(255, 107, 43, 0.22);
+}
+
 /* ─── Split layout: graph panel + terminals panel ──────────────────────────── */
 
 .canvas-graph-panel {

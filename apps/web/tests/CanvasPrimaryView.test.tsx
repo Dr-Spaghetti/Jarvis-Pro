@@ -153,6 +153,10 @@ vi.mock("../src/components/canvas/CanvasTentaclePanel", () => ({
   CanvasTentaclePanel: () => null,
 }));
 
+vi.mock("../src/components/AgentArsenalPanel", () => ({
+  AgentArsenalPanel: () => <div data-testid="arsenal-panel">Arsenal</div>,
+}));
+
 describe("CanvasPrimaryView", () => {
   beforeEach(() => {
     vi.spyOn(window, "requestAnimationFrame").mockImplementation(

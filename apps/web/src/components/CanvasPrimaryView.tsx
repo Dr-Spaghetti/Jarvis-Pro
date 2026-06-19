@@ -28,6 +28,7 @@ import {
   createTerminalRuntimeStateStore,
 } from "../app/terminalRuntimeStateStore";
 import type { TerminalView, TerminalWorkspaceMode } from "../app/types";
+import { AgentArsenalPanel } from "./AgentArsenalPanel";
 import { DeleteTentacleDialog } from "./DeleteTentacleDialog";
 import { CanvasTentaclePanel } from "./canvas/CanvasTentaclePanel";
 import { CanvasTerminalColumn } from "./canvas/CanvasTerminalColumn";
@@ -240,6 +241,8 @@ export const CanvasPrimaryView = ({
   const [pendingOpenAgentId, setPendingOpenAgentId] = useState<string | null>(null);
   const [hideIdleTerminals, setHideIdleTerminals] = useState(false);
   const [isLaunchingWorkspaceSetupPlanner, setIsLaunchingWorkspaceSetupPlanner] = useState(false);
+  const [arsenalOpen, setArsenalOpen] = useState(true);
+  const [setupCardDismissed, setSetupCardDismissed] = useState(false);
   const hasHydratedTerminals = useRef(false);
   const hasHydratedTentacles = useRef(false);
   const lastHandledCreatedTerminalIdRef = useRef<string | null>(null);
@@ -975,306 +978,359 @@ export const CanvasPrimaryView = ({
 
   return (
     <section ref={containerRef} className="canvas-view" aria-label="Canvas graph view">
-      <div className={`canvas-graph-panel${hasPanels ? " canvas-graph-panel--split" : ""}`}>
-        <svg
-          aria-label="Canvas graph"
-          ref={svgRef}
-          className={`canvas-svg${isPanning || dragNodeId ? " canvas-svg--panning" : ""}`}
-          onWheel={handleWheel}
-          onPointerDown={handleCanvasPointerDown}
-          onPointerMove={handleSvgPointerMove}
-          onPointerUp={handleSvgPointerUp}
-          onClick={handleSvgClick}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              setContextMenu(null);
-              setSelectedNodeId(null);
-              return;
-            }
-            if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
-              e.preventDefault();
-              setSelectedNodeId(null);
-            }
-          }}
-        >
-          <title>Canvas graph</title>
-          <g
-            transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}
+      <div className="canvas-main-area">
+        <div className={`canvas-graph-panel${hasPanels ? " canvas-graph-panel--split" : ""}`}>
+          <svg
+            aria-label="Canvas graph"
+            ref={svgRef}
+            className={`canvas-svg${isPanning || dragNodeId ? " canvas-svg--panning" : ""}`}
+            onWheel={handleWheel}
+            onPointerDown={handleCanvasPointerDown}
+            onPointerMove={handleSvgPointerMove}
+            onPointerUp={handleSvgPointerUp}
+            onClick={handleSvgClick}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setContextMenu(null);
+                setSelectedNodeId(null);
+                return;
+              }
+              if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+                e.preventDefault();
+                setSelectedNodeId(null);
+              }
+            }}
           >
-            {Array.from(sessionEdgesBySource.entries()).flatMap(([sourceId, group]) =>
-              group.map(({ source, target }, index) => {
-                const active = selectedNodeId === source.id || selectedNodeId === target.id;
+            <title>Canvas graph</title>
+            <g
+              transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}
+            >
+              {Array.from(sessionEdgesBySource.entries()).flatMap(([sourceId, group]) =>
+                group.map(({ source, target }, index) => {
+                  const active = selectedNodeId === source.id || selectedNodeId === target.id;
+                  const selectedColor = selectedNodeId
+                    ? (nodesById.get(selectedNodeId)?.color ?? null)
+                    : null;
+                  const path = buildCanvasEdgePath(source, target, index, group.length);
+
+                  return (
+                    <g key={`${sourceId}->${target.id}`}>
+                      <path
+                        className="canvas-edge"
+                        d={path}
+                        fill="none"
+                        stroke={active ? (selectedColor ?? source.color) : "#C0C0C0"}
+                        strokeWidth={active ? 2 : 1.5}
+                        strokeOpacity={1}
+                      />
+                      {isEdgeActivityVisible(target)
+                        ? renderEdgeActivityDots(
+                            path,
+                            active ? (selectedColor ?? source.color) : source.color,
+                            `${sourceId}->${target.id}`,
+                          )
+                        : null}
+                    </g>
+                  );
+                }),
+              )}
+
+              {/* Render tentacle nodes (with arms) first */}
+              {tentacleNodes.map((node) => {
+                const connected = edges
+                  .filter((e) => e.source === node.id)
+                  .map((e) => nodesById.get(e.target))
+                  .filter((n): n is GraphNode => {
+                    if (!n) return false;
+                    if (hideIdleTerminals && n.type === "inactive-session") return false;
+                    if (
+                      hideIdleTerminals &&
+                      n.type === "active-session" &&
+                      (n.agentState === "idle" || n.hasUserPrompt === false)
+                    )
+                      return false;
+                    return true;
+                  });
+
                 const selectedColor = selectedNodeId
                   ? (nodesById.get(selectedNodeId)?.color ?? null)
                   : null;
-                const path = buildCanvasEdgePath(source, target, index, group.length);
 
                 return (
-                  <g key={`${sourceId}->${target.id}`}>
-                    <path
-                      className="canvas-edge"
-                      d={path}
-                      fill="none"
-                      stroke={active ? (selectedColor ?? source.color) : "#C0C0C0"}
-                      strokeWidth={active ? 2 : 1.5}
-                      strokeOpacity={1}
-                    />
-                    {isEdgeActivityVisible(target)
-                      ? renderEdgeActivityDots(
-                          path,
-                          active ? (selectedColor ?? source.color) : source.color,
-                          `${sourceId}->${target.id}`,
-                        )
-                      : null}
-                  </g>
+                  <OctopusNode
+                    key={node.id}
+                    node={node}
+                    connectedNodes={connected}
+                    isSelected={selectedNodeId === node.id}
+                    selectedNodeId={selectedNodeId}
+                    selectedNodeColor={selectedColor}
+                    onPointerDown={handleNodePointerDown}
+                    onClick={handleNodeClick}
+                  />
                 );
-              }),
-            )}
+              })}
 
-            {/* Render tentacle nodes (with arms) first */}
-            {tentacleNodes.map((node) => {
-              const connected = edges
-                .filter((e) => e.source === node.id)
-                .map((e) => nodesById.get(e.target))
-                .filter((n): n is GraphNode => {
-                  if (!n) return false;
-                  if (hideIdleTerminals && n.type === "inactive-session") return false;
-                  if (
-                    hideIdleTerminals &&
-                    n.type === "active-session" &&
-                    (n.agentState === "idle" || n.hasUserPrompt === false)
-                  )
-                    return false;
-                  return true;
-                });
-
-              const selectedColor = selectedNodeId
-                ? (nodesById.get(selectedNodeId)?.color ?? null)
-                : null;
-
-              return (
-                <OctopusNode
+              {/* Render session nodes on top */}
+              {sessionNodes.map((node) => (
+                <SessionNode
                   key={node.id}
                   node={node}
-                  connectedNodes={connected}
                   isSelected={selectedNodeId === node.id}
-                  selectedNodeId={selectedNodeId}
-                  selectedNodeColor={selectedColor}
                   onPointerDown={handleNodePointerDown}
                   onClick={handleNodeClick}
                 />
-              );
-            })}
+              ))}
+            </g>
+          </svg>
 
-            {/* Render session nodes on top */}
-            {sessionNodes.map((node) => (
-              <SessionNode
-                key={node.id}
-                node={node}
-                isSelected={selectedNodeId === node.id}
-                onPointerDown={handleNodePointerDown}
-                onClick={handleNodeClick}
+          {/* Canvas toolbar — top-left action buttons */}
+          <div className="canvas-toolbar" role="toolbar" aria-label="Canvas actions">
+            <button
+              type="button"
+              className="canvas-toolbar-btn"
+              onClick={() => {
+                const result = onCreateTerminal?.();
+                if (result && typeof result.then === "function") {
+                  void result.then((agentId) => {
+                    if (agentId) setPendingOpenAgentId(agentId);
+                  });
+                }
+              }}
+            >
+              <span className="canvas-toolbar-icon">
+                <TerminalIcon size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Terminal</span>
+            </button>
+            <button
+              type="button"
+              className="canvas-toolbar-btn"
+              onClick={() => {
+                const result = onCreateWorktreeTerminal?.();
+                if (result && typeof result.then === "function") {
+                  void result.then((agentId) => {
+                    if (agentId) setPendingOpenAgentId(agentId);
+                  });
+                }
+              }}
+            >
+              <span className="canvas-toolbar-icon">
+                <GitBranch size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Worktree</span>
+            </button>
+            <button type="button" className="canvas-toolbar-btn" onClick={onCreateTentacle}>
+              <span className="canvas-toolbar-icon">
+                <Hexagon size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Agent</span>
+            </button>
+            <div className="canvas-toolbar-separator" />
+            <button type="button" className="canvas-toolbar-btn" onClick={handleFitView}>
+              <span className="canvas-toolbar-icon">
+                <Maximize size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Fit</span>
+            </button>
+            <button type="button" className="canvas-toolbar-btn" onClick={handleRefresh}>
+              <span className="canvas-toolbar-icon">
+                <RefreshCw size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Refresh</span>
+            </button>
+            <div className="canvas-toolbar-separator" />
+            <button
+              type="button"
+              className={`canvas-toolbar-btn${hideIdleTerminals ? " canvas-toolbar-btn--active" : ""}`}
+              onClick={() => setHideIdleTerminals((prev) => !prev)}
+            >
+              <span className="canvas-toolbar-icon">
+                {hideIdleTerminals ? <Play size={14} /> : <Pause size={14} />}
+              </span>
+              <span className="canvas-toolbar-label">
+                {hideIdleTerminals ? "Show Idle" : "Hide Idle"}
+              </span>
+            </button>
+            <div className="canvas-toolbar-separator" />
+            <button
+              type="button"
+              className={`canvas-toolbar-btn${arsenalOpen ? " canvas-toolbar-btn--active" : ""}`}
+              aria-pressed={arsenalOpen}
+              onClick={() => setArsenalOpen((prev) => !prev)}
+            >
+              <span className="canvas-toolbar-icon">
+                <Sparkles size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Arsenal</span>
+            </button>
+            <div className="canvas-toolbar-separator" />
+            <button
+              type="button"
+              className="canvas-toolbar-btn canvas-toolbar-btn--danger"
+              onClick={() => setIsDeleteAllDialogOpen(true)}
+            >
+              <span className="canvas-toolbar-icon">
+                <Trash2 size={14} />
+              </span>
+              <span className="canvas-toolbar-label">Delete All</span>
+            </button>
+          </div>
+
+          {/* Waiting notifications — compact bars below the toolbar */}
+          {waitingNodes.length > 0 && (
+            <div className="canvas-waiting-list">
+              {waitingNodes.map((node) => {
+                const nameRaw = node.label;
+                const name = nameRaw.length > 20 ? `${nameRaw.slice(0, 20)}…` : nameRaw;
+                const prefix =
+                  node.agentRuntimeState === "waiting_for_permission"
+                    ? `${node.waitingToolName ?? "Permission"}: `
+                    : "Waiting: ";
+                return (
+                  <button
+                    key={node.id}
+                    type="button"
+                    className="canvas-waiting-bar"
+                    onClick={() => handleNodeClick(node.id)}
+                  >
+                    <span className="canvas-waiting-bar-name">
+                      <span className="canvas-waiting-bar-prefix">{prefix}</span>
+                      {name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {shouldShowWorkspaceSetupCard && !setupCardDismissed && (
+            <div className="canvas-setup-overlay">
+              <button
+                type="button"
+                className="canvas-setup-dismiss"
+                aria-label="Minimize workspace setup"
+                onClick={() => setSetupCardDismissed(true)}
+              >
+                ×
+              </button>
+              <WorkspaceSetupCard
+                workspaceSetup={workspaceSetup}
+                isLoading={isWorkspaceSetupLoading}
+                error={workspaceSetupError}
+                onRunStep={(stepId) => {
+                  void onRunWorkspaceSetupStep?.(stepId);
+                }}
+                onLaunchClaudeCode={() => {
+                  void handleLaunchWorkspaceSetupPlanner();
+                }}
+                isLaunchingAgent={isLaunchingWorkspaceSetupPlanner}
+                isRunningStepId={runningWorkspaceSetupStepId}
               />
-            ))}
-          </g>
-        </svg>
-
-        {/* Canvas toolbar — top-left action buttons */}
-        <div className="canvas-toolbar" role="toolbar" aria-label="Canvas actions">
-          <button
-            type="button"
-            className="canvas-toolbar-btn"
-            onClick={() => {
-              const result = onCreateTerminal?.();
-              if (result && typeof result.then === "function") {
-                void result.then((agentId) => {
-                  if (agentId) setPendingOpenAgentId(agentId);
-                });
-              }
-            }}
-          >
-            <span className="canvas-toolbar-icon">
-              <TerminalIcon size={14} />
-            </span>
-            <span className="canvas-toolbar-label">Terminal</span>
-          </button>
-          <button
-            type="button"
-            className="canvas-toolbar-btn"
-            onClick={() => {
-              const result = onCreateWorktreeTerminal?.();
-              if (result && typeof result.then === "function") {
-                void result.then((agentId) => {
-                  if (agentId) setPendingOpenAgentId(agentId);
-                });
-              }
-            }}
-          >
-            <span className="canvas-toolbar-icon">
-              <GitBranch size={14} />
-            </span>
-            <span className="canvas-toolbar-label">Worktree</span>
-          </button>
-          <button type="button" className="canvas-toolbar-btn" onClick={onCreateTentacle}>
-            <span className="canvas-toolbar-icon">
-              <Hexagon size={14} />
-            </span>
-            <span className="canvas-toolbar-label">Agent</span>
-          </button>
-          <div className="canvas-toolbar-separator" />
-          <button type="button" className="canvas-toolbar-btn" onClick={handleFitView}>
-            <span className="canvas-toolbar-icon">
-              <Maximize size={14} />
-            </span>
-            <span className="canvas-toolbar-label">Fit</span>
-          </button>
-          <button type="button" className="canvas-toolbar-btn" onClick={handleRefresh}>
-            <span className="canvas-toolbar-icon">
-              <RefreshCw size={14} />
-            </span>
-            <span className="canvas-toolbar-label">Refresh</span>
-          </button>
-          <div className="canvas-toolbar-separator" />
-          <button
-            type="button"
-            className={`canvas-toolbar-btn${hideIdleTerminals ? " canvas-toolbar-btn--active" : ""}`}
-            onClick={() => setHideIdleTerminals((prev) => !prev)}
-          >
-            <span className="canvas-toolbar-icon">
-              {hideIdleTerminals ? <Play size={14} /> : <Pause size={14} />}
-            </span>
-            <span className="canvas-toolbar-label">
-              {hideIdleTerminals ? "Show Idle" : "Hide Idle"}
-            </span>
-          </button>
-          <div className="canvas-toolbar-separator" />
-          <button
-            type="button"
-            className="canvas-toolbar-btn canvas-toolbar-btn--danger"
-            onClick={() => setIsDeleteAllDialogOpen(true)}
-          >
-            <span className="canvas-toolbar-icon">
-              <Trash2 size={14} />
-            </span>
-            <span className="canvas-toolbar-label">Delete All</span>
-          </button>
+            </div>
+          )}
+          {shouldShowWorkspaceSetupCard && setupCardDismissed && (
+            <button
+              type="button"
+              className="canvas-setup-restore"
+              aria-label="Show workspace setup"
+              onClick={() => setSetupCardDismissed(false)}
+            >
+              ⚙ Setup
+            </button>
+          )}
         </div>
 
-        {/* Waiting notifications — compact bars below the toolbar */}
-        {waitingNodes.length > 0 && (
-          <div className="canvas-waiting-list">
-            {waitingNodes.map((node) => {
-              const nameRaw = node.label;
-              const name = nameRaw.length > 20 ? `${nameRaw.slice(0, 20)}…` : nameRaw;
-              const prefix =
-                node.agentRuntimeState === "waiting_for_permission"
-                  ? `${node.waitingToolName ?? "Permission"}: `
-                  : "Waiting: ";
-              return (
-                <button
-                  key={node.id}
-                  type="button"
-                  className="canvas-waiting-bar"
-                  onClick={() => handleNodeClick(node.id)}
-                >
-                  <span className="canvas-waiting-bar-name">
-                    <span className="canvas-waiting-bar-prefix">{prefix}</span>
-                    {name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {shouldShowWorkspaceSetupCard && (
-          <div className="canvas-setup-overlay">
-            <WorkspaceSetupCard
-              workspaceSetup={workspaceSetup}
-              isLoading={isWorkspaceSetupLoading}
-              error={workspaceSetupError}
-              onRunStep={(stepId) => {
-                void onRunWorkspaceSetupStep?.(stepId);
-              }}
-              onLaunchClaudeCode={() => {
-                void handleLaunchWorkspaceSetupPlanner();
-              }}
-              isLaunchingAgent={isLaunchingWorkspaceSetupPlanner}
-              isRunningStepId={runningWorkspaceSetupStepId}
+        {hasPanels && (
+          <>
+            <div
+              className="canvas-panel-divider"
+              role="separator"
+              aria-orientation="vertical"
+              tabIndex={0}
+              onPointerDown={handleDividerPointerDown}
+              onPointerMove={handleDividerPointerMove}
+              onPointerUp={handleDividerPointerUp}
             />
-          </div>
+            <div
+              ref={terminalsPanelRef}
+              className="canvas-terminals-panel"
+              style={
+                terminalsPanelWidth != null ? { flex: `0 0 ${terminalsPanelWidth}px` } : undefined
+              }
+            >
+              {Array.from(openTentacles.entries()).map(([nodeId, node]) => (
+                <CanvasTentaclePanel
+                  key={nodeId}
+                  node={node}
+                  isFocused={selectedNodeId === nodeId}
+                  panelRef={setPanelRef(nodeId)}
+                  tentacle={tentacleById.get(node.tentacleId) ?? null}
+                  sessions={sessionsByTentacleId.get(node.tentacleId) ?? []}
+                  onClose={() => handleCloseTentacle(nodeId)}
+                  onFocus={() => setSelectedNodeId(nodeId)}
+                  onCreateAgent={(tentacleId) => {
+                    handleCreateAgent(tentacleId);
+                  }}
+                  onSolveTodoItem={(tentacleId, itemIndex) => {
+                    void onSolveTodoItem?.(tentacleId, itemIndex);
+                  }}
+                  onSpawnSwarm={(tentacleId, workspaceMode) => {
+                    handleSpawnSwarm(tentacleId, workspaceMode);
+                  }}
+                  onNavigateToConversation={onNavigateToConversation}
+                  onRefreshTentacleData={refreshDeckTentacles}
+                />
+              ))}
+              {isHydratingTerminals && openTerminals.size === 0 && (
+                <div className="canvas-terminal-skeleton">
+                  <div className="canvas-terminal-skeleton__header" />
+                  <div className="canvas-terminal-skeleton__body">
+                    <div className="canvas-terminal-skeleton__line" style={{ width: "60%" }} />
+                    <div className="canvas-terminal-skeleton__line" style={{ width: "80%" }} />
+                    <div className="canvas-terminal-skeleton__line" style={{ width: "45%" }} />
+                  </div>
+                </div>
+              )}
+              {Array.from(openTerminals.entries()).map(([nodeId, node]) => (
+                <CanvasTerminalColumn
+                  key={nodeId}
+                  node={node}
+                  terminals={columns}
+                  layoutVersion={terminalLayoutVersion}
+                  isFocused={selectedNodeId === nodeId}
+                  panelRef={setPanelRef(nodeId)}
+                  onMinimize={() => handleMinimizeTerminal(nodeId)}
+                  onClose={() => handleCloseTerminal(node)}
+                  onFocus={() => setSelectedNodeId(nodeId)}
+                  onTerminalRenamed={onTerminalRenamed}
+                  onTerminalActivity={onTerminalActivity}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {hasPanels && (
-        <>
-          <div
-            className="canvas-panel-divider"
-            role="separator"
-            aria-orientation="vertical"
-            tabIndex={0}
-            onPointerDown={handleDividerPointerDown}
-            onPointerMove={handleDividerPointerMove}
-            onPointerUp={handleDividerPointerUp}
-          />
-          <div
-            ref={terminalsPanelRef}
-            className="canvas-terminals-panel"
-            style={
-              terminalsPanelWidth != null ? { flex: `0 0 ${terminalsPanelWidth}px` } : undefined
-            }
-          >
-            {Array.from(openTentacles.entries()).map(([nodeId, node]) => (
-              <CanvasTentaclePanel
-                key={nodeId}
-                node={node}
-                isFocused={selectedNodeId === nodeId}
-                panelRef={setPanelRef(nodeId)}
-                tentacle={tentacleById.get(node.tentacleId) ?? null}
-                sessions={sessionsByTentacleId.get(node.tentacleId) ?? []}
-                onClose={() => handleCloseTentacle(nodeId)}
-                onFocus={() => setSelectedNodeId(nodeId)}
-                onCreateAgent={(tentacleId) => {
-                  handleCreateAgent(tentacleId);
-                }}
-                onSolveTodoItem={(tentacleId, itemIndex) => {
-                  void onSolveTodoItem?.(tentacleId, itemIndex);
-                }}
-                onSpawnSwarm={(tentacleId, workspaceMode) => {
-                  handleSpawnSwarm(tentacleId, workspaceMode);
-                }}
-                onNavigateToConversation={onNavigateToConversation}
-                onRefreshTentacleData={refreshDeckTentacles}
-              />
-            ))}
-            {isHydratingTerminals && openTerminals.size === 0 && (
-              <div className="canvas-terminal-skeleton">
-                <div className="canvas-terminal-skeleton__header" />
-                <div className="canvas-terminal-skeleton__body">
-                  <div className="canvas-terminal-skeleton__line" style={{ width: "60%" }} />
-                  <div className="canvas-terminal-skeleton__line" style={{ width: "80%" }} />
-                  <div className="canvas-terminal-skeleton__line" style={{ width: "45%" }} />
-                </div>
-              </div>
-            )}
-            {Array.from(openTerminals.entries()).map(([nodeId, node]) => (
-              <CanvasTerminalColumn
-                key={nodeId}
-                node={node}
-                terminals={columns}
-                layoutVersion={terminalLayoutVersion}
-                isFocused={selectedNodeId === nodeId}
-                panelRef={setPanelRef(nodeId)}
-                onMinimize={() => handleMinimizeTerminal(nodeId)}
-                onClose={() => handleCloseTerminal(node)}
-                onFocus={() => setSelectedNodeId(nodeId)}
-                onTerminalRenamed={onTerminalRenamed}
-                onTerminalActivity={onTerminalActivity}
-              />
-            ))}
+      {arsenalOpen && (
+        <aside className="canvas-arsenal-sidebar" aria-label="Agent Arsenal">
+          <div className="canvas-arsenal-sidebar-header">
+            <span className="canvas-arsenal-sidebar-title">Arsenal</span>
+            <button
+              type="button"
+              className="canvas-arsenal-sidebar-close"
+              aria-label="Close Arsenal"
+              onClick={() => setArsenalOpen(false)}
+            >
+              ×
+            </button>
           </div>
-        </>
+          <AgentArsenalPanel
+            onDeployed={(terminalId) => {
+              setPendingOpenAgentId(terminalId);
+            }}
+          />
+        </aside>
       )}
 
       {/* Context menu */}
