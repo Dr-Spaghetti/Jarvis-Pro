@@ -24,6 +24,7 @@ import {
   buildVoiceIntentUrl,
   buildVoiceSpeakUrl,
   buildVoiceTranscribeUrl,
+  buildVoiceVoicesUrl,
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
@@ -215,6 +216,16 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       return "";
     }
   });
+  const [deepgramVoice, setDeepgramVoice] = useState<string>(() => {
+    try {
+      return window.localStorage.getItem("jarvis.deepgramVoice") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const [deepgramVoices, setDeepgramVoices] = useState<
+    { id: string; name: string; description: string }[]
+  >([]);
   const [voiceStatus, setVoiceStatus] = useState("Voice idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isWakeArmed, setIsWakeArmed] = useState(false);
@@ -373,6 +384,23 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         setTtsProvider((prev) => prev || config.tts.recommended || "browser");
       } catch {
         setVoiceError("Voice config unavailable");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiFetch(buildVoiceVoicesUrl(), {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          voices?: { id: string; name: string; description: string }[];
+        };
+        setDeepgramVoices(data.voices ?? []);
+      } catch {
+        // voices are optional; ignore
       }
     })();
   }, []);
@@ -633,10 +661,14 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         for (const provider of candidates) {
           if (isMutedRef.current) return;
           try {
+            const speakBody: Record<string, string> = { text, provider };
+            if (provider === "deepgram" && deepgramVoice) {
+              speakBody.model = deepgramVoice;
+            }
             const response = await apiFetch(buildVoiceSpeakUrl(), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text, provider }),
+              body: JSON.stringify(speakBody),
             });
             if (response.ok && !isMutedRef.current) {
               const blob = await response.blob();
@@ -673,7 +705,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         setIsSpeaking(false);
       }
     },
-    [ttsProvider, voiceConfig],
+    [ttsProvider, voiceConfig, deepgramVoice],
   );
 
   useEffect(() => {
@@ -1581,6 +1613,59 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 </option>
               ))}
             </select>
+            {ttsProvider === "deepgram" && deepgramVoices.length > 0 && (
+              <div className="jarvis-voice-picker">
+                <select
+                  className="jarvis-select"
+                  value={deepgramVoice}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setDeepgramVoice(value);
+                    try {
+                      window.localStorage.setItem("jarvis.deepgramVoice", value);
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                  aria-label="Deepgram voice"
+                >
+                  <option value="">Default voice</option>
+                  {deepgramVoices.map((v) => (
+                    <option key={v.id} value={v.id} title={v.description}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="jarvis-btn jarvis-btn--secondary"
+                  onClick={() => {
+                    const voiceId = deepgramVoice || "aura-2-thalia-en";
+                    void apiFetch(buildVoiceSpeakUrl(), {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        text: "Hi, I'm Jarvis. How can I help you today?",
+                        provider: "deepgram",
+                        model: voiceId,
+                      }),
+                    }).then(async (res) => {
+                      if (res.ok) {
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const audio = new Audio(url);
+                        audio.addEventListener("ended", () => URL.revokeObjectURL(url), {
+                          once: true,
+                        });
+                        void audio.play().catch(() => {});
+                      }
+                    });
+                  }}
+                >
+                  Preview
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="jarvis-voice-grid">

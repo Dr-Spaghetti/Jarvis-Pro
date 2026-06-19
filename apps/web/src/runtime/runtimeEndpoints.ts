@@ -408,6 +408,9 @@ export const buildVoiceIntentUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
 export const buildVoiceSpeakUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/speak", runtimeBaseUrl);
 
+export const buildVoiceVoicesUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/voice/voices", runtimeBaseUrl);
+
 export const buildDeckTentacleUrl = (tentacleId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
   const encodedTentacleId = encodeURIComponent(tentacleId);
   const path = `/api/deck/tentacles/${encodedTentacleId}`;

@@ -112,6 +112,7 @@ import {
   handleVoiceSpeakRoute,
   handleVoiceTextFallbackRoute,
   handleVoiceTranscribeRoute,
+  handleVoiceVoicesRoute,
 } from "./voiceRoutes";
 
 const MIME_TYPES: Record<string, string> = {
@@ -257,6 +258,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
     "voice",
     [
       handleVoiceConfigRoute,
+      handleVoiceVoicesRoute,
       handleVoiceTranscribeRoute,
       handleVoiceIntentRoute,
       handleVoiceSpeakRoute,

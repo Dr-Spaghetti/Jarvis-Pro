@@ -66,6 +66,35 @@ const getDeepgramApiKey = (): string | null => {
 const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-thalia-en";
 const getDeepgramSttModel = (): string => process.env.DEEPGRAM_STT_MODEL?.trim() || "nova-2";
 
+type DeepgramVoiceEntry = { id: string; name: string; description: string };
+
+const DEEPGRAM_VOICE_CATALOG: DeepgramVoiceEntry[] = [
+  {
+    id: "aura-2-thalia-en",
+    name: "Thalia (Aura 2)",
+    description: "Warm female — conversational default",
+  },
+  { id: "aura-2-luna-en", name: "Luna (Aura 2)", description: "Soft female — gentle and clear" },
+  { id: "aura-2-electra-en", name: "Electra (Aura 2)", description: "Expressive female — lively" },
+  {
+    id: "aura-2-selene-en",
+    name: "Selene (Aura 2)",
+    description: "Clear female — precise and bright",
+  },
+  {
+    id: "aura-2-minerva-en",
+    name: "Minerva (Aura 2)",
+    description: "Confident female — assertive",
+  },
+  { id: "aura-2-orpheus-en", name: "Orpheus (Aura 2)", description: "Professional male — smooth" },
+  { id: "aura-2-odysseus-en", name: "Odysseus (Aura 2)", description: "Deep male — authoritative" },
+  { id: "aura-2-zeus-en", name: "Zeus (Aura 2)", description: "Powerful male — commanding" },
+  { id: "aura-2-hermes-en", name: "Hermes (Aura 2)", description: "Casual male — friendly" },
+  { id: "aura-asteria-en", name: "Asteria", description: "Warm female — Aura classic" },
+  { id: "aura-orion-en", name: "Orion", description: "Deep male — Aura classic" },
+  { id: "aura-helios-en", name: "Helios", description: "British male — Aura classic" },
+];
+
 // Speech-to-text via Deepgram. Used as the primary transcriber because it has a
 // working account/credit; OpenAI Whisper is the fallback. Deepgram accepts the
 // raw recorder audio (webm/opus) directly with the matching Content-Type.
@@ -261,6 +290,21 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
   return true;
 };
 
+export const handleVoiceVoicesRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
+  if (requestUrl.pathname !== "/api/voice/voices") return false;
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+  writeJson(response, 200, { voices: DEEPGRAM_VOICE_CATALOG }, corsOrigin);
+  return true;
+};
+
 export const handleVoiceIntentRoute: ApiRouteHandler = async ({
   request,
   response,
@@ -444,8 +488,9 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       writeJson(response, 400, { error: "DEEPGRAM_API_KEY is not configured." }, corsOrigin);
       return true;
     }
+    const deepgramVoiceModel = readString(payload.model) ?? getDeepgramModel();
     const upstreamResponse = await fetch(
-      `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(getDeepgramModel())}&encoding=mp3`,
+      `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(deepgramVoiceModel)}&encoding=mp3`,
       {
         method: "POST",
         headers: { Authorization: `Token ${deepgramKey}`, "Content-Type": "application/json" },
