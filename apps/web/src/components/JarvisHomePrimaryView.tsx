@@ -999,9 +999,12 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         audioChunksRef.current.push(event.data);
       }
     });
+    // Closed in the stop handler so it's always cleaned up, even on external stops.
+    let silenceAudioCtx: AudioContext | null = null;
     recorder.addEventListener("stop", () => {
       isRecordingCommandRef.current = false;
       setIsRecordingCommand(false);
+      silenceAudioCtx?.close().catch(() => {});
       for (const track of stream.getTracks()) {
         track.stop();
       }
@@ -1014,9 +1017,50 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     isRecordingCommandRef.current = true;
     setIsRecordingCommand(true);
     recorder.start();
+    // Hard cap: never record more than 30 s.
     recordingTimerRef.current = window.setTimeout(() => {
       stopCommandRecording();
-    }, 7000);
+    }, 30000);
+    // Silence-based endpointing via Web Audio AnalyserNode.
+    // Stops recording after ~1.5 s of silence (RMS below threshold).
+    // Waits a minimum of 600 ms so very short utterances don't end instantly.
+    try {
+      const ctx = new AudioContext();
+      silenceAudioCtx = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const silenceBuf = new Uint8Array(analyser.frequencyBinCount);
+      const recordingStartedAt = Date.now();
+      const MIN_REC_MS = 600;
+      const SILENCE_THRESHOLD_MS = 1500;
+      const RMS_THRESHOLD = 0.015;
+      let silenceStartedAt: number | null = null;
+      const tick = () => {
+        if (!isRecordingCommandRef.current) return;
+        analyser.getByteTimeDomainData(silenceBuf);
+        let sumSq = 0;
+        for (const sample of silenceBuf) {
+          const s = (sample - 128) / 128;
+          sumSq += s * s;
+        }
+        const rms = Math.sqrt(sumSq / silenceBuf.length);
+        if (rms > RMS_THRESHOLD) {
+          silenceStartedAt = null;
+        } else if (Date.now() - recordingStartedAt >= MIN_REC_MS) {
+          if (silenceStartedAt === null) {
+            silenceStartedAt = Date.now();
+          } else if (Date.now() - silenceStartedAt >= SILENCE_THRESHOLD_MS) {
+            stopCommandRecording();
+            return;
+          }
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    } catch {
+      // Web Audio unavailable — the hard-cap timer handles stopping.
+    }
   }, [stopCommandRecording, transcribeCommandAudio]);
 
   // Keep the loop's re-arm handle pointed at the latest startCommandRecording
