@@ -2,6 +2,40 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 14 — Arsenal on AGENTS tab + WorkspaceSetup dismiss + Surveillance empty state — commit 60676c2 (2026-06-18)
+
+Adversarial review of Wave 14 diff. **No critical findings. One HIGH finding (design decision documented). One MEDIUM finding resolved by adding a toggle test.**
+
+All 196 tests pass, lint clean (biome write applied one formatting fix), web build green, `build-package.mjs` exit 0.
+
+### Applied immediately
+
+**M-1 (resolved) — Arsenal sidebar toggle has zero test coverage**
+The Arsenal mock in `CanvasPrimaryView.test.tsx` rendered a static div with no interaction; clicking the toolbar "Arsenal" button was never exercised. Added a toggle test confirming: (a) sidebar is visible by default, (b) clicking the toolbar button hides it, (c) clicking again shows it. 6 tests now pass in `CanvasPrimaryView.test.tsx`.
+
+### Not applied — design decision documented
+
+**H-1 — `arsenalOpen` defaults to `true`: Arsenal opens on every Canvas mount with no persistence**
+`CanvasPrimaryView.tsx` initialises `arsenalOpen` to `true`, so the Arsenal sidebar is visible every time a user loads the AGENTS tab, even if they closed it in a prior session. `DeckPrimaryView.tsx` was explicitly changed to `false` in this wave (Arsenal moved to AGENTS tab). The inconsistency is real but intentional: the Wave 14 spec says "Surface AgentArsenalPanel on the [1] AGENTS tab" — starting open maximises discoverability of the new feature. Keeping `true` for now; deferred: persist `arsenalOpen` to `localStorage` so user preference survives navigation.
+
+### Verified clean
+
+- `canvas-main-area` wrapper correctly contains canvas+terminals split; Arsenal sidebar is a sibling to `canvas-main-area` within `.canvas-view` (flex row), so `hasPanels` split state is unaffected by Arsenal open/closed.
+- `canvas-setup-overlay` (`position: absolute; top: 16px; right: 16px`) anchors to `.canvas-graph-panel` (position: relative), not the viewport; with Arsenal open the graph panel is narrower but the overlay stays within its bounds.
+- Duplicate `position: relative` override on `.canvas-setup-overlay` correctly removed; class now appears once with `position: absolute`.
+- `onDeployed` callback in Arsenal sidebar passes `terminalId` as first arg to `setPendingOpenAgentId`; TypeScript correctly allows ignoring the trailing `archetypeId` argument.
+- No raw `fetch(` added in `apps/web/src`.
+- No bare `role="dialog|status|group"` added.
+- Biome import order clean after auto-format.
+
+### Lessons
+
+- **Format before committing** — biome auto-format (`biome check --write`) should run as part of the pre-commit habit, not only on lint failure. A single formatting issue in `CanvasPrimaryView.tsx` required an extra fix pass.
+- **New always-visible UI elements need toggle tests from day one** — the arsenal sidebar mock was inert, so toggle coverage was zero. Any component whose visibility is controlled by local state must have a test that exercises the toggle immediately.
+- **State persistence is a first-class concern for docked panels** — defaulting to `true` makes the feature discoverable but discards user preference on every navigation. Sidebar open/close state should be persisted to `localStorage` before the wave ships to production.
+
+---
+
 ## Wave 13 — Agent Arsenal + Surveillance Room + Autonomous Orchestration — commit 37fa059 (2026-06-18)
 
 Adversarial review of Wave 13 diff. **No critical findings. Two important findings, one applied immediately. One minor finding applied. One minor issue documented as low-priority.**

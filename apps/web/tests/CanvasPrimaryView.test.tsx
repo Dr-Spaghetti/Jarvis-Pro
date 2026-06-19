@@ -379,6 +379,21 @@ describe("CanvasPrimaryView", () => {
     });
   });
 
+  it("toggles the Arsenal sidebar when the Arsenal toolbar button is clicked", () => {
+    render(<CanvasPrimaryView columns={[]} isUiStateHydrated />);
+
+    // Arsenal is open by default
+    expect(screen.getByTestId("arsenal-panel")).toBeInTheDocument();
+
+    // Click the Arsenal toggle button to close
+    fireEvent.click(screen.getByRole("button", { name: "Arsenal" }));
+    expect(screen.queryByTestId("arsenal-panel")).not.toBeInTheDocument();
+
+    // Click again to reopen
+    fireEvent.click(screen.getByRole("button", { name: "Arsenal" }));
+    expect(screen.getByTestId("arsenal-panel")).toBeInTheDocument();
+  });
+
   it("shows tentacle maintenance actions in the context menu and passes the tentacle ID", async () => {
     const onTentacleAction = vi.fn().mockResolvedValue(undefined);
 
