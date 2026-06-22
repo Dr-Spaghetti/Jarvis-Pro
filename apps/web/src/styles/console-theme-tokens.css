@@ -1,44 +1,61 @@
 /*
- * Theme — black / gold / white.
- * Near-black surfaces, white text, gold accent. Edit the values below to retune.
+ * NEURAL CORE OS — black / neon-green / white.
+ * Pure black surfaces, white text, #39FF14 neon-green accent.
  */
+@import url("https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
 :root {
   --bg-canvas: #000000;
-  --bg-surface-1: #0d0d0d;
-  --bg-surface-2: #161616;
-  --border-subtle: #2b2b2b;
-  --text-primary: #ffffff;
-  --text-secondary: #bdbdbd;
-  --accent-primary: #f5b50a;
-  --term-red: #c0392b;
-  --term-green: #25d366;
+  --bg-surface-1: #0a0a0a;
+  --bg-surface-2: #111411;
+  --border-subtle: #1e241e;
+  --text-primary: #e2e2e2;
+  --text-secondary: #888e88;
+  --accent-primary: #39ff14;
+  --term-red: #ff6152;
+  --term-green: #39ff14;
   --term-blue: #1f1f1f;
-  --term-warning: #ffb020;
-  --terminal-bg: #0a0a0a;
-  --terminal-header-bg-top: #1c1c1c;
-  --terminal-header-bg-bottom: #0d0d0d;
-  --terminal-header-text: #f5b50a;
-  --control-border-strong: #2b2b2b;
-  --control-bg-strong: #0d0d0d;
+  --term-warning: #f5e600;
+  --terminal-bg: #000000;
+  --terminal-header-bg-top: #111411;
+  --terminal-header-bg-bottom: #0a0a0a;
+  --terminal-header-text: #39ff14;
+  --control-border-strong: #1e241e;
+  --control-bg-strong: #050705;
   --ui-base-font-size: 17px;
 
-  /* Jarvis HUD design tokens (black / gold sci-fi) */
-  --gold: #f5b50a;
-  --gold-bright: #ffd24a;
-  --gold-soft: #d6a017;
-  --gold-dim: rgba(245, 181, 10, 0.55);
-  --gold-glow: rgba(245, 181, 10, 0.38);
-  --glass-bg: rgba(18, 16, 9, 0.55);
-  --glass-bg-strong: rgba(12, 11, 6, 0.78);
-  --glass-border: rgba(245, 181, 10, 0.26);
-  --glass-border-hot: rgba(245, 181, 10, 0.6);
-  --hud-grid: rgba(245, 181, 10, 0.05);
-  --hud-line: rgba(245, 181, 10, 0.16);
-  --hud-shadow: 0 0 0 1px rgba(245, 181, 10, 0.12), 0 18px 50px rgba(0, 0, 0, 0.7);
+  /* Neural Core OS HUD tokens — neon green on black */
+  --gold: #39ff14;
+  --gold-bright: #79ff5b;
+  --gold-soft: #2ae500;
+  --gold-dim: rgba(57, 255, 20, 0.55);
+  --gold-glow: rgba(57, 255, 20, 0.35);
+  --glass-bg: rgba(5, 7, 5, 0.55);
+  --glass-bg-strong: rgba(0, 0, 0, 0.88);
+  --glass-border: rgba(57, 255, 20, 0.22);
+  --glass-border-hot: rgba(57, 255, 20, 0.55);
+  --hud-grid: rgba(57, 255, 20, 0.05);
+  --hud-line: rgba(57, 255, 20, 0.14);
+  --hud-shadow: 0 0 0 1px rgba(57, 255, 20, 0.1), 0 18px 50px rgba(0, 0, 0, 0.85);
   --font-display: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --font-headline: "Archivo Narrow", "JetBrains Mono", ui-monospace, monospace;
+
+  /* Neural Core colors (direct) */
+  --nc-green: #39ff14;
+  --nc-green-bright: #79ff5b;
+  --nc-green-dim: #2ae500;
+  --nc-warn: #f5e600;
+  --nc-err: #ff6152;
+  --nc-panel: #050705;
+  --nc-surface: #121414;
 }
 
 body {
-  background: radial-gradient(circle at top right, #1a1407 0%, var(--bg-canvas) 55%);
+  background: #000000;
   color: var(--text-primary);
+  /* Neural Core 16px grid */
+  background-image:
+    linear-gradient(var(--hud-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
 }

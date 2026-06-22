@@ -14,18 +14,21 @@ export const ConsolePrimaryNav = ({
       {PRIMARY_NAV_ITEMS.map((item) => (
         <button
           aria-current={item.index === activePrimaryNav ? "page" : undefined}
+          aria-label={`${item.label} (${item.index})`}
           className="console-primary-nav-tab"
           data-active={item.index === activePrimaryNav ? "true" : "false"}
           key={item.index}
           onClick={() => {
             onPrimaryNavChange(item.index);
           }}
+          title={`${item.label} — press ${item.index}`}
           type="button"
         >
-          [{item.index}] {item.label}
+          <span className="console-primary-nav-tab-icon" aria-hidden="true">{item.icon}</span>
+          <span className="console-primary-nav-tab-label">{item.label}</span>
         </button>
       ))}
     </div>
-    <p className="console-primary-nav-hint">Press 1-{PRIMARY_NAV_ITEMS.length} to navigate</p>
+    <p className="console-primary-nav-hint">Press 1–{PRIMARY_NAV_ITEMS.length} to navigate</p>
   </nav>
 );

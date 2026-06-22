@@ -1,4 +1,9 @@
-/* Jarvis command-center home — sci-fi HUD, black / gold. Scoped under .jarvis. */
+/* Jarvis command-center home — NEURAL CORE OS, black / neon-green. Scoped under .jarvis. */
+
+@keyframes jarvis-scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
 
 .jarvis {
   position: relative;
@@ -8,20 +13,40 @@
   padding: 28px clamp(16px, 4vw, 56px) 48px;
   color: var(--text-primary);
   font-family: var(--font-display);
-  background: radial-gradient(1200px 600px at 50% -10%, rgba(245, 181, 10, 0.08), transparent 60%),
+  background:
+    radial-gradient(1400px 700px at 50% -5%, rgba(57, 255, 20, 0.07), transparent 65%),
     linear-gradient(var(--bg-canvas), var(--bg-canvas));
 }
 
-/* Animated grid + scanline backdrop */
+/* Animated grid backdrop */
 .jarvis::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(var(--hud-grid) 1px, transparent 1px),
+  background-image:
+    linear-gradient(var(--hud-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--hud-grid) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(circle at 50% 30%, #000 0%, transparent 78%);
+  background-size: 16px 16px;
+  mask-image: radial-gradient(circle at 50% 25%, #000 0%, transparent 80%);
+}
+
+/* Slow scan-line sweep */
+.jarvis::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(57, 255, 20, 0.025) 50%,
+    transparent 100%
+  );
+  background-size: 100% 80px;
+  animation: jarvis-scanline 8s linear infinite;
+  opacity: 0.7;
 }
 
 .jarvis-inner {
@@ -37,52 +62,92 @@
 /* Header / wordmark */
 .jarvis-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   border-bottom: 1px solid var(--hud-line);
-  padding-bottom: 14px;
+  padding-bottom: 16px;
 }
 .jarvis-wordmark {
-  font-size: clamp(28px, 5vw, 48px);
+  font-size: clamp(26px, 4.5vw, 44px);
   font-weight: 800;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.26em;
   color: var(--gold);
-  text-shadow: 0 0 18px var(--gold-glow);
+  font-family: var(--font-headline, var(--font-display));
+  text-shadow: 0 0 28px var(--gold-glow), 0 0 12px rgba(57,255,20,0.25);
   margin: 0;
+  line-height: 1;
+  text-transform: uppercase;
 }
 .jarvis-wordmark span {
-  color: var(--text-secondary);
+  color: rgba(255,255,255,0.18);
   text-shadow: none;
 }
+.jarvis-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
 .jarvis-status {
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--gold-dim);
+  line-height: 1;
 }
 .jarvis-status b {
   color: var(--term-green);
+  text-shadow: 0 0 8px rgba(37, 211, 102, 0.5);
+}
+.jarvis-status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(245, 181, 10, 0.28);
+}
+.jarvis-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--term-green);
+  box-shadow: 0 0 6px rgba(37, 211, 102, 0.7);
+  animation: jarvis-voice-pulse 2s ease-in-out infinite;
 }
 
-/* Glass panel with corner brackets + glow */
+/* Glass panel with corner brackets + glow — Neural Core OS */
 .jarvis-panel {
   position: relative;
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
+  background: linear-gradient(160deg, rgba(5, 10, 5, 0.88) 0%, rgba(0, 0, 0, 0.95) 100%);
+  backdrop-filter: blur(4px);
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  box-shadow: var(--hud-shadow);
+  border-radius: 0;
+  box-shadow:
+    var(--hud-shadow),
+    inset 0 1px 0 rgba(57, 255, 20, 0.04);
   padding: 20px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.jarvis-panel:hover {
+  border-color: rgba(57, 255, 20, 0.38);
+  box-shadow: var(--hud-shadow), 0 0 18px rgba(57, 255, 20, 0.07);
 }
 .jarvis-panel::before,
 .jarvis-panel::after {
   content: "";
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--gold);
-  opacity: 0.8;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--gold);
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.jarvis-panel:hover::before,
+.jarvis-panel:hover::after {
+  opacity: 1;
 }
 .jarvis-panel::before {
   top: -1px;
@@ -193,28 +258,31 @@
   border-color: var(--glass-border-hot);
 }
 .jarvis-btn {
-  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #1a1404;
+  background: var(--gold);
+  color: #000;
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  border: 0;
-  border-radius: 8px;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--gold);
+  border-radius: 0;
   padding: 0 18px;
   cursor: pointer;
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: 11px;
+  transition: background 0.1s, color 0.1s, box-shadow 0.1s;
 }
 .jarvis-btn:hover {
+  background: #000;
+  color: var(--gold);
   box-shadow: 0 0 16px var(--gold-glow);
 }
 .jarvis-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
   box-shadow: none;
 }
 .jarvis-btn--secondary {
-  background: var(--glass-bg-strong);
+  background: transparent;
   border: 1px solid var(--glass-border-hot);
   color: var(--gold);
 }
@@ -261,16 +329,18 @@
 }
 .jarvis-bubble--you {
   align-self: flex-end;
-  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #1a1404;
-  border-bottom-right-radius: 4px;
+  background: var(--gold);
+  color: #000;
+  border-bottom-right-radius: 0;
+  border: 1px solid var(--gold-bright);
 }
 .jarvis-bubble--jarvis {
   align-self: flex-start;
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--border-subtle);
+  background: rgba(5, 10, 5, 0.9);
+  border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--gold);
   color: var(--text-primary);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 0;
 }
 /* What Jarvis remembers — durable taught facts/rules. */
 .jarvis-memory-list {
@@ -314,20 +384,22 @@
 /* Primary push-to-talk button — big, obvious, always available. */
 .jarvis-voice-talk {
   width: 100%;
-  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #1a1404;
+  background: var(--gold);
+  color: #000;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.08em;
+  font-size: 14px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  border: 0;
-  border-radius: 12px;
+  border: 1px solid var(--gold-bright);
+  border-radius: 0;
   padding: 18px 20px;
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.05s;
+  transition: background 0.1s, color 0.1s, box-shadow 0.15s, transform 0.05s;
 }
 .jarvis-voice-talk:hover {
+  background: #000;
+  color: var(--gold);
   box-shadow: 0 0 22px var(--gold-glow);
 }
 .jarvis-voice-talk:active {
@@ -446,39 +518,51 @@
   border: 1px solid var(--glass-border);
   border-left: 3px solid var(--gold);
   border-radius: 8px;
-  background: var(--glass-bg);
-  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(245,181,10,0.04) 0%, rgba(0,0,0,0) 60%),
+    var(--glass-bg);
+  padding: 14px 16px;
+  box-shadow: inset 0 0 0 1px rgba(245,181,10,0.04);
+  animation: jarvis-answer-in 0.25s ease-out;
+}
+@keyframes jarvis-answer-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .jarvis-answer-text {
   margin: 0;
   color: var(--text-primary);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: pre-wrap;
+  font-family: var(--font-main, var(--font-display));
 }
 .jarvis-answer-via {
-  margin: 6px 0 0;
-  font-size: 11px;
-  color: var(--text-secondary);
-  letter-spacing: 0.03em;
+  margin: 8px 0 0;
+  font-size: 10px;
+  color: rgba(245,181,10,0.38);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .jarvis-answer-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   margin-top: 10px;
 }
 .jarvis-answer-source {
   border: 1px solid var(--glass-border);
-  border-radius: 999px;
+  border-radius: 4px;
   background: color-mix(in srgb, var(--gold) 8%, transparent);
   color: var(--gold);
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   padding: 3px 10px;
   cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
 }
 .jarvis-answer-source:hover {
   border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
   color: var(--gold-bright);
 }
 

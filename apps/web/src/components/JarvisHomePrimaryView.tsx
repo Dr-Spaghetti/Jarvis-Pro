@@ -29,6 +29,26 @@ import {
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
 type ConversationTurn = { time: string; question: string; answer: string };
+
+function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/^>\s+/gm, "")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .replace(/^---+$/gm, "")
+    .replace(/\[\d+\]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 type JournalEntry = {
   ts: string;
   status: "ok" | "warn" | "error";
@@ -539,14 +559,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         citations?: { title: string; url: string }[];
       };
       if (data.available && typeof data.answer === "string") {
-        setAnswer(data.answer);
+        const cleanAnswer = stripMarkdownForSpeech(data.answer);
+        setAnswer(cleanAnswer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
         setAnswerCitations(Array.isArray(data.citations) ? data.citations : []);
         setAnswerVia(typeof data.via === "string" ? data.via : null);
         void loadConversation();
         // Auto-speak the clean answer when running hands-free.
         if (isListeningRef.current && !isMutedRef.current) {
-          void speakJarvisRef.current?.(data.answer);
+          void speakJarvisRef.current?.(cleanAnswer);
         }
       } else {
         setAskNote(
@@ -919,12 +940,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             sources?: { title: string; path: string }[];
           };
           if (data.available && typeof data.answer === "string") {
-            setAnswer(data.answer);
+            const cleanAnswer = stripMarkdownForSpeech(data.answer);
+            setAnswer(cleanAnswer);
             setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
             setAnswerVia(typeof data.via === "string" ? data.via : null);
             setVoiceStatus("Answered");
             void loadConversation();
-            await speakJarvis(data.answer);
+            await speakJarvis(cleanAnswer);
           } else {
             // Never go silent: tell the user (out loud) why there's no answer,
             // and show the exact provider error under the ask box.
@@ -1277,10 +1299,16 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       <div className="jarvis-inner">
         <header className="jarvis-header">
           <h1 className="jarvis-wordmark">
-            JARVIS<span>{" // command center"}</span>
+            JARVIS<span>{" ◆ HQ"}</span>
           </h1>
-          <div className="jarvis-status">
-            <b>● online</b> · {skillCount ?? "—"} skills · {memoryCount ?? 0} memories
+          <div className="jarvis-header-right">
+            <div className="jarvis-status">
+              <b>● online</b> · {skillCount ?? "—"} skills · {memoryCount ?? 0} memories
+            </div>
+            <div className="jarvis-status-line">
+              <span className="jarvis-status-dot" />
+              systems nominal
+            </div>
           </div>
         </header>
 
