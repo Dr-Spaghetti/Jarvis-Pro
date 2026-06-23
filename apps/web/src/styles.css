@@ -26,3 +26,6 @@
 
 /* UI feedback primitives (overlay, tooltips, toasts, panel states) */
 @import "./styles/ui-feedback.css";
+
+/* NC OS global color overrides — all views except .nc-hq home tab */
+@import "./styles/nc-os-overrides.css";

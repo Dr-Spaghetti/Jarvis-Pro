@@ -6,7 +6,7 @@ import { SurveillancePanel } from "./SurveillancePanel";
 type MonitorSubtabId = "surveillance" | "alerts";
 
 const MONITOR_SUBTABS: Array<{ id: MonitorSubtabId; label: string }> = [
-  { id: "surveillance", label: "Surveillance" },
+  { id: "surveillance", label: "SESSIONS" },
   { id: "alerts", label: "Alerts" },
 ];
 

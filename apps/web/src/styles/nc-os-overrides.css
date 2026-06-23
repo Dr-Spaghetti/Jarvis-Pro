@@ -1,0 +1,317 @@
+/* ─── NC OS global panel overrides ─────────────────────────────────────── */
+/* Force all view panels to match the Neural Core OS black / neon-green theme. */
+
+/* Panel surfaces */
+.console-shell .deck-view,
+.console-shell .canvas-view,
+.console-shell .deck-pod,
+.console-shell .deck-detail-main,
+.console-shell .deck-add-form-body,
+.console-shell .deck-add-form-header,
+.console-shell .deck-empty-right {
+  background: #000 !important;
+  border-color: rgba(57, 255, 20, 0.18) !important;
+}
+
+/* All border lines → neon green tint */
+.console-shell [class*="deck-pod"],
+.console-shell [class*="deck-empty"],
+.console-shell [class*="deck-add"],
+.console-shell [class*="deck-detail"],
+.console-shell [class*="canvas-"] {
+  border-color: rgba(57, 255, 20, 0.18);
+}
+
+/* Pod card */
+.console-shell .deck-pod {
+  background: #050705 !important;
+  border: 1px solid rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .deck-pod:hover {
+  border-color: rgba(57, 255, 20, 0.55) !important;
+  filter: none !important;
+}
+
+/* Pod header buttons */
+.console-shell .deck-pod-header {
+  border-bottom-color: rgba(57, 255, 20, 0.18) !important;
+}
+
+/* Pod name — use NC OS accent */
+.console-shell .deck-pod-name {
+  color: #39ff14 !important;
+  font-family: "JetBrains Mono", monospace !important;
+}
+
+/* Empty state action cards */
+.console-shell .deck-empty-card {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.35) !important;
+}
+.console-shell .deck-empty-card:hover {
+  background: rgba(57, 255, 20, 0.06) !important;
+  border-color: #39ff14 !important;
+}
+.console-shell .deck-empty-card-title {
+  font-family: "JetBrains Mono", monospace !important;
+  color: #39ff14 !important;
+}
+
+/* Canvas view background */
+.console-shell .canvas-view {
+  background-color: #000 !important;
+  background-image:
+    linear-gradient(rgba(57,255,20,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57,255,20,0.04) 1px, transparent 1px) !important;
+  background-size: 16px 16px !important;
+}
+
+/* Arsenal sidebar */
+.console-shell .canvas-arsenal-sidebar {
+  background: #000 !important;
+  border-left-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .canvas-arsenal-sidebar-header {
+  background: #050705 !important;
+  border-bottom-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .canvas-arsenal-sidebar-title {
+  color: #39ff14 !important;
+}
+
+/* Canvas toolbar */
+.console-shell .canvas-toolbar {
+  background: rgba(0, 0, 0, 0.92) !important;
+  border-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .canvas-toolbar-btn {
+  color: rgba(57, 255, 20, 0.6) !important;
+}
+.console-shell .canvas-toolbar-btn:hover {
+  background: rgba(57, 255, 20, 0.1) !important;
+  border-color: rgba(57, 255, 20, 0.4) !important;
+  color: #39ff14 !important;
+}
+
+/* Monitor view */
+.console-shell .monitor-view,
+.console-shell .monitor-sessions-panel,
+.console-shell .monitor-alerts-panel {
+  background: #000 !important;
+}
+.console-shell .monitor-session-card,
+.console-shell .monitor-alert-card {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .monitor-session-card:hover {
+  border-color: rgba(57, 255, 20, 0.55) !important;
+}
+.console-shell .monitor-tab,
+.console-shell .monitor-tabs {
+  border-bottom-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .monitor-tab[data-active="true"],
+.console-shell .monitor-tab[aria-current="true"] {
+  color: #39ff14 !important;
+  border-bottom-color: #39ff14 !important;
+}
+
+/* Conversations view */
+.console-shell .conversations-view,
+.console-shell .conversations-sidebar,
+.console-shell .conversations-detail {
+  background: #000 !important;
+  border-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .conversations-list-item:hover {
+  background: rgba(57, 255, 20, 0.06) !important;
+}
+.console-shell .conversations-list-item[data-active="true"] {
+  background: rgba(57, 255, 20, 0.1) !important;
+  border-left-color: #39ff14 !important;
+}
+
+/* Prompts view */
+.console-shell .prompts-view,
+.console-shell .prompts-sidebar,
+.console-shell .prompts-detail {
+  background: #000 !important;
+  border-color: rgba(57, 255, 20, 0.22) !important;
+}
+.console-shell .prompts-list-item:hover,
+.console-shell .sidebar-prompts-item:hover {
+  background: rgba(57, 255, 20, 0.06) !important;
+  border-color: rgba(57, 255, 20, 0.4) !important;
+}
+
+/* Settings view */
+.console-shell .settings-view,
+.console-shell .settings-section,
+.console-shell .settings-panel {
+  background: #000 !important;
+}
+.console-shell .settings-section {
+  border-color: rgba(57, 255, 20, 0.22) !important;
+}
+
+/* Code Intel view */
+.console-shell .code-intel-view,
+.console-shell .code-intel-panel {
+  background: #000 !important;
+}
+
+/* Surveillance / GitHub view */
+.console-shell .github-view,
+.console-shell .surveillance-panel,
+.console-shell .usage-panel {
+  background: #000 !important;
+}
+
+/* Generic section headers — make neon green */
+.console-shell .section-header,
+.console-shell .panel-header,
+.console-shell h2.panel-title,
+.console-shell .view-title {
+  color: #39ff14 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  font-family: "JetBrains Mono", monospace !important;
+}
+
+/* Input elements */
+.console-shell input[type="text"],
+.console-shell input[type="search"],
+.console-shell textarea,
+.console-shell select {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.3) !important;
+  color: #e2e2e2 !important;
+}
+.console-shell input[type="text"]:focus,
+.console-shell input[type="search"]:focus,
+.console-shell textarea:focus,
+.console-shell select:focus {
+  outline: none !important;
+  border-color: #39ff14 !important;
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.2) !important;
+}
+
+/* Sidebar general */
+.console-shell .active-agents-sidebar,
+.console-shell .sidebar-panel,
+.console-shell .active-agents-header {
+  background: #000 !important;
+  border-color: rgba(57, 255, 20, 0.22) !important;
+}
+
+/* Buttons generally */
+.console-shell .deck-pod-btn,
+.console-shell .deck-empty-agent-launch,
+.console-shell .deck-add-form-submit {
+  background: #39ff14 !important;
+  color: #000 !important;
+  border-color: rgba(57, 255, 20, 0.8) !important;
+}
+
+/* Detail panel */
+.console-shell .deck-detail-main {
+  background: #000 !important;
+}
+.console-shell .deck-detail-main-header {
+  background: #050705 !important;
+  border-bottom-color: rgba(57, 255, 20, 0.22) !important;
+}
+
+/* Workspace setup card */
+.console-shell .workspace-setup-card {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.28) !important;
+}
+.console-shell .workspace-setup-step {
+  background: #000 !important;
+  border-color: rgba(57, 255, 20, 0.18) !important;
+}
+.console-shell .workspace-setup-step[data-complete="true"] {
+  border-color: rgba(57, 255, 20, 0.45) !important;
+  background: rgba(57, 255, 20, 0.04) !important;
+}
+
+/* Deck sidebar content */
+.console-shell .deck-sidebar-content .deck-empty-card {
+  border-color: rgba(57, 255, 20, 0.22) !important;
+  background: transparent !important;
+}
+.console-shell .deck-sidebar-content .deck-empty-card:hover {
+  background: rgba(57, 255, 20, 0.08) !important;
+}
+
+/* Surveillance / Monitor session cards */
+.console-shell .surveillance-card {
+  background: #050705 !important;
+  border: 1px solid rgba(57, 255, 20, 0.22) !important;
+  color: #c8ccc8 !important;
+}
+.console-shell .surveillance-card:hover,
+.console-shell .surveillance-card:focus-within {
+  border-color: rgba(57, 255, 20, 0.55) !important;
+  background: rgba(57, 255, 20, 0.04) !important;
+}
+.console-shell .surveillance-card-name {
+  color: #39ff14 !important;
+  font-family: "JetBrains Mono", monospace !important;
+}
+.console-shell .surveillance-card-header {
+  border-bottom-color: rgba(57, 255, 20, 0.15) !important;
+}
+.console-shell .surveillance-state-badge {
+  font-family: "JetBrains Mono", monospace !important;
+}
+.console-shell .surveillance-state-badge[data-state="stale"],
+.console-shell .surveillance-state-badge[data-state="stopped"] {
+  color: rgba(57, 255, 20, 0.45) !important;
+  background: rgba(57, 255, 20, 0.06) !important;
+  border-color: rgba(57, 255, 20, 0.2) !important;
+}
+.console-shell .surveillance-state-badge[data-state="active"],
+.console-shell .surveillance-state-badge[data-state="running"] {
+  color: #39ff14 !important;
+  background: rgba(57, 255, 20, 0.12) !important;
+  border-color: rgba(57, 255, 20, 0.5) !important;
+}
+.console-shell .surveillance-group-title {
+  color: rgba(57, 255, 20, 0.6) !important;
+  font-family: "JetBrains Mono", monospace !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+.console-shell .surveillance-panel {
+  background: #000 !important;
+}
+.console-shell .surveillance-output {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-color: rgba(57, 255, 20, 0.12) !important;
+  color: rgba(57, 255, 20, 0.7) !important;
+  font-family: "JetBrains Mono", monospace !important;
+}
+.console-shell .surveillance-duration {
+  color: rgba(57, 255, 20, 0.5) !important;
+}
+
+/* Monitor subtabs */
+.console-shell .monitor-subtab {
+  background: transparent !important;
+  border: 1px solid rgba(57, 255, 20, 0.2) !important;
+  color: rgba(57, 255, 20, 0.5) !important;
+  font-family: "JetBrains Mono", monospace !important;
+  letter-spacing: 0.1em !important;
+}
+.console-shell .monitor-subtab[data-active="true"] {
+  background: rgba(57, 255, 20, 0.12) !important;
+  border-color: #39ff14 !important;
+  color: #39ff14 !important;
+}
+.console-shell .monitor-subtab:hover {
+  border-color: rgba(57, 255, 20, 0.5) !important;
+  color: #39ff14 !important;
+}
