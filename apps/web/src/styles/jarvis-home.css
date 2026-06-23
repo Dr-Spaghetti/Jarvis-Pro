@@ -16,8 +16,9 @@
 @keyframes ncScanMove { from { background-position:0 0 } to { background-position:0 6px } }
 
 .nc-hq {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #000;
   font-family: var(--font-display);
