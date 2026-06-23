@@ -10,6 +10,12 @@ export const ConsolePrimaryNav = ({
   onPrimaryNavChange,
 }: ConsolePrimaryNavProps) => (
   <nav className="console-primary-nav" aria-label="Primary navigation">
+    <div className="console-primary-nav-brand">
+      <div className="console-primary-nav-wordmark">
+        JARVIS<br />HQ
+      </div>
+      <div className="console-primary-nav-version">V 5.0 · ULTRA</div>
+    </div>
     <div className="console-primary-nav-tabs">
       {PRIMARY_NAV_ITEMS.map((item) => (
         <button
@@ -29,6 +35,15 @@ export const ConsolePrimaryNav = ({
         </button>
       ))}
     </div>
-    <p className="console-primary-nav-hint">Press 1–{PRIMARY_NAV_ITEMS.length} to navigate</p>
+    <div className="console-primary-nav-bottom">
+      <button
+        className="console-primary-nav-initiate"
+        onClick={() => onPrimaryNavChange(9)}
+        type="button"
+      >
+        <span className="console-primary-nav-initiate-dot" aria-hidden="true" />
+        INITIATE PROTOCOL
+      </button>
+    </div>
   </nav>
 );

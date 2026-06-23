@@ -9,6 +9,7 @@ import {
   getStoredAuthToken,
 } from "../runtime/apiClient";
 import { buildSettingsExportUrl } from "../runtime/runtimeEndpoints";
+import { JarvisConfigSection } from "./JarvisConfigSection";
 import { MorningBriefPanel } from "./MorningBriefPanel";
 import { ActionButton } from "./ui/ActionButton";
 import { SettingsToggle } from "./ui/SettingsToggle";
@@ -193,5 +194,7 @@ export const SettingsPrimaryView = ({
         </a>
       </div>
     </section>
+
+    <JarvisConfigSection />
   </section>
 );

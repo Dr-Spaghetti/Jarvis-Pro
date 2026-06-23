@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
 import { VOICE_PHASE_LABELS, deriveVoicePhase, shouldResumeWakeLoop } from "../app/voicePhase";
@@ -192,6 +192,7 @@ const hasWakePhrase = (transcript: string, phrases: string[]): boolean =>
   extractCommandAfterWake(transcript, phrases) !== null;
 
 export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps) => {
+  const [visMode, setVisMode] = useState<"core" | "radar" | "signal">("core");
   const [recent, setRecent] = useState<BrainNote[]>([]);
   const [results, setResults] = useState<BrainNote[] | null>(null);
   const [query, setQuery] = useState("");
@@ -1294,548 +1295,194 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   const shown = results ?? recent;
 
+  const consoleScrollRef = useRef<HTMLDivElement | null>(null);
+
   return (
-    <section className="jarvis" aria-label="Jarvis home view">
-      <div className="jarvis-inner">
-        <header className="jarvis-header">
-          <h1 className="jarvis-wordmark">
-            JARVIS<span>{" ◆ HQ"}</span>
-          </h1>
-          <div className="jarvis-header-right">
-            <div className="jarvis-status">
-              <b>● online</b> · {skillCount ?? "—"} skills · {memoryCount ?? 0} memories
-            </div>
-            <div className="jarvis-status-line">
-              <span className="jarvis-status-dot" />
-              systems nominal
-            </div>
-          </div>
-        </header>
+    <section className="nc-hq" aria-label="Jarvis home view">
+      <div className="nc-hq-grid" aria-hidden="true" />
+      <div className="nc-hq-scanlines" aria-hidden="true" />
 
-        <HomeTilesPanel />
+      {/* top-left: voice status */}
+      <div className="nc-hq-voice-status">
+        <div className="nc-hq-voice-label">VOICE_SYNTH</div>
+        <div className="nc-hq-voice-indicator">
+          <span className="nc-hq-voice-dot" aria-hidden="true" />
+          {isSpeaking ? "SPEAKING" : isThinking ? "PROCESSING" : isRecordingCommand ? "LISTENING" : isWakeArmed ? "WAKE ARMED" : "STANDBY"}
+        </div>
+      </div>
 
-        <section className="jarvis-panel jarvis-brain" aria-label="The Brain">
-          <p className="jarvis-panel-title">🧠 The Brain — Obsidian</p>
+      {/* top-right: consciousness mode tabs */}
+      <div className="nc-hq-variant-ctrl">
+        <span className="nc-hq-variant-label">CONSCIOUSNESS_CORE</span>
+        <div className="nc-hq-variant-tabs">
+          {(["core", "radar", "signal"] as const).map((m) => (
+            <button key={m} className="nc-hq-variant-tab" data-active={visMode === m ? "true" : "false"} onClick={() => setVisMode(m)} type="button">
+              {m.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          {openNote ? (
-            <>
-              <button
-                type="button"
-                className="jarvis-btn"
-                onClick={() => setOpenNote(null)}
-                style={{ marginBottom: 12 }}
-              >
-                ← Back
-              </button>
-              <h2 style={{ color: "var(--gold)", marginTop: 0 }}>{openNote.title}</h2>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "var(--font-display)",
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.5,
-                }}
-              >
-                {openNote.content}
-              </pre>
-            </>
-          ) : (
-            <>
-              <div className="jarvis-ask">
-                <div className="jarvis-ask-row">
-                  <input
-                    className="jarvis-search"
-                    type="text"
-                    placeholder="Ask Jarvis anything about your brain…"
-                    value={ask}
-                    onChange={(e) => setAsk(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void submitAsk();
-                    }}
-                    aria-label="Ask Jarvis"
-                  />
-                  <button
-                    type="button"
-                    className="jarvis-btn"
-                    onClick={() => void submitAsk()}
-                    disabled={asking || ask.trim().length === 0}
-                  >
-                    {asking ? "Thinking…" : "Ask"}
-                  </button>
-                </div>
-                {(claudeModels.length > 0 || chatModels.length > 0) && (
-                  <div className="jarvis-ask-model" style={{ marginTop: 8 }}>
-                    <label
-                      htmlFor="jarvis-chat-model"
-                      style={{ color: "var(--text-secondary)", marginRight: 8 }}
-                    >
-                      Answer model:
-                    </label>
-                    <select
-                      id="jarvis-chat-model"
-                      className="jarvis-select"
-                      value={chatModel}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setChatModel(value);
-                        try {
-                          window.localStorage.setItem("jarvis.chatModel", value);
-                        } catch {
-                          /* ignore */
-                        }
-                      }}
-                      aria-label="Answer model"
-                    >
-                      <option value="">Auto (default)</option>
-                      {claudeModels.includes("claude-haiku-4-5-20251001") && (
-                        <option value="claude-haiku-4-5-20251001">
-                          Claude Haiku — cloud · fast
-                        </option>
-                      )}
-                      {claudeModels.includes("claude-sonnet-4-6") && (
-                        <option value="claude-sonnet-4-6">Claude Sonnet — cloud · smart</option>
-                      )}
-                      {chatModels.map((model) => (
-                        <option key={model} value={model}>
-                          {model}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {answer && (
-                  <div className="jarvis-answer">
-                    <p className="jarvis-answer-text">{answer}</p>
-                    {answerVia && <p className="jarvis-answer-via">via {answerVia}</p>}
-                    {answerSources.length > 0 && (
-                      <div className="jarvis-answer-sources">
-                        {answerSources.map((source) => (
-                          <button
-                            type="button"
-                            className="jarvis-answer-source"
-                            key={source.path}
-                            onClick={() => void openNoteByPath(source.path)}
-                          >
-                            {source.title}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {answerCitations.length > 0 && (
-                      <div className="jarvis-answer-citations">
-                        <span className="jarvis-answer-citations-label">Sources:</span>
-                        {answerCitations.map((c) => (
-                          <a
-                            key={c.url}
-                            className="jarvis-answer-citation"
-                            href={
-                              c.url.startsWith("https://") || c.url.startsWith("http://")
-                                ? c.url
-                                : "#"
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {c.title}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {askNote && <p className="jarvis-empty">{askNote}</p>}
-              </div>
-
-              <div className="jarvis-search-row">
-                <input
-                  className="jarvis-search"
-                  type="text"
-                  placeholder="Search your brain…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  aria-label="Search the vault"
-                />
-              </div>
-
-              <div className="jarvis-notes">
-                {!configured && (
-                  <p className="jarvis-empty">
-                    No vault connected. Set OBSIDIAN_VAULT_PATH in .env to light up your brain.
-                  </p>
-                )}
-                {configured && shown.length === 0 && (
-                  <p className="jarvis-empty">
-                    {results === null ? "No notes yet." : "No matches."}
-                  </p>
-                )}
-                {shown.map((note) => (
-                  <button
-                    type="button"
-                    className="jarvis-note"
-                    key={note.path}
-                    onClick={() => void openNoteByPath(note.path)}
-                  >
-                    <span className="jarvis-note-title">{note.title}</span>
-                    <span className="jarvis-note-meta">
-                      {note.path}
-                      {note.modified ? ` · ${formatDate(note.modified)}` : ""}
-                    </span>
-                    {note.snippet && <span className="jarvis-note-snippet">{note.snippet}</span>}
-                  </button>
-                ))}
-              </div>
-
-              <div className="jarvis-capture">
-                <input
-                  type="text"
-                  placeholder="Quick capture to your brain…"
-                  value={capture}
-                  onChange={(e) => setCapture(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void submitCapture();
-                  }}
-                  aria-label="Quick capture"
-                />
-                <button
-                  type="button"
-                  className="jarvis-btn"
-                  onClick={() => void submitCapture()}
-                  disabled={capturing || capture.trim().length === 0}
-                >
-                  Capture
-                </button>
-              </div>
-              {captureMsg && <p className="jarvis-empty">{captureMsg}</p>}
-            </>
-          )}
-        </section>
-
-        <section className="jarvis-panel jarvis-conversation" aria-label="Conversation history">
-          <p className="jarvis-panel-title">💬 Conversation</p>
-          {conversation.length === 0 ? (
-            <p className="jarvis-empty">
-              No conversation yet today. Ask Jarvis something — it appears here and is saved to your
-              brain (Jarvis/Conversations) so it remembers the thread.
-            </p>
-          ) : (
-            <div className="jarvis-thread">
-              {conversation.map((turn) => (
-                <div className="jarvis-thread-turn" key={`${turn.time}-${turn.question}`}>
-                  <div className="jarvis-bubble jarvis-bubble--you">
-                    <span className="jarvis-bubble-who">You</span>
-                    <span className="jarvis-bubble-text">{turn.question}</span>
-                  </div>
-                  <div className="jarvis-bubble jarvis-bubble--jarvis">
-                    <span className="jarvis-bubble-who">
-                      Jarvis{turn.time ? ` · ${turn.time}` : ""}
-                    </span>
-                    <span className="jarvis-bubble-text">{turn.answer}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="jarvis-panel jarvis-memory" aria-label="What Jarvis has learned">
-          <p className="jarvis-panel-title">🧠 What Jarvis remembers</p>
-          {memoryItems.length === 0 ? (
-            <p className="jarvis-empty">
-              Nothing taught yet. Say things like “Jarvis, always answer in one sentence” or
-              “remember that the Venue contact is Rachel” — it sticks and is applied to every
-              answer.
-            </p>
-          ) : (
-            <ul className="jarvis-memory-list">
-              {memoryItems.map((item) => (
-                <li className="jarvis-memory-item" key={item}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="jarvis-panel jarvis-voice" aria-label="Jarvis voice control">
-          <div className="jarvis-voice-header">
-            <p className="jarvis-panel-title">Voice</p>
-            <div className="jarvis-voice-header-right">
-              <span
-                className="jarvis-voice-phase"
-                data-phase={voicePhase}
-                aria-live="polite"
-                aria-label={`Voice ${VOICE_PHASE_LABELS[voicePhase]}`}
-              >
-                <span className="jarvis-voice-phase-dot" aria-hidden="true" />
-                {VOICE_PHASE_LABELS[voicePhase]}
-              </span>
-              <button
-                type="button"
-                className="jarvis-voice-mute"
-                data-muted={isMuted}
-                aria-pressed={isMuted}
-                onClick={isMuted ? unmute : hardMute}
-              >
-                {isMuted ? "Unmute" : "Mute"}
-              </button>
+      {/* center visualizer */}
+      <div className="nc-hq-visualizer">
+        {visMode === "core" && (
+          <div className="nc-core">
+            <div className="nc-core-ring" aria-hidden="true" />
+            <div className="nc-core-ring nc-core-ring--mid" aria-hidden="true" />
+            <div className="nc-core-ring nc-core-ring--inner" aria-hidden="true" />
+            <div className="nc-core-orb">
+              <div className="nc-core-center-dot" aria-hidden="true" />
             </div>
           </div>
-
-          <div className="jarvis-voice-modes">
-            <span className="jarvis-voice-status">{voiceStatus}</span>
+        )}
+        {visMode === "radar" && (
+          <div className="nc-radar">
+            <div className="nc-radar-ring nc-radar-ring--25" aria-hidden="true" />
+            <div className="nc-radar-ring nc-radar-ring--12" aria-hidden="true" />
+            <div className="nc-radar-line-h" aria-hidden="true" />
+            <div className="nc-radar-line-v" aria-hidden="true" />
+            <div className="nc-radar-sweep" aria-hidden="true" />
+            <div className="nc-radar-blip" aria-hidden="true" style={{ left: "64%", top: "38%", width: 9, height: 9, background: "var(--gold)", boxShadow: "0 0 14px var(--gold)" }} />
+            <div className="nc-radar-blip" aria-hidden="true" style={{ left: "42%", top: "60%", width: 9, height: 9, background: "var(--nc-warn, #f5e600)", boxShadow: "0 0 14px var(--nc-warn,#f5e600)" }} />
+            <div className="nc-radar-blip" aria-hidden="true" style={{ left: "55%", top: "72%", width: 7, height: 7, background: "var(--term-red)", boxShadow: "0 0 12px var(--term-red)" }} />
           </div>
+        )}
+        {visMode === "signal" && (
+          <div className="nc-signal">
+            {Array.from({ length: 32 }, (_, i) => (
+              <div
+                key={i}
+                className="nc-signal-bar"
+                aria-hidden="true"
+                style={{ height: "60%", animationDelay: `${(i * 0.08).toFixed(2)}s`, animationDuration: `${(0.6 + (i % 5) * 0.15).toFixed(2)}s` }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
+      {/* voice + mute bar above console */}
+      <div className="nc-hq-voice-bar">
+        <button
+          type="button"
+          className="nc-hq-talk-btn"
+          data-recording={isRecordingCommand}
+          onClick={togglePushToTalk}
+        >
+          {isRecordingCommand ? "● LISTENING — TAP TO SEND" : "🎙 TAP TO TALK"}
+        </button>
+        <button
+          type="button"
+          className="nc-hq-mute-btn"
+          data-muted={isMuted}
+          aria-pressed={isMuted}
+          onClick={isMuted ? unmute : hardMute}
+        >
+          {isMuted ? "UNMUTE" : "MUTE"}
+        </button>
+      </div>
+
+      {/* skill confirm dialog */}
+      {skillRunConfirmName && (
+        <div className="nc-hq-skill-confirm" role="alertdialog" aria-label="Approval required">
+          <p className="nc-hq-skill-confirm-msg">
+            Run <strong>{skillRunConfirmName}</strong>? This skill may send emails or outreach.
+          </p>
+          <div className="nc-hq-skill-confirm-actions">
+            <button
+              type="button"
+              className="nc-hq-skill-confirm-ok"
+              onClick={() => {
+                const name = skillRunConfirmName;
+                setSkillRunConfirmName(null);
+                apiFetch(buildSkillsRunUrl(), {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ skillName: name, confirmed: true }),
+                })
+                  .then(async (res) => {
+                    if (!res.ok) {
+                      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+                      setVoiceError(data?.error ?? `Could not run skill: ${name}`);
+                      return;
+                    }
+                    onNavigate(1);
+                    setVoiceStatus(`Running skill: ${name}`);
+                  })
+                  .catch(() => { setVoiceError(`Could not run skill: ${name}`); });
+              }}
+            >Confirm</button>
+            <button
+              type="button"
+              className="nc-hq-skill-confirm-cancel"
+              onClick={() => { setSkillRunConfirmName(null); setVoiceStatus("Voice idle"); }}
+            >Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {voiceError && <div className="nc-hq-voice-error">{voiceError}</div>}
+
+      {/* bottom conversational console */}
+      <div className="nc-hq-console">
+        <div className="nc-hq-console-hdr">
+          <span className="nc-hq-console-hdr-left">
+            <span className="nc-hq-console-hdr-dot" aria-hidden="true" />
+            DIRECT_LINK · JARVIS
+          </span>
+          <span className="nc-hq-console-hdr-right">CTX · {conversation.length * 2} TURNS</span>
+        </div>
+        <div
+          className="nc-hq-console-msgs"
+          ref={(el) => { consoleScrollRef.current = el; }}
+        >
+          {conversation.length === 0 && (
+            <div style={{ color: "var(--text-secondary)", fontSize: 11, letterSpacing: ".08em", padding: "8px 0" }}>
+              AWAITING DIRECTIVE<span className="nc-blink">_</span>
+            </div>
+          )}
+          {conversation.map((turn) => (
+            <div className="nc-hq-turn" key={`${turn.time}-${turn.question}`}>
+              <div className="nc-hq-msg nc-hq-msg--you">
+                <div className="nc-hq-msg-who">USR_CMD · {turn.time}</div>
+                <div className="nc-hq-msg-text">{turn.question}</div>
+              </div>
+              <div className="nc-hq-msg nc-hq-msg--jarvis">
+                <div className="nc-hq-msg-who">JARVIS</div>
+                <div className="nc-hq-msg-text">{turn.answer}</div>
+              </div>
+            </div>
+          ))}
+          {isThinking && <div className="nc-hq-thinking">PROCESSING<span className="nc-blink">_</span></div>}
+        </div>
+        <div className="nc-hq-console-input">
+          <span className="nc-hq-prompt" aria-hidden="true">&gt;</span>
+          <input
+            className="nc-hq-input"
+            type="text"
+            placeholder="Issue a directive to JARVIS…"
+            value={ask}
+            aria-label="Send a message to Jarvis"
+            onChange={(e) => setAsk(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                void submitAsk();
+                setTimeout(() => { if (consoleScrollRef.current) consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight; }, 100);
+              }
+            }}
+          />
           <button
             type="button"
-            className="jarvis-voice-talk"
-            data-recording={isRecordingCommand}
-            onClick={togglePushToTalk}
+            className="nc-hq-send"
+            disabled={asking || ask.trim().length === 0}
+            onClick={() => {
+              void submitAsk();
+              setTimeout(() => { if (consoleScrollRef.current) consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight; }, 100);
+            }}
           >
-            {isRecordingCommand ? "● Listening… tap to send" : "🎙 Tap to talk"}
+            {asking ? "…" : "SEND"}
           </button>
-
-          <div className="jarvis-voice-controls">
-            <button
-              type="button"
-              className="jarvis-btn jarvis-btn--secondary"
-              onClick={isListening ? stopListening : startListening}
-              disabled={isMuted}
-            >
-              {isListening ? "■ Stop hands-free" : "Hands-free mode"}
-            </button>
-            <select
-              className="jarvis-select"
-              value={voiceModel ?? ""}
-              onChange={(event) => setVoiceModel(event.target.value)}
-              aria-label="Transcription model"
-            >
-              {(voiceConfig?.transcription.models ?? ["gpt-4o-mini-transcribe", "whisper-1"]).map(
-                (model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ),
-              )}
-            </select>
-            <select
-              className="jarvis-select"
-              value={ttsProvider}
-              onChange={(event) => {
-                const value = event.target.value;
-                setTtsProvider(value);
-                try {
-                  window.localStorage.setItem("jarvis.ttsProvider", value);
-                } catch {
-                  /* ignore */
-                }
-              }}
-              aria-label="Voice output"
-            >
-              {(voiceConfig?.tts.providers ?? ["browser"]).map((provider) => (
-                <option key={provider} value={provider}>
-                  {provider === "openai"
-                    ? "OpenAI voice"
-                    : provider === "deepgram"
-                      ? "Deepgram voice"
-                      : provider === "elevenlabs"
-                        ? "ElevenLabs voice"
-                        : provider === "piper"
-                          ? "Piper (local)"
-                          : "Browser voice"}
-                </option>
-              ))}
-            </select>
-            {ttsProvider === "deepgram" && deepgramVoices.length > 0 && (
-              <div className="jarvis-voice-picker">
-                <select
-                  className="jarvis-select"
-                  value={deepgramVoice}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setDeepgramVoice(value);
-                    try {
-                      window.localStorage.setItem("jarvis.deepgramVoice", value);
-                    } catch {
-                      /* ignore */
-                    }
-                  }}
-                  aria-label="Deepgram voice"
-                >
-                  <option value="">Default voice</option>
-                  {deepgramVoices.map((v) => (
-                    <option key={v.id} value={v.id} title={v.description}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="jarvis-btn jarvis-btn--secondary"
-                  onClick={() => {
-                    const voiceId = deepgramVoice || "aura-2-thalia-en";
-                    void apiFetch(buildVoiceSpeakUrl(), {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        text: "Hi, I'm Jarvis. How can I help you today?",
-                        provider: "deepgram",
-                        model: voiceId,
-                      }),
-                    }).then(async (res) => {
-                      if (res.ok) {
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        const audio = new Audio(url);
-                        audio.addEventListener("ended", () => URL.revokeObjectURL(url), {
-                          once: true,
-                        });
-                        void audio.play().catch(() => {});
-                      }
-                    });
-                  }}
-                >
-                  Preview
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="jarvis-voice-grid">
-            <span>
-              Wake:{" "}
-              {getSpeechRecognitionConstructor()
-                ? (voiceConfig?.wake.phrases ?? ["jarvis"]).join(", ")
-                : "unavailable"}
-            </span>
-            <span>
-              STT:{" "}
-              {voiceConfig?.transcription.configured
-                ? `ready (${voiceModel ?? voiceConfig.transcription.defaultModel})`
-                : "needs OPENAI_API_KEY"}
-            </span>
-            <span>TTS: {voiceConfig?.tts.configured ? "ElevenLabs" : "browser fallback"}</span>
-            <span>
-              Brain:{" "}
-              {voiceConfig?.brain
-                ? `${
-                    voiceConfig.brain.provider === "anthropic"
-                      ? "Claude"
-                      : voiceConfig.brain.provider === "openai"
-                        ? "OpenAI"
-                        : "Local model"
-                  }${voiceConfig.brain.webSearch ? " · live web" : ""}`
-                : "—"}
-            </span>
-          </div>
-
-          {lastVoiceTranscript && <p className="jarvis-voice-transcript">{lastVoiceTranscript}</p>}
-          {voiceError && <p className="jarvis-empty">{voiceError}</p>}
-          {canReplay && (
-            <button
-              type="button"
-              className="jarvis-btn jarvis-voice-replay"
-              onClick={() => void playPending()}
-            >
-              🔊 Replay answer
-            </button>
-          )}
-          {skillRunConfirmName && (
-            <div className="jarvis-skill-confirm" role="alertdialog" aria-label="Approval required">
-              <p className="jarvis-skill-confirm-msg">
-                Run <strong>{skillRunConfirmName}</strong>? This skill may send emails or outreach.
-              </p>
-              <div className="jarvis-skill-confirm-actions">
-                <button
-                  type="button"
-                  className="jarvis-skill-confirm-btn jarvis-skill-confirm-btn--ok"
-                  onClick={() => {
-                    const name = skillRunConfirmName;
-                    setSkillRunConfirmName(null);
-                    apiFetch(buildSkillsRunUrl(), {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ skillName: name, confirmed: true }),
-                    })
-                      .then(async (res) => {
-                        if (!res.ok) {
-                          const data = (await res.json().catch(() => null)) as {
-                            error?: string;
-                          } | null;
-                          setVoiceError(data?.error ?? `Could not run skill: ${name}`);
-                          return;
-                        }
-                        onNavigate(1);
-                        setVoiceStatus(`Running skill: ${name}`);
-                      })
-                      .catch(() => {
-                        setVoiceError(`Could not run skill: ${name}`);
-                      });
-                  }}
-                >
-                  Confirm
-                </button>
-                <button
-                  type="button"
-                  className="jarvis-skill-confirm-btn jarvis-skill-confirm-btn--cancel"
-                  onClick={() => {
-                    setSkillRunConfirmName(null);
-                    setVoiceStatus("Voice idle");
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="jarvis-panel jarvis-activity" aria-label="Recent activity">
-          <p className="jarvis-panel-title">Activity</p>
-          {journal.length === 0 ? (
-            <p className="jarvis-empty">
-              No activity logged yet. Skills and Jarvis actions will appear here.
-            </p>
-          ) : (
-            <ul className="jarvis-activity-list">
-              {journal.map((entry) => (
-                <li
-                  className="jarvis-activity-row"
-                  key={`${entry.ts}:${entry.skill ?? ""}:${entry.action}`}
-                >
-                  <span className="jarvis-activity-dot" data-status={entry.status} />
-                  <span className="jarvis-activity-action">{entry.action}</span>
-                  {entry.skill && <span className="jarvis-activity-skill">{entry.skill}</span>}
-                  <span className="jarvis-activity-time">{formatTimeAgo(entry.ts)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="jarvis-tiles" aria-label="Command tiles">
-          <button type="button" className="jarvis-tile" onClick={() => onNavigate(2)}>
-            <div className="jarvis-tile-label">Skills</div>
-            <div className="jarvis-tile-value">{skillCount ?? "—"}</div>
-            <div className="jarvis-tile-sub">Open the deck →</div>
-          </button>
-          <button type="button" className="jarvis-tile" onClick={() => onNavigate(1)}>
-            <div className="jarvis-tile-label">Agents</div>
-            <div className="jarvis-tile-value">{agentCount ?? "—"}</div>
-            <div className="jarvis-tile-sub">Open the canvas →</div>
-          </button>
-          <button type="button" className="jarvis-tile" onClick={() => onNavigate(2)}>
-            <div className="jarvis-tile-label">Daily Brief</div>
-            <div className="jarvis-tile-value">{openTaskCount ?? "▸"}</div>
-            <div className="jarvis-tile-sub">
-              {openTaskCount === null ? "Run today's brief" : `${openTaskCount} open tasks →`}
-            </div>
-          </button>
-          <button type="button" className="jarvis-tile" onClick={() => onNavigate(3)}>
-            <div className="jarvis-tile-label">Activity</div>
-            <div className="jarvis-tile-value">{journal.length || "—"}</div>
-            <div className="jarvis-tile-sub">Recent activity →</div>
-          </button>
-        </section>
+        </div>
       </div>
     </section>
   );
