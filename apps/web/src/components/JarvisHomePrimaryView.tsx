@@ -426,6 +426,18 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     })();
   }, []);
 
+  // Sync voice settings changed from the Settings tab (written to localStorage).
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "jarvis.ttsProvider" && e.newValue !== null) setTtsProvider(e.newValue);
+      if (e.key === "jarvis.deepgramVoice" && e.newValue !== null) setDeepgramVoice(e.newValue);
+      if (e.key === "jarvis.chatModel" && e.newValue !== null) setChatModel(e.newValue);
+      if (e.key === "jarvis.voiceModel" && e.newValue !== null) setVoiceModel(e.newValue);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
@@ -1307,7 +1319,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         <div className="nc-hq-voice-label">VOICE_SYNTH</div>
         <div className="nc-hq-voice-indicator">
           <span className="nc-hq-voice-dot" aria-hidden="true" />
-          {isSpeaking ? "SPEAKING" : isThinking ? "PROCESSING" : isRecordingCommand ? "LISTENING" : isWakeArmed ? "WAKE ARMED" : "STANDBY"}
+          {isSpeaking
+            ? "SPEAKING"
+            : isThinking
+              ? "PROCESSING"
+              : isRecordingCommand
+                ? "LISTENING"
+                : isWakeArmed
+                  ? "WAKE ARMED"
+                  : "STANDBY"}
         </div>
       </div>
 
@@ -1316,7 +1336,13 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         <span className="nc-hq-variant-label">CONSCIOUSNESS_CORE</span>
         <div className="nc-hq-variant-tabs">
           {(["core", "radar", "signal"] as const).map((m) => (
-            <button key={m} className="nc-hq-variant-tab" data-active={visMode === m ? "true" : "false"} onClick={() => setVisMode(m)} type="button">
+            <button
+              key={m}
+              className="nc-hq-variant-tab"
+              data-active={visMode === m ? "true" : "false"}
+              onClick={() => setVisMode(m)}
+              type="button"
+            >
               {m.toUpperCase()}
             </button>
           ))}
@@ -1342,19 +1368,57 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             <div className="nc-radar-line-h" aria-hidden="true" />
             <div className="nc-radar-line-v" aria-hidden="true" />
             <div className="nc-radar-sweep" aria-hidden="true" />
-            <div className="nc-radar-blip" aria-hidden="true" style={{ left: "64%", top: "38%", width: 9, height: 9, background: "var(--gold)", boxShadow: "0 0 14px var(--gold)" }} />
-            <div className="nc-radar-blip" aria-hidden="true" style={{ left: "42%", top: "60%", width: 9, height: 9, background: "var(--nc-warn, #f5e600)", boxShadow: "0 0 14px var(--nc-warn,#f5e600)" }} />
-            <div className="nc-radar-blip" aria-hidden="true" style={{ left: "55%", top: "72%", width: 7, height: 7, background: "var(--term-red)", boxShadow: "0 0 12px var(--term-red)" }} />
+            <div
+              className="nc-radar-blip"
+              aria-hidden="true"
+              style={{
+                left: "64%",
+                top: "38%",
+                width: 9,
+                height: 9,
+                background: "var(--gold)",
+                boxShadow: "0 0 14px var(--gold)",
+              }}
+            />
+            <div
+              className="nc-radar-blip"
+              aria-hidden="true"
+              style={{
+                left: "42%",
+                top: "60%",
+                width: 9,
+                height: 9,
+                background: "var(--nc-warn, #f5e600)",
+                boxShadow: "0 0 14px var(--nc-warn,#f5e600)",
+              }}
+            />
+            <div
+              className="nc-radar-blip"
+              aria-hidden="true"
+              style={{
+                left: "55%",
+                top: "72%",
+                width: 7,
+                height: 7,
+                background: "var(--term-red)",
+                boxShadow: "0 0 12px var(--term-red)",
+              }}
+            />
           </div>
         )}
         {visMode === "signal" && (
           <div className="nc-signal">
             {Array.from({ length: 32 }, (_, i) => (
               <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: static animation bars have no other stable key
                 key={i}
                 className="nc-signal-bar"
                 aria-hidden="true"
-                style={{ height: "60%", animationDelay: `${(i * 0.08).toFixed(2)}s`, animationDuration: `${(0.6 + (i % 5) * 0.15).toFixed(2)}s` }}
+                style={{
+                  height: "60%",
+                  animationDelay: `${(i * 0.08).toFixed(2)}s`,
+                  animationDuration: `${(0.6 + (i % 5) * 0.15).toFixed(2)}s`,
+                }}
               />
             ))}
           </div>
@@ -1402,21 +1466,32 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
                 })
                   .then(async (res) => {
                     if (!res.ok) {
-                      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+                      const data = (await res.json().catch(() => null)) as {
+                        error?: string;
+                      } | null;
                       setVoiceError(data?.error ?? `Could not run skill: ${name}`);
                       return;
                     }
                     onNavigate(1);
                     setVoiceStatus(`Running skill: ${name}`);
                   })
-                  .catch(() => { setVoiceError(`Could not run skill: ${name}`); });
+                  .catch(() => {
+                    setVoiceError(`Could not run skill: ${name}`);
+                  });
               }}
-            >Confirm</button>
+            >
+              Confirm
+            </button>
             <button
               type="button"
               className="nc-hq-skill-confirm-cancel"
-              onClick={() => { setSkillRunConfirmName(null); setVoiceStatus("Voice idle"); }}
-            >Cancel</button>
+              onClick={() => {
+                setSkillRunConfirmName(null);
+                setVoiceStatus("Voice idle");
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -1430,14 +1505,56 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             <span className="nc-hq-console-hdr-dot" aria-hidden="true" />
             DIRECT_LINK · JARVIS
           </span>
-          <span className="nc-hq-console-hdr-right">CTX · {conversation.length * 2} TURNS</span>
+          <span
+            className="nc-hq-console-hdr-right"
+            style={{ display: "flex", alignItems: "center", gap: 10 }}
+          >
+            <span
+              style={{
+                fontSize: 9,
+                letterSpacing: ".18em",
+                color: "var(--text-secondary)",
+                textTransform: "uppercase",
+              }}
+            >
+              CTX · {conversation.length * 2} TURNS
+            </span>
+            {conversation.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setConversation([])}
+                style={{
+                  background: "none",
+                  border: "1px solid rgba(57,255,20,0.18)",
+                  color: "rgba(57,255,20,0.38)",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 8,
+                  letterSpacing: ".14em",
+                  textTransform: "uppercase",
+                  padding: "2px 7px",
+                  cursor: "pointer",
+                }}
+              >
+                NEW CHAT
+              </button>
+            )}
+          </span>
         </div>
         <div
           className="nc-hq-console-msgs"
-          ref={(el) => { consoleScrollRef.current = el; }}
+          ref={(el) => {
+            consoleScrollRef.current = el;
+          }}
         >
           {conversation.length === 0 && (
-            <div style={{ color: "var(--text-secondary)", fontSize: 11, letterSpacing: ".08em", padding: "8px 0" }}>
+            <div
+              style={{
+                color: "var(--text-secondary)",
+                fontSize: 11,
+                letterSpacing: ".08em",
+                padding: "8px 0",
+              }}
+            >
               AWAITING DIRECTIVE<span className="nc-blink">_</span>
             </div>
           )}
@@ -1453,10 +1570,16 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
               </div>
             </div>
           ))}
-          {isThinking && <div className="nc-hq-thinking">PROCESSING<span className="nc-blink">_</span></div>}
+          {isThinking && (
+            <div className="nc-hq-thinking">
+              PROCESSING<span className="nc-blink">_</span>
+            </div>
+          )}
         </div>
         <div className="nc-hq-console-input">
-          <span className="nc-hq-prompt" aria-hidden="true">&gt;</span>
+          <span className="nc-hq-prompt" aria-hidden="true">
+            &gt;
+          </span>
           <input
             className="nc-hq-input"
             type="text"
@@ -1467,7 +1590,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 void submitAsk();
-                setTimeout(() => { if (consoleScrollRef.current) consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight; }, 100);
+                setTimeout(() => {
+                  if (consoleScrollRef.current)
+                    consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
+                }, 100);
               }
             }}
           />
@@ -1477,7 +1603,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             disabled={asking || ask.trim().length === 0}
             onClick={() => {
               void submitAsk();
-              setTimeout(() => { if (consoleScrollRef.current) consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight; }, 100);
+              setTimeout(() => {
+                if (consoleScrollRef.current)
+                  consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
+              }, 100);
             }}
           >
             {asking ? "…" : "SEND"}

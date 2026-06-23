@@ -29,6 +29,224 @@ type VoiceConfig = {
   brain?: { provider: string; webSearch: boolean };
 };
 
+const LS_KEYS = {
+  ttsProvider: "jarvis.ttsProvider",
+  deepgramVoice: "jarvis.deepgramVoice",
+  chatModel: "jarvis.chatModel",
+  voiceModel: "jarvis.voiceModel",
+} as const;
+
+const lsGet = (key: string) => {
+  try {
+    return window.localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+};
+const lsSet = (key: string, val: string) => {
+  try {
+    window.localStorage.setItem(key, val);
+    window.dispatchEvent(new StorageEvent("storage", { key, newValue: val }));
+  } catch {
+    /* ignore */
+  }
+};
+
+type VoiceSettingsPanelProps = { voiceConfig: VoiceConfig };
+
+const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
+  const [ttsProvider, setTtsProvider] = useState(() => lsGet(LS_KEYS.ttsProvider));
+  const [deepgramVoice, setDeepgramVoice] = useState(() => lsGet(LS_KEYS.deepgramVoice));
+  const [voiceModel, setVoiceModel] = useState(
+    () => lsGet(LS_KEYS.voiceModel) || voiceConfig.transcription.defaultModel,
+  );
+  const [saved, setSaved] = useState(false);
+
+  const providers = voiceConfig.tts.providers ?? [];
+  const effectiveProvider = ttsProvider || (providers[0] ?? "browser");
+
+  const save = () => {
+    lsSet(LS_KEYS.ttsProvider, ttsProvider);
+    lsSet(LS_KEYS.deepgramVoice, deepgramVoice);
+    lsSet(LS_KEYS.voiceModel, voiceModel);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
+  };
+
+  const rowStyle = { display: "flex", flexDirection: "column" as const, gap: 4, marginBottom: 14 };
+  const labelStyle = {
+    fontSize: 9,
+    letterSpacing: ".14em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.38)",
+    fontFamily: "var(--font-display)",
+  };
+  const selectStyle = {
+    fontFamily: "var(--font-display)",
+    fontSize: 11,
+    background: "#050705",
+    border: "1px solid rgba(57,255,20,0.25)",
+    color: "#c8dcc8",
+    padding: "5px 8px",
+    cursor: "pointer" as const,
+  };
+  const statusDot = (ok: boolean) => (
+    <span
+      style={{
+        display: "inline-block",
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        background: ok ? "#39ff14" : "rgba(255,80,80,0.7)",
+        boxShadow: ok ? "0 0 6px #39ff14" : "none",
+        marginRight: 6,
+      }}
+    />
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* Status pills */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+        <span
+          style={{
+            fontSize: 10,
+            fontFamily: "var(--font-display)",
+            color: voiceConfig.transcription.configured ? "#39ff14" : "rgba(255,80,80,0.7)",
+          }}
+        >
+          {statusDot(voiceConfig.transcription.configured)}STT:{" "}
+          {voiceConfig.transcription.configured
+            ? `${voiceConfig.transcription.defaultModel}`
+            : "needs OPENAI_API_KEY"}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            fontFamily: "var(--font-display)",
+            color: voiceConfig.tts.configured ? "#39ff14" : "rgba(57,255,20,0.4)",
+          }}
+        >
+          {statusDot(voiceConfig.tts.configured)}TTS:{" "}
+          {voiceConfig.tts.configured ? providers.join(", ") : "browser fallback"}
+        </span>
+        <span
+          style={{ fontSize: 10, fontFamily: "var(--font-display)", color: "rgba(57,255,20,0.5)" }}
+        >
+          {statusDot(true)}Wake: {voiceConfig.wake.phrases.slice(0, 2).join(", ")}
+        </span>
+      </div>
+
+      {/* TTS Provider */}
+      {providers.length > 0 && (
+        <div style={rowStyle}>
+          <label htmlFor="voice-tts-provider" style={labelStyle}>
+            TTS Provider
+          </label>
+          <select
+            id="voice-tts-provider"
+            style={selectStyle}
+            value={effectiveProvider}
+            onChange={(e) => setTtsProvider(e.target.value)}
+          >
+            {providers.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+            <option value="browser">browser (fallback)</option>
+          </select>
+        </div>
+      )}
+
+      {/* Deepgram voice model — shown only when deepgram is selected */}
+      {effectiveProvider === "deepgram" && (
+        <div style={rowStyle}>
+          <label htmlFor="voice-deepgram-model" style={labelStyle}>
+            Deepgram Voice Model
+          </label>
+          <input
+            id="voice-deepgram-model"
+            type="text"
+            style={{ ...selectStyle, border: "1px solid rgba(57,255,20,0.25)" }}
+            value={deepgramVoice}
+            placeholder="e.g. aura-asteria-en"
+            onChange={(e) => setDeepgramVoice(e.target.value)}
+          />
+          <span
+            style={{
+              fontSize: 9,
+              color: "rgba(57,255,20,0.28)",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            Leave blank to use server default
+          </span>
+        </div>
+      )}
+
+      {/* Transcription model */}
+      {voiceConfig.transcription.configured && voiceConfig.transcription.models.length > 1 && (
+        <div style={rowStyle}>
+          <label htmlFor="voice-transcription-model" style={labelStyle}>
+            Transcription Model (Whisper)
+          </label>
+          <select
+            id="voice-transcription-model"
+            style={selectStyle}
+            value={voiceModel}
+            onChange={(e) => setVoiceModel(e.target.value)}
+          >
+            {voiceConfig.transcription.models.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {!voiceConfig.transcription.configured && (
+        <p
+          style={{
+            fontSize: 11,
+            color: "rgba(255,80,80,0.65)",
+            fontFamily: "var(--font-display)",
+            margin: "0 0 14px",
+          }}
+        >
+          ⚠ Set{" "}
+          <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 4px" }}>
+            OPENAI_API_KEY
+          </code>{" "}
+          in <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 4px" }}>.env</code> to
+          enable voice transcription (Whisper). The tap-to-talk button requires this to process
+          speech.
+        </p>
+      )}
+
+      <button
+        type="button"
+        className="jarvis-btn"
+        onClick={save}
+        style={{ alignSelf: "flex-start", marginTop: 4 }}
+      >
+        {saved ? "✓ Saved" : "Save voice settings"}
+      </button>
+      <p
+        style={{
+          fontSize: 9,
+          color: "rgba(57,255,20,0.25)",
+          fontFamily: "var(--font-display)",
+          marginTop: 8,
+        }}
+      >
+        Changes apply immediately — no reload needed.
+      </p>
+    </div>
+  );
+};
+
 const formatDate = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString();
@@ -112,7 +330,10 @@ export const JarvisConfigSection = () => {
   }, []);
 
   useEffect(() => {
-    if (!query.trim()) { setResults(null); return; }
+    if (!query.trim()) {
+      setResults(null);
+      return;
+    }
     const t = setTimeout(() => {
       void apiFetch(buildBrainSemanticUrl(query))
         .then((r) => r.json())
@@ -184,7 +405,14 @@ export const JarvisConfigSection = () => {
       </header>
 
       {/* ── Status tiles ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10, marginBottom: 24 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+          gap: 10,
+          marginBottom: 24,
+        }}
+      >
         {[
           { label: "Skills", value: skillCount ?? "—" },
           { label: "Agents", value: agentCount ?? "—" },
@@ -200,15 +428,59 @@ export const JarvisConfigSection = () => {
 
       {/* ── Brain ── */}
       <details open>
-        <summary style={{ color: "var(--gold)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, letterSpacing: ".1em", cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
+        <summary
+          style={{
+            color: "var(--gold)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: ".1em",
+            cursor: "pointer",
+            userSelect: "none",
+            marginBottom: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
           🧠 THE BRAIN — OBSIDIAN
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 400,
+              letterSpacing: ".12em",
+              padding: "2px 7px",
+              border: `1px solid ${configured ? "rgba(57,255,20,0.4)" : "rgba(255,80,80,0.4)"}`,
+              color: configured ? "#39ff14" : "rgba(255,80,80,0.7)",
+              background: configured ? "rgba(57,255,20,0.06)" : "rgba(255,80,80,0.06)",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            {configured ? "CONNECTED" : "NOT CONNECTED"}
+          </span>
         </summary>
 
         {openNote ? (
           <>
-            <button type="button" className="jarvis-btn" onClick={() => setOpenNote(null)} style={{ marginBottom: 12 }}>← Back</button>
+            <button
+              type="button"
+              className="jarvis-btn"
+              onClick={() => setOpenNote(null)}
+              style={{ marginBottom: 12 }}
+            >
+              ← Back
+            </button>
             <h2 style={{ color: "var(--gold)", marginTop: 0 }}>{openNote.title}</h2>
-            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "var(--font-display)", color: "var(--text-secondary)", lineHeight: 1.5 }}>{openNote.content}</pre>
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                fontFamily: "var(--font-display)",
+                color: "var(--text-secondary)",
+                lineHeight: 1.5,
+              }}
+            >
+              {openNote.content}
+            </pre>
           </>
         ) : (
           <>
@@ -220,14 +492,25 @@ export const JarvisConfigSection = () => {
                   placeholder="Ask Jarvis anything about your brain…"
                   value={ask}
                   onChange={(e) => setAsk(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void submitAsk(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void submitAsk();
+                  }}
                   aria-label="Ask Jarvis"
                 />
-                <button type="button" className="jarvis-btn" onClick={() => void submitAsk()} disabled={asking || ask.trim().length === 0}>
+                <button
+                  type="button"
+                  className="jarvis-btn"
+                  onClick={() => void submitAsk()}
+                  disabled={asking || ask.trim().length === 0}
+                >
                   {asking ? "Thinking…" : "Ask"}
                 </button>
               </div>
-              {answer && <div className="jarvis-answer"><p className="jarvis-answer-text">{answer}</p></div>}
+              {answer && (
+                <div className="jarvis-answer">
+                  <p className="jarvis-answer-text">{answer}</p>
+                </div>
+              )}
               {askNote && <p className="jarvis-empty">{askNote}</p>}
             </div>
 
@@ -243,12 +526,24 @@ export const JarvisConfigSection = () => {
             </div>
 
             <div className="jarvis-notes" style={{ marginTop: 8 }}>
-              {!configured && <p className="jarvis-empty">No vault connected. Set OBSIDIAN_VAULT_PATH in .env.</p>}
-              {configured && shown.length === 0 && <p className="jarvis-empty">{results === null ? "No notes yet." : "No matches."}</p>}
+              {!configured && (
+                <p className="jarvis-empty">No vault connected. Set OBSIDIAN_VAULT_PATH in .env.</p>
+              )}
+              {configured && shown.length === 0 && (
+                <p className="jarvis-empty">{results === null ? "No notes yet." : "No matches."}</p>
+              )}
               {shown.map((note) => (
-                <button type="button" className="jarvis-note" key={note.path} onClick={() => void openNoteByPath(note.path)}>
+                <button
+                  type="button"
+                  className="jarvis-note"
+                  key={note.path}
+                  onClick={() => void openNoteByPath(note.path)}
+                >
                   <span className="jarvis-note-title">{note.title}</span>
-                  <span className="jarvis-note-meta">{note.path}{note.modified ? ` · ${formatDate(note.modified)}` : ""}</span>
+                  <span className="jarvis-note-meta">
+                    {note.path}
+                    {note.modified ? ` · ${formatDate(note.modified)}` : ""}
+                  </span>
                   {note.snippet && <span className="jarvis-note-snippet">{note.snippet}</span>}
                 </button>
               ))}
@@ -260,10 +555,17 @@ export const JarvisConfigSection = () => {
                 placeholder="Quick capture to your brain…"
                 value={capture}
                 onChange={(e) => setCapture(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void submitCapture(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void submitCapture();
+                }}
                 aria-label="Quick capture"
               />
-              <button type="button" className="jarvis-btn" onClick={() => void submitCapture()} disabled={capturing || capture.trim().length === 0}>
+              <button
+                type="button"
+                className="jarvis-btn"
+                onClick={() => void submitCapture()}
+                disabled={capturing || capture.trim().length === 0}
+              >
                 Capture
               </button>
             </div>
@@ -274,30 +576,53 @@ export const JarvisConfigSection = () => {
 
       {/* ── Memory ── */}
       <details style={{ marginTop: 20 }}>
-        <summary style={{ color: "var(--gold)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, letterSpacing: ".1em", cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
+        <summary
+          style={{
+            color: "var(--gold)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: ".1em",
+            cursor: "pointer",
+            userSelect: "none",
+            marginBottom: 12,
+          }}
+        >
           🧠 WHAT JARVIS REMEMBERS
         </summary>
         {memoryItems.length === 0 ? (
-          <p className="jarvis-empty">Nothing taught yet. Say "Jarvis, remember that…" to add a memory.</p>
+          <p className="jarvis-empty">
+            Nothing taught yet. Say "Jarvis, remember that…" to add a memory.
+          </p>
         ) : (
           <ul className="jarvis-memory-list">
-            {memoryItems.map((item) => <li className="jarvis-memory-item" key={item}>{item}</li>)}
+            {memoryItems.map((item) => (
+              <li className="jarvis-memory-item" key={item}>
+                {item}
+              </li>
+            ))}
           </ul>
         )}
       </details>
 
       {/* ── Voice config ── */}
-      <details style={{ marginTop: 20 }}>
-        <summary style={{ color: "var(--gold)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, letterSpacing: ".1em", cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
+      <details open style={{ marginTop: 20 }}>
+        <summary
+          style={{
+            color: "var(--gold)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: ".1em",
+            cursor: "pointer",
+            userSelect: "none",
+            marginBottom: 12,
+          }}
+        >
           🎙 VOICE CONFIGURATION
         </summary>
         {voiceConfig ? (
-          <div className="jarvis-voice-grid">
-            <span>Wake phrases: {voiceConfig.wake.phrases.join(", ")}</span>
-            <span>STT: {voiceConfig.transcription.configured ? `ready (${voiceConfig.transcription.defaultModel})` : "needs OPENAI_API_KEY"}</span>
-            <span>TTS: {voiceConfig.tts.configured ? (voiceConfig.tts.providers ?? []).join(", ") : "browser fallback"}</span>
-            <span>Brain: {voiceConfig.brain ? `${voiceConfig.brain.provider}${voiceConfig.brain.webSearch ? " · web" : ""}` : "—"}</span>
-          </div>
+          <VoiceSettingsPanel voiceConfig={voiceConfig} />
         ) : (
           <p className="jarvis-empty">Loading voice config…</p>
         )}
@@ -305,15 +630,31 @@ export const JarvisConfigSection = () => {
 
       {/* ── Activity ── */}
       <details style={{ marginTop: 20 }}>
-        <summary style={{ color: "var(--gold)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, letterSpacing: ".1em", cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
+        <summary
+          style={{
+            color: "var(--gold)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: ".1em",
+            cursor: "pointer",
+            userSelect: "none",
+            marginBottom: 12,
+          }}
+        >
           ⚡ ACTIVITY LOG
         </summary>
         {journal.length === 0 ? (
-          <p className="jarvis-empty">No activity logged yet. Skills and Jarvis actions appear here.</p>
+          <p className="jarvis-empty">
+            No activity logged yet. Skills and Jarvis actions appear here.
+          </p>
         ) : (
           <ul className="jarvis-activity-list">
             {journal.map((entry) => (
-              <li className="jarvis-activity-row" key={`${entry.ts}:${entry.skill ?? ""}:${entry.action}`}>
+              <li
+                className="jarvis-activity-row"
+                key={`${entry.ts}:${entry.skill ?? ""}:${entry.action}`}
+              >
                 <span className="jarvis-activity-dot" data-status={entry.status} />
                 <span className="jarvis-activity-action">{entry.action}</span>
                 {entry.skill && <span className="jarvis-activity-skill">{entry.skill}</span>}
