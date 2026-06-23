@@ -40,6 +40,8 @@ type SurveillancePanelProps = {
   onSelectAgent?: (terminalId: string) => void;
 };
 
+const MAX_SCREENS = 6;
+
 export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => {
   const [agents, setAgents] = useState<AgentCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,7 +156,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
     });
 
     ws.addEventListener("error", () => {
-      // Silent reconnect will be handled by the server; don't surface WS errors as UI errors
+      // Silent reconnect handled by server
     });
 
     return () => {
@@ -163,10 +165,32 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
     };
   }, []);
 
+  const active = agents.filter((a) => a.lifecycleState === "running");
+  const history = agents.filter((a) => a.lifecycleState !== "running");
+
+  // Screens = active agents first, then empty slots up to MAX_SCREENS (or more if needed)
+  const screenCount = Math.max(MAX_SCREENS, active.length);
+  const emptySlotCount = screenCount - active.length;
+
   if (isLoading) {
     return (
       <section className="surveillance-panel" aria-label="Surveillance room">
-        <p className="surveillance-loading">Loading agents...</p>
+        <div className="surv-room">
+          <div className="surv-room-grid">
+            {Array.from({ length: MAX_SCREENS }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder slots
+              <div key={i} className="surv-screen surv-screen--empty">
+                <div className="surv-corner tl" />
+                <div className="surv-corner tr" />
+                <div className="surv-corner bl" />
+                <div className="surv-corner br" />
+                <div className="surv-screen-num">SCREEN {String(i + 1).padStart(2, "0")}</div>
+                <div className="surv-screen-idle">INIT</div>
+              </div>
+            ))}
+          </div>
+          <div className="surv-room-status">SURVEILLANCE ROOM · INITIALIZING</div>
+        </div>
       </section>
     );
   }
@@ -174,84 +198,95 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
   if (error) {
     return (
       <section className="surveillance-panel" aria-label="Surveillance room">
-        <p className="surveillance-error">{error}</p>
-      </section>
-    );
-  }
-
-  const active = agents.filter((a) => a.lifecycleState === "running");
-  const inactive = agents.filter((a) => a.lifecycleState !== "running");
-
-  if (agents.length === 0) {
-    return (
-      <section className="surveillance-panel" aria-label="Surveillance room">
-        <div className="surveillance-empty">
-          <span className="surveillance-empty-icon">📡</span>
-          <p>No agents running. Deploy one from the Arsenal on the Agents tab.</p>
+        <div className="surv-room">
+          <div className="surv-room-status surv-room-status--error">{error}</div>
         </div>
       </section>
     );
   }
-
-  const renderCard = (agent: AgentCard) => (
-    <div key={agent.terminalId} className="surveillance-card-wrapper">
-      <button
-        type="button"
-        className="surveillance-card"
-        data-state={agent.state}
-        data-lifecycle={agent.lifecycleState ?? "registered"}
-        onClick={() => onSelectAgent?.(agent.terminalId)}
-        aria-label={`Open agent ${agent.tentacleName ?? agent.terminalId}`}
-      >
-        <header className="surveillance-card-header">
-          <span className="surveillance-card-name">{agent.tentacleName ?? agent.terminalId}</span>
-          <span className="surveillance-state-badge" data-state={agent.state}>
-            {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
-          </span>
-        </header>
-
-        <div className="surveillance-card-meta">
-          {agent.toolName && (
-            <span className="surveillance-tool-badge" title="Current tool">
-              🔧 {agent.toolName}
-            </span>
-          )}
-          {agent.agentRuntimeState && (
-            <span className="surveillance-runtime-state">{agent.agentRuntimeState}</span>
-          )}
-          <span className="surveillance-duration">
-            {/* tick is used to force a re-render so duration stays live */}
-            {tick > -1 && formatDuration(agent.startedAt)}
-          </span>
-        </div>
-
-        {agent.recentOutput && (
-          <pre className="surveillance-output" aria-label="Recent output">
-            {agent.recentOutput}
-          </pre>
-        )}
-      </button>
-    </div>
-  );
 
   return (
     <section className="surveillance-panel" aria-label="Surveillance room">
-      {active.length > 0 && (
-        <div className="surveillance-group">
-          <h3 className="surveillance-group-title">
-            Active <span className="surveillance-count">{active.length}</span>
-          </h3>
-          <div className="surveillance-grid">{active.map(renderCard)}</div>
+      <div className="surv-room">
+        <div className="surv-room-grid">
+          {/* Active agent screens */}
+          {active.map((agent) => (
+            <button
+              key={agent.terminalId}
+              type="button"
+              className="surv-screen surv-screen--active"
+              onClick={() => onSelectAgent?.(agent.terminalId)}
+              aria-label={`Open agent ${agent.tentacleName ?? agent.terminalId}`}
+            >
+              <div className="surv-screen-hd">
+                <div className="surv-screen-dot surv-screen-dot--on" />
+                <div className="surv-screen-name">{agent.tentacleName ?? agent.terminalId}</div>
+                <div className="surv-screen-state">
+                  {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
+                </div>
+              </div>
+              <div className="surv-screen-feed">
+                {agent.toolName && (
+                  <div className="surv-action">&gt; {agent.toolName}</div>
+                )}
+                {agent.agentRuntimeState && (
+                  <div className="surv-thought">{agent.agentRuntimeState}</div>
+                )}
+                {agent.recentOutput && (
+                  <pre className="surv-output">{agent.recentOutput}</pre>
+                )}
+              </div>
+              <div className="surv-screen-foot">
+                <span>{agent.state}</span>
+                {/* tick reference keeps duration labels live */}
+                <span>{tick > -1 && formatDuration(agent.startedAt)}</span>
+              </div>
+            </button>
+          ))}
+
+          {/* Empty screen slots */}
+          {Array.from({ length: emptySlotCount }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder slots
+            <div key={`slot-${i}`} className="surv-screen surv-screen--empty">
+              <div className="surv-corner tl" />
+              <div className="surv-corner tr" />
+              <div className="surv-corner bl" />
+              <div className="surv-corner br" />
+              <div className="surv-screen-num">SCREEN {String(active.length + i + 1).padStart(2, "0")}</div>
+              <div className="surv-screen-idle">NO FEED</div>
+            </div>
+          ))}
         </div>
-      )}
-      {inactive.length > 0 && (
-        <div className="surveillance-group surveillance-group--inactive">
-          <h3 className="surveillance-group-title">
-            Inactive <span className="surveillance-count">{inactive.length}</span>
-          </h3>
-          <div className="surveillance-grid">{inactive.map(renderCard)}</div>
+
+        <div className="surv-room-status">
+          {active.length === 0
+            ? "SURVEILLANCE ROOM · ALL CLEAR · 0 AGENTS ACTIVE"
+            : `SURVEILLANCE ROOM · ${active.length} AGENT${active.length !== 1 ? "S" : ""} ACTIVE`}
         </div>
-      )}
+
+        {history.length > 0 && (
+          <div className="surv-history">
+            <div className="surv-history-title">SESSION HISTORY</div>
+            <div className="surv-history-list">
+              {history.map((agent) => (
+                <button
+                  key={agent.terminalId}
+                  type="button"
+                  className="surv-history-item"
+                  onClick={() => onSelectAgent?.(agent.terminalId)}
+                  aria-label={`Open session ${agent.tentacleName ?? agent.terminalId}`}
+                >
+                  <span className="surv-history-name">{agent.tentacleName ?? agent.terminalId}</span>
+                  <span className="surv-history-state">
+                    {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
+                  </span>
+                  <span className="surv-history-dur">{tick > -1 && formatDuration(agent.startedAt)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 };
