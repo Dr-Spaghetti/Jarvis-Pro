@@ -169,6 +169,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
               key={a.id}
               className="arsenal-card"
               data-expanded={isExpanded ? "true" : "false"}
+              data-category={a.category}
             >
               <div className="arsenal-card-header">
                 <span className="arsenal-card-icon" aria-hidden="true">
