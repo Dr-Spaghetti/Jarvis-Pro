@@ -4,7 +4,7 @@ import type { PrimaryNavIndex } from "../app/constants";
 import type { UseMonitorRuntimeResult } from "../app/hooks/useMonitorRuntime";
 import { ActivityPrimaryView } from "./ActivityPrimaryView";
 import { CanvasPrimaryView } from "./CanvasPrimaryView";
-import { CodeIntelPrimaryView } from "./CodeIntelPrimaryView";
+import { TasksPrimaryView } from "./TasksPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { DeckPrimaryView } from "./DeckPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
@@ -65,7 +65,7 @@ export const PrimaryViewRouter = ({
   }
 
   if (activePrimaryNav === 4) {
-    return <CodeIntelPrimaryView enabled={activePrimaryNav === 4} />;
+    return <TasksPrimaryView />;
   }
 
   if (activePrimaryNav === 5) {

@@ -11,7 +11,7 @@ export const PRIMARY_NAV_ITEMS = [
   { index: 1, label: "Agents",        icon: "⬡" },
   { index: 2, label: "Arsenal",       icon: "≡" },
   { index: 3, label: "Surveillance",  icon: "◉" },
-  { index: 4, label: "Code Intel",    icon: "⟨⟩" },
+  { index: 4, label: "Tasks",          icon: "◈" },
   { index: 5, label: "Monitor",       icon: "▣" },
   { index: 6, label: "Convos",        icon: "≋" },
   { index: 7, label: "Sandbox",       icon: "⬢" },

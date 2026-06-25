@@ -120,9 +120,10 @@
 /* Conversations view */
 .console-shell .conversations-view,
 .console-shell .conversations-sidebar,
-.console-shell .conversations-detail {
+.console-shell .conversations-detail,
+.console-shell .conversations-transcript {
   background: #000 !important;
-  border-color: rgba(57, 255, 20, 0.22) !important;
+  border-color: rgba(57, 255, 20, 0.14) !important;
 }
 .console-shell .conversations-list-item:hover {
   background: rgba(57, 255, 20, 0.06) !important;
@@ -131,18 +132,163 @@
   background: rgba(57, 255, 20, 0.1) !important;
   border-left-color: #39ff14 !important;
 }
+.console-shell .conversations-transcript-header {
+  border-bottom-color: rgba(57, 255, 20, 0.12) !important;
+}
+.console-shell .conversations-transcript-header h3 {
+  color: #39ff14 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  word-break: break-all;
+}
+.console-shell .conversations-transcript-header dt {
+  color: rgba(57, 255, 20, 0.35) !important;
+}
+.console-shell .conversations-transcript-header dd {
+  color: rgba(57, 255, 20, 0.6) !important;
+  font-family: "JetBrains Mono", monospace !important;
+}
+.console-shell .conversations-turn[data-role="user"] {
+  background: rgba(57, 255, 20, 0.05) !important;
+  border-color: rgba(57, 255, 20, 0.2) !important;
+  border-bottom-right-radius: 0 !important;
+}
+.console-shell .conversations-turn[data-role="assistant"] {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.09) !important;
+  border-bottom-left-radius: 0 !important;
+}
+.console-shell .conversations-turn-content {
+  color: #c8dcc8 !important;
+}
+.console-shell .conversations-turn-content strong {
+  color: #39ff14 !important;
+}
+.console-shell .conversations-turn-content code {
+  background: rgba(57, 255, 20, 0.06) !important;
+  border-color: rgba(57, 255, 20, 0.14) !important;
+  color: rgba(57, 255, 20, 0.8) !important;
+}
+.console-shell .conversations-turn-content a {
+  color: rgba(57, 255, 20, 0.7) !important;
+}
+.console-shell .conversations-turn-time {
+  color: rgba(57, 255, 20, 0.25) !important;
+}
+.console-shell .conversations-empty,
+.console-shell .conversations-error {
+  color: rgba(57, 255, 20, 0.3) !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+}
+.console-shell .conversations-delete-btn {
+  background: rgba(255, 80, 80, 0.05) !important;
+  border-color: rgba(255, 80, 80, 0.2) !important;
+  color: rgba(255, 80, 80, 0.65) !important;
+}
+/* Sidebar conversation items */
+.console-shell .sidebar-conversation-item {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.1) !important;
+  color: #c8dcc8 !important;
+}
+.console-shell .sidebar-conversation-item:hover {
+  background: rgba(57, 255, 20, 0.05) !important;
+  border-color: rgba(57, 255, 20, 0.3) !important;
+  border-left-color: rgba(57, 255, 20, 0.5) !important;
+}
+.console-shell .sidebar-conversation-item[data-active="true"] {
+  background: rgba(57, 255, 20, 0.08) !important;
+  border-left-color: #39ff14 !important;
+  border-color: rgba(57, 255, 20, 0.3) !important;
+  box-shadow: none !important;
+}
+.console-shell .sidebar-conversation-item strong {
+  color: #d8ecd8 !important;
+}
+.console-shell .sidebar-conversation-item span {
+  color: rgba(57, 255, 20, 0.38) !important;
+}
+.console-shell .sidebar-conversations-toolbar {
+  border-bottom-color: rgba(57, 255, 20, 0.1) !important;
+}
+.console-shell .sidebar-conversations-icon-btn {
+  background: #050705 !important;
+  border-right-color: rgba(57, 255, 20, 0.1) !important;
+  color: rgba(57, 255, 20, 0.3) !important;
+}
+.console-shell .sidebar-conversations-icon-btn:hover {
+  color: #39ff14 !important;
+  background: rgba(57, 255, 20, 0.07) !important;
+}
 
 /* Prompts view */
 .console-shell .prompts-view,
 .console-shell .prompts-sidebar,
 .console-shell .prompts-detail {
   background: #000 !important;
-  border-color: rgba(57, 255, 20, 0.22) !important;
+  border-color: rgba(57, 255, 20, 0.14) !important;
 }
 .console-shell .prompts-list-item:hover,
 .console-shell .sidebar-prompts-item:hover {
   background: rgba(57, 255, 20, 0.06) !important;
   border-color: rgba(57, 255, 20, 0.4) !important;
+}
+.console-shell .prompts-detail {
+  background: #000 !important;
+}
+.console-shell .prompts-detail-header {
+  border-bottom-color: rgba(57, 255, 20, 0.12) !important;
+}
+.console-shell .prompts-detail-name {
+  color: #39ff14 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+.console-shell .prompts-detail-source-badge {
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 8px !important;
+  background: rgba(57, 255, 20, 0.07) !important;
+  border: 1px solid rgba(57, 255, 20, 0.2) !important;
+  color: rgba(57, 255, 20, 0.5) !important;
+  padding: 2px 6px !important;
+}
+.console-shell .prompts-content {
+  color: #c8dcc8 !important;
+}
+.console-shell .prompts-edit-area {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.22) !important;
+  color: #d0e8d0 !important;
+  font-family: "JetBrains Mono", monospace !important;
+}
+.console-shell .prompts-empty {
+  color: rgba(57, 255, 20, 0.3) !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+}
+.console-shell .prompts-variables-title {
+  color: rgba(57, 255, 20, 0.45) !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 0.15em !important;
+  text-transform: uppercase !important;
+}
+.console-shell .prompts-variable-name {
+  color: rgba(57, 255, 20, 0.6) !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 9px !important;
+}
+.console-shell .prompts-variable-input {
+  background: #050705 !important;
+  border-color: rgba(57, 255, 20, 0.2) !important;
+  color: #d0e8d0 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 11px !important;
 }
 
 /* Settings view */

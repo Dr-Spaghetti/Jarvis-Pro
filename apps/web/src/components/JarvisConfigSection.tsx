@@ -6,6 +6,7 @@ import {
   buildBrainCaptureUrl,
   buildBrainJournalUrl,
   buildBrainMemoryUrl,
+  buildBrainModelsUrl,
   buildBrainNoteUrl,
   buildBrainRecentUrl,
   buildBrainSemanticUrl,
@@ -34,7 +35,11 @@ const LS_KEYS = {
   deepgramVoice: "jarvis.deepgramVoice",
   chatModel: "jarvis.chatModel",
   voiceModel: "jarvis.voiceModel",
+  openaiVoice: "jarvis.openaiVoice",
+  elevenlabsVoiceId: "jarvis.elevenlabsVoiceId",
 } as const;
+
+const OPENAI_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
 
 const lsGet = (key: string) => {
   try {
@@ -60,7 +65,24 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   const [voiceModel, setVoiceModel] = useState(
     () => lsGet(LS_KEYS.voiceModel) || voiceConfig.transcription.defaultModel,
   );
+  const [chatModel, setChatModel] = useState(() => lsGet(LS_KEYS.chatModel));
+  const [openaiVoice, setOpenaiVoice] = useState(() => lsGet(LS_KEYS.openaiVoice) || "alloy");
+  const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState(() =>
+    lsGet(LS_KEYS.elevenlabsVoiceId),
+  );
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    void apiFetch(buildBrainModelsUrl())
+      .then((r) => r.json())
+      .then((d) => {
+        const raw = d as { models?: string[] } | string[];
+        if (Array.isArray(raw)) setAvailableModels(raw);
+        else setAvailableModels(raw.models ?? []);
+      })
+      .catch(() => {});
+  }, []);
 
   const providers = voiceConfig.tts.providers ?? [];
   const effectiveProvider = ttsProvider || (providers[0] ?? "browser");
@@ -69,6 +91,9 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
     lsSet(LS_KEYS.ttsProvider, ttsProvider);
     lsSet(LS_KEYS.deepgramVoice, deepgramVoice);
     lsSet(LS_KEYS.voiceModel, voiceModel);
+    lsSet(LS_KEYS.chatModel, chatModel);
+    lsSet(LS_KEYS.openaiVoice, openaiVoice);
+    lsSet(LS_KEYS.elevenlabsVoiceId, elevenlabsVoiceId);
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
@@ -185,6 +210,49 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         </div>
       )}
 
+      {/* OpenAI TTS voice — shown only when openai is selected */}
+      {effectiveProvider === "openai" && (
+        <div style={rowStyle}>
+          <label htmlFor="voice-openai-voice" style={labelStyle}>
+            OpenAI TTS Voice
+          </label>
+          <select
+            id="voice-openai-voice"
+            style={selectStyle}
+            value={openaiVoice}
+            onChange={(e) => setOpenaiVoice(e.target.value)}
+          >
+            {OPENAI_VOICES.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* ElevenLabs voice ID — shown only when elevenlabs is selected */}
+      {effectiveProvider === "elevenlabs" && (
+        <div style={rowStyle}>
+          <label htmlFor="voice-elevenlabs-id" style={labelStyle}>
+            ElevenLabs Voice ID
+          </label>
+          <input
+            id="voice-elevenlabs-id"
+            type="text"
+            style={{ ...selectStyle, border: "1px solid rgba(57,255,20,0.25)" }}
+            value={elevenlabsVoiceId}
+            placeholder="e.g. EXAVITQu4vr4xnSDxMaL"
+            onChange={(e) => setElevenlabsVoiceId(e.target.value)}
+          />
+          <span
+            style={{ fontSize: 9, color: "rgba(57,255,20,0.28)", fontFamily: "var(--font-display)" }}
+          >
+            Voice ID from your ElevenLabs account
+          </span>
+        </div>
+      )}
+
       {/* Transcription model */}
       {voiceConfig.transcription.configured && voiceConfig.transcription.models.length > 1 && (
         <div style={rowStyle}>
@@ -224,6 +292,31 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           speech.
         </p>
       )}
+
+      {/* Chat / Answer model */}
+      <div style={rowStyle}>
+        <label htmlFor="voice-chat-model" style={labelStyle}>
+          Chat / Answer Model
+        </label>
+        <select
+          id="voice-chat-model"
+          style={selectStyle}
+          value={chatModel}
+          onChange={(e) => setChatModel(e.target.value)}
+        >
+          <option value="">Auto (server default)</option>
+          {availableModels.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <span
+          style={{ fontSize: 9, color: "rgba(57,255,20,0.28)", fontFamily: "var(--font-display)" }}
+        >
+          Model Jarvis uses when answering questions and in voice mode
+        </span>
+      </div>
 
       <button
         type="button"
