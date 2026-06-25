@@ -2,6 +2,30 @@
 
 Recurring lessons from per-wave adversarial review passes. Append per wave; newest first.
 
+## Wave 17 — Ideas/Brainstorm tab — commit bcf594c (2026-06-25)
+
+Adversarial review of Wave 17 diff. **One real MED finding applied. Two HIGH findings were false positives.**
+
+All 197 tests pass (1 pre-existing flaky: app-github-runtime.test.tsx), lint clean, web + API bundle green.
+
+### Applied immediately
+
+**M-1 (fixed) — Silent expand failure gave user no feedback**
+`handleExpand` caught all errors silently. User had no way to know AI expansion failed (bad API key, quota, network). Fixed: catch now extracts the server error message and surfaces it as a 5-second inline error above the footer (`expandError` state).
+
+### Not applied — false positives documented
+
+**H-1 (false positive) — Path traversal concern in safeIdeaPath**
+The ID allowlist `^[a-zA-Z0-9_-]+$` prevents all traversal; the `startsWith(root + sep)` check is defense-in-depth. The symlink/junction concern is valid in theory but the ID format makes constructing a symlink-exploiting path impossible through this code path. Existing tests cover the traversal cases.
+
+**H-2 (false positive) — XSS via idea body**
+React JSX `{idea.body}` is automatically HTML-entity-escaped at render time. Script/HTML tags in an idea body render as literal text. Not an XSS vector.
+
+### Lessons
+
+- **Silent catch blocks are always suspicious** — any `catch {}` or `catch { // silent }` in user-facing code should at minimum store an error state. Review all catch blocks on PR.
+- **Reviewer XSS claims about JSX need context** — React auto-escapes; only `dangerouslySetInnerHTML` opens XSS. Don't conflate the two.
+
 ## Wave 15 — Silence endpointing + Perplexity + Haiku fast path + Voice picker — commits da8787d, 2852245, ac63729, e797dac (2026-06-19)
 
 Adversarial review of Wave 15 diff. **Two issues found and fixed (HIGH regex, MED XSS). Three LOW findings documented below.**

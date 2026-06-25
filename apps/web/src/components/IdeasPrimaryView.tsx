@@ -326,6 +326,7 @@ export const IdeasPrimaryView = () => {
   const [editTags, setEditTags] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [expandingId, setExpandingId] = useState<string | null>(null);
+  const [expandError, setExpandError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -426,12 +427,17 @@ export const IdeasPrimaryView = () => {
   const handleExpand = useCallback(
     async (id: string) => {
       setExpandingId(id);
+      setExpandError(null);
       try {
         const res = await apiFetch(buildBrainstormExpandUrl(id), { method: "POST" });
-        if (!res.ok) throw new Error(`${res.status}`);
+        if (!res.ok) {
+          const errData = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errData.error ?? `HTTP ${res.status}`);
+        }
         void fetchIdeas();
-      } catch {
-        // leave expanded card visible, expansion silently fails
+      } catch (e) {
+        setExpandError(e instanceof Error ? e.message : "Expansion failed");
+        setTimeout(() => setExpandError(null), 5000);
       } finally {
         setExpandingId(null);
       }
@@ -647,6 +653,8 @@ export const IdeasPrimaryView = () => {
           })
         )}
       </div>
+
+      {expandError && <p style={s.err}>⚠ Expand failed: {expandError}</p>}
 
       <footer style={s.footer}>
         {!isLoading && !error && configured
