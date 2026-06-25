@@ -118,7 +118,7 @@ describe("Hardening: integration paths", () => {
     mockRequests({ afterPin: { ...TENTACLE, pinned: true } });
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "[2] Deck" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Arsenal (2)" }));
 
     const panel = await screen.findByRole("region", { name: "Recent Agents" });
 
@@ -177,7 +177,7 @@ describe("Hardening: integration paths", () => {
     mockRequests({ journalEntries: entries });
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "[3] Activity" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Surveillance (3)" }));
 
     const list = await screen.findByRole("list", { name: "Journal entries" });
     expect(list).toBeInTheDocument();
@@ -190,9 +190,11 @@ describe("Hardening: integration paths", () => {
     mockRequests();
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "[8] Settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Settings (8)" }));
 
     await screen.findByLabelText("Settings primary view");
+
+    fireEvent.click(screen.getByRole("button", { name: "Backup" }));
 
     const exportLink = document.querySelector<HTMLAnchorElement>(
       "a[download='octogent-settings.json']",
@@ -218,6 +220,10 @@ describe("Hardening: integration paths", () => {
     ];
     mockRequests({ semanticNotes: notes });
     render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Settings (8)" }));
+    await screen.findByLabelText("Settings primary view");
+    fireEvent.click(screen.getByRole("button", { name: "Interface" }));
 
     const searchInput = await screen.findByLabelText("Search the vault");
 

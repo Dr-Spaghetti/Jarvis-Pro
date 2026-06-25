@@ -226,15 +226,11 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
                 </div>
               </div>
               <div className="surv-screen-feed">
-                {agent.toolName && (
-                  <div className="surv-action">&gt; {agent.toolName}</div>
-                )}
+                {agent.toolName && <div className="surv-action">&gt; {agent.toolName}</div>}
                 {agent.agentRuntimeState && (
                   <div className="surv-thought">{agent.agentRuntimeState}</div>
                 )}
-                {agent.recentOutput && (
-                  <pre className="surv-output">{agent.recentOutput}</pre>
-                )}
+                {agent.recentOutput && <pre className="surv-output">{agent.recentOutput}</pre>}
               </div>
               <div className="surv-screen-foot">
                 <span>{agent.state}</span>
@@ -252,7 +248,9 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
               <div className="surv-corner tr" />
               <div className="surv-corner bl" />
               <div className="surv-corner br" />
-              <div className="surv-screen-num">SCREEN {String(active.length + i + 1).padStart(2, "0")}</div>
+              <div className="surv-screen-num">
+                SCREEN {String(active.length + i + 1).padStart(2, "0")}
+              </div>
               <div className="surv-screen-idle">NO FEED</div>
             </div>
           ))}
@@ -276,11 +274,15 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
                   onClick={() => onSelectAgent?.(agent.terminalId)}
                   aria-label={`Open session ${agent.tentacleName ?? agent.terminalId}`}
                 >
-                  <span className="surv-history-name">{agent.tentacleName ?? agent.terminalId}</span>
+                  <span className="surv-history-name">
+                    {agent.tentacleName ?? agent.terminalId}
+                  </span>
                   <span className="surv-history-state">
                     {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
                   </span>
-                  <span className="surv-history-dur">{tick > -1 && formatDuration(agent.startedAt)}</span>
+                  <span className="surv-history-dur">
+                    {tick > -1 && formatDuration(agent.startedAt)}
+                  </span>
                 </button>
               ))}
             </div>

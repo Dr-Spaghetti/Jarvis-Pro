@@ -42,23 +42,56 @@ export const CodeIntelPrimaryView = ({ enabled }: CodeIntelPrimaryViewProps) => 
   if (events.length === 0) {
     return (
       <section className="code-intel-view" aria-label="Code Intel primary view">
-        <div style={{
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          height: "100%", gap: "1rem", padding: "2rem"
-        }}>
-          <div style={{
-            border: "1px solid rgba(57,255,20,0.35)", padding: "2rem 3rem",
-            background: "#050705", textAlign: "center"
-          }}>
-            <div style={{ color: "#39ff14", fontFamily: "JetBrains Mono, monospace",
-              fontSize: "0.72rem", letterSpacing: "0.2em", textTransform: "uppercase",
-              marginBottom: "0.75rem" }}>◈ CODE INTEL</div>
-            <div style={{ color: "#888e88", fontFamily: "JetBrains Mono, monospace",
-              fontSize: "0.75rem", letterSpacing: "0.08em" }}>
-              NO EDIT EVENTS RECORDED<span style={{animation: "none"}}>_</span>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            gap: "1rem",
+            padding: "2rem",
+          }}
+        >
+          <div
+            style={{
+              border: "1px solid rgba(57,255,20,0.35)",
+              padding: "2rem 3rem",
+              background: "#050705",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                color: "#39ff14",
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: "0.72rem",
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                marginBottom: "0.75rem",
+              }}
+            >
+              ◈ CODE INTEL
             </div>
-            <div style={{ color: "rgba(57,255,20,0.35)", fontFamily: "JetBrains Mono, monospace",
-              fontSize: "0.62rem", letterSpacing: "0.06em", marginTop: "0.5rem" }}>
+            <div
+              style={{
+                color: "#888e88",
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: "0.75rem",
+                letterSpacing: "0.08em",
+              }}
+            >
+              NO EDIT EVENTS RECORDED<span style={{ animation: "none" }}>_</span>
+            </div>
+            <div
+              style={{
+                color: "rgba(57,255,20,0.35)",
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: "0.62rem",
+                letterSpacing: "0.06em",
+                marginTop: "0.5rem",
+              }}
+            >
               events are tracked as agents edit files
             </div>
           </div>

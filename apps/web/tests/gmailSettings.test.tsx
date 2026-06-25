@@ -18,12 +18,15 @@ const BASE_PROPS = {
 // SettingsPrimaryView now embeds the self-contained MorningBriefPanel, which
 // uses the toast context and fetches its config on mount — render under the
 // provider and stub fetch so those tests stay focused on the Gmail panel.
-const renderSettings = (props: ComponentProps<typeof SettingsPrimaryView>) =>
-  render(
+const renderSettings = (props: ComponentProps<typeof SettingsPrimaryView>) => {
+  const result = render(
     <ToastProvider>
       <SettingsPrimaryView {...props} />
     </ToastProvider>,
   );
+  fireEvent.click(screen.getByRole("button", { name: "Integrations" }));
+  return result;
+};
 
 describe("SettingsPrimaryView — Gmail panel", () => {
   beforeEach(() => {

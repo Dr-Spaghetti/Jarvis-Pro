@@ -75,14 +75,14 @@ describe("App Monitor runtime", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "[5] Monitor",
+        name: "Monitor (5)",
       }),
     );
 
     const monitorView = await screen.findByLabelText("Monitor primary view");
 
-    // Surveillance is the default active subtab
-    expect(within(monitorView).getByRole("button", { name: "Surveillance" })).toHaveAttribute(
+    // SESSIONS is the default active subtab (formerly "Surveillance")
+    expect(within(monitorView).getByRole("button", { name: "SESSIONS" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -150,13 +150,13 @@ describe("App Monitor runtime", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "[5] Monitor",
+        name: "Monitor (5)",
       }),
     );
 
     const monitorView = await screen.findByLabelText("Monitor primary view");
     await waitFor(() => {
-      expect(within(monitorView).getByText(/No agents running/i)).toBeInTheDocument();
+      expect(within(monitorView).getByText(/ALL CLEAR/i)).toBeInTheDocument();
     });
   });
 
@@ -363,7 +363,7 @@ describe("App Monitor runtime", () => {
 
     expect(screen.queryByLabelText("Telemetry ticker tape")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "[5] Monitor" }));
+    fireEvent.click(screen.getByRole("button", { name: "Monitor (5)" }));
     expect(await screen.findByLabelText("Monitor primary view disabled")).toBeInTheDocument();
 
     expect(monitorConfigCalls).toBe(0);

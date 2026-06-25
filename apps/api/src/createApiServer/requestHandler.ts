@@ -31,6 +31,11 @@ import {
   handleBrainSearchRoute,
   handleBrainSemanticRoute,
 } from "./brainRoutes";
+import {
+  handleBrainstormExpandRoute,
+  handleBrainstormIdeaItemRoute,
+  handleBrainstormIdeasRoute,
+} from "./brainstormRoutes";
 import { handleBriefConfigRoute } from "./briefRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
@@ -186,6 +191,10 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainConversationRoute,
       handleOrchestrateRoute,
     ],
+  ],
+  [
+    "brainstorm",
+    [handleBrainstormIdeasRoute, handleBrainstormExpandRoute, handleBrainstormIdeaItemRoute],
   ],
   ["brief", [handleBriefConfigRoute]],
   ["channels", [handleChannelMessagesRoute]],

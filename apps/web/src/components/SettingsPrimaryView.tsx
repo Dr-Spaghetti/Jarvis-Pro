@@ -162,8 +162,8 @@ export const SettingsPrimaryView = ({
             <header className="settings-panel-header">
               <h2>Gmail</h2>
               <p>
-                Connect your Gmail account so email skills can read and send on your behalf. Requires{" "}
-                <code>GMAIL_CLIENT_ID</code> and <code>GMAIL_CLIENT_SECRET</code> in{" "}
+                Connect your Gmail account so email skills can read and send on your behalf.
+                Requires <code>GMAIL_CLIENT_ID</code> and <code>GMAIL_CLIENT_SECRET</code> in{" "}
                 <code>.env</code> — see <code>.env.example</code> for setup.
               </p>
             </header>

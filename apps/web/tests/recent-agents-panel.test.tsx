@@ -368,7 +368,7 @@ describe("DeckPrimaryView – recordOpened and togglePin", () => {
     mockDeckRequests();
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "[2] Deck" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Arsenal (2)" }));
 
     const panel = await screen.findByRole("region", { name: "Recent Agents" });
     fireEvent.click(within(panel).getByText("Agent One"));
@@ -388,7 +388,7 @@ describe("DeckPrimaryView – recordOpened and togglePin", () => {
     mockDeckRequests();
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "[2] Deck" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Arsenal (2)" }));
 
     const panel = await screen.findByRole("region", { name: "Recent Agents" });
     fireEvent.click(within(panel).getByRole("button", { name: /Pin Agent One/ }));

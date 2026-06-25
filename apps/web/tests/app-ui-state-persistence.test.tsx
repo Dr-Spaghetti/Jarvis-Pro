@@ -90,6 +90,9 @@ describe("App UI state persistence", () => {
       "aria-pressed",
       "true",
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Surfaces" }));
+
     expect(screen.getByRole("switch", { name: "Show runtime status strip" })).toHaveAttribute(
       "aria-checked",
       "false",
@@ -101,6 +104,8 @@ describe("App UI state persistence", () => {
 
     fireEvent.click(screen.getByRole("switch", { name: "Show runtime status strip" }));
     fireEvent.click(screen.getByRole("switch", { name: "Enable X Monitor" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Audio" }));
     fireEvent.click(screen.getByRole("button", { name: /Double beep/i }));
 
     await waitFor(() => {

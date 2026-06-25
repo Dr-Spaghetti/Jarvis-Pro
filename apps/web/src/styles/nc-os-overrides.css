@@ -60,9 +60,8 @@
 /* Canvas view background */
 .console-shell .canvas-view {
   background-color: #000 !important;
-  background-image:
-    linear-gradient(rgba(57,255,20,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(57,255,20,0.04) 1px, transparent 1px) !important;
+  background-image: linear-gradient(rgba(57, 255, 20, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 255, 20, 0.04) 1px, transparent 1px) !important;
   background-size: 16px 16px !important;
 }
 
@@ -201,8 +200,8 @@
 }
 .console-shell .sidebar-conversation-item[data-active="true"] {
   background: rgba(57, 255, 20, 0.08) !important;
-  border-left-color: #39ff14 !important;
   border-color: rgba(57, 255, 20, 0.3) !important;
+  border-left-color: #39ff14 !important;
   box-shadow: none !important;
 }
 .console-shell .sidebar-conversation-item strong {
@@ -498,7 +497,7 @@
 
 /* Vertical scan line animation */
 .surv-room::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -511,10 +510,20 @@
 }
 
 @keyframes surv-scan {
-  0% { top: 0; opacity: 0; }
-  5% { opacity: 1; }
-  95% { opacity: 0.3; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.3;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 /* 3×2 screen grid */
@@ -561,7 +570,7 @@
 
 /* Top edge glow on active screens */
 .surv-screen--active::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -572,8 +581,13 @@
 }
 
 @keyframes surv-top-scan {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Corner brackets for empty screens */
@@ -584,10 +598,26 @@
   border-color: rgba(57, 255, 20, 0.18);
   border-style: solid;
 }
-.surv-corner.tl { top: 4px; left: 4px; border-width: 1px 0 0 1px; }
-.surv-corner.tr { top: 4px; right: 4px; border-width: 1px 1px 0 0; }
-.surv-corner.bl { bottom: 4px; left: 4px; border-width: 0 0 1px 1px; }
-.surv-corner.br { bottom: 4px; right: 4px; border-width: 0 1px 1px 0; }
+.surv-corner.tl {
+  top: 4px;
+  left: 4px;
+  border-width: 1px 0 0 1px;
+}
+.surv-corner.tr {
+  top: 4px;
+  right: 4px;
+  border-width: 1px 1px 0 0;
+}
+.surv-corner.bl {
+  bottom: 4px;
+  left: 4px;
+  border-width: 0 0 1px 1px;
+}
+.surv-corner.br {
+  bottom: 4px;
+  right: 4px;
+  border-width: 0 1px 1px 0;
+}
 
 .surv-screen-num {
   font-size: 9px;
@@ -629,8 +659,13 @@
 }
 
 @keyframes surv-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .surv-screen-dot--off {
@@ -864,8 +899,12 @@
   background: #000;
 }
 
-.settings-main::-webkit-scrollbar { width: 3px; }
-.settings-main::-webkit-scrollbar-thumb { background: rgba(57, 255, 20, 0.18); }
+.settings-main::-webkit-scrollbar {
+  width: 3px;
+}
+.settings-main::-webkit-scrollbar-thumb {
+  background: rgba(57, 255, 20, 0.18);
+}
 
 /* Settings panels inside the main area — better visual hierarchy */
 .settings-main .settings-panel {
@@ -981,8 +1020,12 @@
   min-height: 0;
 }
 
-.arsenal-grid::-webkit-scrollbar { width: 2px; }
-.arsenal-grid::-webkit-scrollbar-thumb { background: rgba(57, 255, 20, 0.18); }
+.arsenal-grid::-webkit-scrollbar {
+  width: 2px;
+}
+.arsenal-grid::-webkit-scrollbar-thumb {
+  background: rgba(57, 255, 20, 0.18);
+}
 
 /* Individual agent card — base */
 .arsenal-card {
@@ -1005,11 +1048,21 @@
 }
 
 /* Category accent — left border color */
-.arsenal-card[data-category="technical"]  { border-left-color: #39ff14; }
-.arsenal-card[data-category="strategy"]   { border-left-color: #00d4ff; }
-.arsenal-card[data-category="creative"]   { border-left-color: #ff44cc; }
-.arsenal-card[data-category="analysis"]   { border-left-color: #ffd000; }
-.arsenal-card[data-category="operations"] { border-left-color: #ff6600; }
+.arsenal-card[data-category="technical"] {
+  border-left-color: #39ff14;
+}
+.arsenal-card[data-category="strategy"] {
+  border-left-color: #00d4ff;
+}
+.arsenal-card[data-category="creative"] {
+  border-left-color: #ff44cc;
+}
+.arsenal-card[data-category="analysis"] {
+  border-left-color: #ffd000;
+}
+.arsenal-card[data-category="operations"] {
+  border-left-color: #ff6600;
+}
 
 /* Card header row */
 .arsenal-card-header {
@@ -1028,11 +1081,26 @@
   filter: saturate(0.65) brightness(0.85);
 }
 
-.arsenal-card[data-category="technical"]  .arsenal-card-icon { filter: none; text-shadow: 0 0 8px rgba(57,255,20,0.55); }
-.arsenal-card[data-category="strategy"]   .arsenal-card-icon { filter: none; text-shadow: 0 0 8px rgba(0,212,255,0.5); }
-.arsenal-card[data-category="creative"]   .arsenal-card-icon { filter: none; text-shadow: 0 0 8px rgba(255,68,204,0.5); }
-.arsenal-card[data-category="analysis"]   .arsenal-card-icon { filter: none; text-shadow: 0 0 8px rgba(255,208,0,0.5); }
-.arsenal-card[data-category="operations"] .arsenal-card-icon { filter: none; text-shadow: 0 0 8px rgba(255,102,0,0.5); }
+.arsenal-card[data-category="technical"] .arsenal-card-icon {
+  filter: none;
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.55);
+}
+.arsenal-card[data-category="strategy"] .arsenal-card-icon {
+  filter: none;
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+}
+.arsenal-card[data-category="creative"] .arsenal-card-icon {
+  filter: none;
+  text-shadow: 0 0 8px rgba(255, 68, 204, 0.5);
+}
+.arsenal-card[data-category="analysis"] .arsenal-card-icon {
+  filter: none;
+  text-shadow: 0 0 8px rgba(255, 208, 0, 0.5);
+}
+.arsenal-card[data-category="operations"] .arsenal-card-icon {
+  filter: none;
+  text-shadow: 0 0 8px rgba(255, 102, 0, 0.5);
+}
 
 /* Name + role */
 .arsenal-card-meta {
@@ -1081,10 +1149,26 @@
   flex-shrink: 0;
 }
 
-.arsenal-card[data-category="strategy"]   .arsenal-card-category { color: #00d4ff; border-color: rgba(0,212,255,0.28); background: rgba(0,212,255,0.06); }
-.arsenal-card[data-category="creative"]   .arsenal-card-category { color: #ff44cc; border-color: rgba(255,68,204,0.28); background: rgba(255,68,204,0.06); }
-.arsenal-card[data-category="analysis"]   .arsenal-card-category { color: #ffd000; border-color: rgba(255,208,0,0.28); background: rgba(255,208,0,0.06); }
-.arsenal-card[data-category="operations"] .arsenal-card-category { color: #ff6600; border-color: rgba(255,102,0,0.28); background: rgba(255,102,0,0.06); }
+.arsenal-card[data-category="strategy"] .arsenal-card-category {
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.28);
+  background: rgba(0, 212, 255, 0.06);
+}
+.arsenal-card[data-category="creative"] .arsenal-card-category {
+  color: #ff44cc;
+  border-color: rgba(255, 68, 204, 0.28);
+  background: rgba(255, 68, 204, 0.06);
+}
+.arsenal-card[data-category="analysis"] .arsenal-card-category {
+  color: #ffd000;
+  border-color: rgba(255, 208, 0, 0.28);
+  background: rgba(255, 208, 0, 0.06);
+}
+.arsenal-card[data-category="operations"] .arsenal-card-category {
+  color: #ff6600;
+  border-color: rgba(255, 102, 0, 0.28);
+  background: rgba(255, 102, 0, 0.06);
+}
 
 /* Skills chip list */
 .arsenal-card-skills {
@@ -1146,8 +1230,13 @@
   flex: 1;
 }
 
-.arsenal-btn--primary:hover:not(:disabled) { opacity: 0.85; }
-.arsenal-btn--primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.arsenal-btn--primary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+.arsenal-btn--primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .arsenal-btn--ghost {
   color: rgba(57, 255, 20, 0.45);
@@ -1160,7 +1249,10 @@
   border-color: rgba(57, 255, 20, 0.38);
 }
 
-.arsenal-btn--ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+.arsenal-btn--ghost:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
 /* Deploy form */
 .arsenal-deploy-form {
@@ -1195,7 +1287,9 @@
   border-color: rgba(57, 255, 20, 0.5);
 }
 
-.arsenal-deploy-textarea:disabled { opacity: 0.5; }
+.arsenal-deploy-textarea:disabled {
+  opacity: 0.5;
+}
 
 .arsenal-deploy-actions {
   display: flex;
@@ -1242,7 +1336,9 @@
   background: #000;
 }
 
-.arsenal-section h2 { margin: 0; }
+.arsenal-section h2 {
+  margin: 0;
+}
 
 .arsenal-section-header {
   display: flex;
@@ -1271,7 +1367,9 @@
   transition: color 0.1s;
 }
 
-.arsenal-section-toggle:hover { color: rgba(57, 255, 20, 0.55); }
+.arsenal-section-toggle:hover {
+  color: rgba(57, 255, 20, 0.55);
+}
 
 /* ── Deck Empty State — Deployment Terminal ──────────────────────────── */
 
@@ -1287,7 +1385,7 @@
 
 /* Console breadcrumb header above action cards */
 .console-shell .deck-empty-actions:not(.deck-empty-actions--compact)::before {
-  content: 'JARVIS  ·  DEPLOYMENT TERMINAL';
+  content: "JARVIS  ·  DEPLOYMENT TERMINAL";
   display: block;
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
@@ -1336,7 +1434,7 @@
 
 /* Sigil in place of the canvas */
 .console-shell .deck-empty-card-icon:not(.deck-empty-card-icon--terminal)::after {
-  content: '◈';
+  content: "◈";
   font-family: "JetBrains Mono", monospace;
   font-size: 1.4rem;
   color: rgba(57, 255, 20, 0.5);

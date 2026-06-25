@@ -246,7 +246,11 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
             onChange={(e) => setElevenlabsVoiceId(e.target.value)}
           />
           <span
-            style={{ fontSize: 9, color: "rgba(57,255,20,0.28)", fontFamily: "var(--font-display)" }}
+            style={{
+              fontSize: 9,
+              color: "rgba(57,255,20,0.28)",
+              fontFamily: "var(--font-display)",
+            }}
           >
             Voice ID from your ElevenLabs account
           </span>

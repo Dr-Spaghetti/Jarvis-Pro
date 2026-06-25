@@ -148,5 +148,15 @@
     "requiredEnv": ["XAI_API_KEY"],
     "runtime": ["python"],
     "setup": null
+  },
+  "citation-audit": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Requires the Local Falcon MCP connector for citation/location data. Degrades to web-search-based check if Local Falcon is absent. Reads client profiles from the Obsidian vault (Projects/<client>.md)."
+  },
+  "gbp-audit": {
+    "requiredEnv": [],
+    "runtime": [],
+    "setup": "Requires the Local Falcon MCP connector for rank grids and review analysis. Degrades to a manual-prompt audit if Local Falcon is absent. Reads client profiles from the Obsidian vault (Projects/<client>.md)."
   }
 }

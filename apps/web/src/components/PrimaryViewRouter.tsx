@@ -4,13 +4,13 @@ import type { PrimaryNavIndex } from "../app/constants";
 import type { UseMonitorRuntimeResult } from "../app/hooks/useMonitorRuntime";
 import { ActivityPrimaryView } from "./ActivityPrimaryView";
 import { CanvasPrimaryView } from "./CanvasPrimaryView";
-import { TasksPrimaryView } from "./TasksPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { DeckPrimaryView } from "./DeckPrimaryView";
+import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { MonitorPrimaryView } from "./MonitorPrimaryView";
-import { PromptsPrimaryView } from "./PromptsPrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
+import { TasksPrimaryView } from "./TasksPrimaryView";
 
 type PrimaryViewRouterProps = {
   activePrimaryNav: PrimaryNavIndex;
@@ -32,8 +32,6 @@ type PrimaryViewRouterProps = {
   conversationsEnabled: boolean;
   onConversationsSidebarContent: (content: ReactNode) => void;
   onConversationsActionPanel: (content: ReactNode) => void;
-  promptsEnabled: boolean;
-  onPromptsSidebarContent: (content: ReactNode) => void;
   onPrimaryNavChange: (index: PrimaryNavIndex) => void;
 };
 
@@ -48,8 +46,6 @@ export const PrimaryViewRouter = ({
   conversationsEnabled,
   onConversationsSidebarContent,
   onConversationsActionPanel,
-  promptsEnabled,
-  onPromptsSidebarContent,
   onPrimaryNavChange,
 }: PrimaryViewRouterProps) => {
   if (activePrimaryNav === 9) {
@@ -93,9 +89,7 @@ export const PrimaryViewRouter = ({
   }
 
   if (activePrimaryNav === 7) {
-    return (
-      <PromptsPrimaryView enabled={promptsEnabled} onSidebarContent={onPromptsSidebarContent} />
-    );
+    return <IdeasPrimaryView />;
   }
 
   if (activePrimaryNav === 8) {

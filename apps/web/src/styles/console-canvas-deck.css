@@ -1803,5 +1803,10 @@
 }
 
 /* NC OS — hide the giant pixel mascot in the empty state */
-.deck-empty-octopus { display: none !important; }
-.deck-empty-left { gap: 2rem; justify-content: center; }
+.deck-empty-octopus {
+  display: none !important;
+}
+.deck-empty-left {
+  gap: 2rem;
+  justify-content: center;
+}

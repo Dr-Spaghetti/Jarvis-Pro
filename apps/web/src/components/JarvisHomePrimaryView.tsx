@@ -1019,6 +1019,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         }
         setVoiceStatus("Command received");
         await runVoiceIntent(transcript);
+      } catch {
+        setVoiceError("Transcription request failed");
+        setVoiceStatus("Voice idle");
       } finally {
         setIsThinking(false);
         // Re-arm for the next command when running hands-free.
@@ -1051,9 +1054,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      // Permission denied or no device — surface it instead of stalling.
-      setVoiceError("Microphone blocked — allow mic access for this page, then try again.");
+    } catch (err) {
+      const domErr = err instanceof DOMException ? err : null;
+      const msg =
+        domErr?.name === "NotFoundError" || domErr?.name === "DevicesNotFoundError"
+          ? "No microphone found — check Windows Settings → System → Sound → Input device."
+          : domErr?.name === "NotReadableError" || domErr?.name === "TrackStartError"
+            ? "Microphone is in use by another app — close other audio apps and try again."
+            : "Microphone blocked — click the 🔒 in the address bar → Site settings → Microphone → Allow.";
+      setVoiceError(msg);
       setVoiceStatus("Voice idle");
       isRecordingCommandRef.current = false;
       setIsRecordingCommand(false);
@@ -1082,6 +1091,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       const audio = new Blob(audioChunksRef.current, {
         type: recorder.mimeType || "audio/webm",
       });
+      if (audio.size === 0) {
+        setVoiceError(
+          "No audio captured — check your microphone in Windows Settings → Sound → Input.",
+        );
+        setVoiceStatus("Voice idle");
+        setIsThinking(false);
+        maybeContinueLoop();
+        return;
+      }
       void transcribeCommandAudio(audio);
     });
     isRecordingCommandRef.current = true;
@@ -1091,9 +1109,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     recordingTimerRef.current = window.setTimeout(() => {
       stopCommandRecording();
     }, 30000);
-    // Silence-based endpointing via Web Audio AnalyserNode.
-    // Stops recording after ~1.5 s of silence (RMS below threshold).
-    // Waits a minimum of 600 ms so very short utterances don't end instantly.
+    // Silence-based endpointing via Web Audio AnalyserNode. Initial quiet is
+    // user reaction time; only trailing silence after real speech ends a turn.
     try {
       const ctx = new AudioContext();
       silenceAudioCtx = ctx;
@@ -1104,7 +1121,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       const recordingStartedAt = Date.now();
       const MIN_REC_MS = 600;
       const SILENCE_THRESHOLD_MS = 1500;
+      const NO_SPEECH_TIMEOUT_MS = 7000;
       const RMS_THRESHOLD = 0.015;
+      let heardSpeech = false;
       let silenceStartedAt: number | null = null;
       const tick = () => {
         if (!isRecordingCommandRef.current) return;
@@ -1116,14 +1135,20 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         }
         const rms = Math.sqrt(sumSq / silenceBuf.length);
         if (rms > RMS_THRESHOLD) {
+          heardSpeech = true;
           silenceStartedAt = null;
-        } else if (Date.now() - recordingStartedAt >= MIN_REC_MS) {
+        } else if (heardSpeech && Date.now() - recordingStartedAt >= MIN_REC_MS) {
           if (silenceStartedAt === null) {
             silenceStartedAt = Date.now();
           } else if (Date.now() - silenceStartedAt >= SILENCE_THRESHOLD_MS) {
             stopCommandRecording();
             return;
           }
+        } else if (Date.now() - recordingStartedAt >= NO_SPEECH_TIMEOUT_MS) {
+          // Timed out with no speech detected locally — still try transcription in
+          // case the mic is just very quiet; Deepgram will return empty text if silent.
+          stopCommandRecording();
+          return;
         }
         requestAnimationFrame(tick);
       };
@@ -1131,7 +1156,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     } catch {
       // Web Audio unavailable — the hard-cap timer handles stopping.
     }
-  }, [stopCommandRecording, transcribeCommandAudio]);
+  }, [maybeContinueLoop, stopCommandRecording, transcribeCommandAudio]);
 
   // Keep the loop's re-arm handle pointed at the latest startCommandRecording
   // (avoids a circular useCallback dependency with transcribeCommandAudio).

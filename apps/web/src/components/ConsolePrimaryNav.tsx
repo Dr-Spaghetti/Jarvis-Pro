@@ -12,7 +12,9 @@ export const ConsolePrimaryNav = ({
   <nav className="console-primary-nav" aria-label="Primary navigation">
     <div className="console-primary-nav-brand">
       <div className="console-primary-nav-wordmark">
-        JARVIS<br />HQ
+        JARVIS
+        <br />
+        HQ
       </div>
       <div className="console-primary-nav-version">V 5.0 · ULTRA</div>
     </div>
@@ -30,7 +32,9 @@ export const ConsolePrimaryNav = ({
           title={`${item.label} — press ${item.index}`}
           type="button"
         >
-          <span className="console-primary-nav-tab-icon" aria-hidden="true">{item.icon}</span>
+          <span className="console-primary-nav-tab-icon" aria-hidden="true">
+            {item.icon}
+          </span>
           <span className="console-primary-nav-tab-label">{item.label}</span>
         </button>
       ))}

@@ -83,7 +83,6 @@ describe("App shell and navigation", () => {
     expect(screen.getByLabelText("Main content canvas")).toBeInTheDocument();
     expect(await screen.findByLabelText("Telemetry ticker tape")).toBeInTheDocument();
     expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
-    expect(screen.getByText("Press 1-9 to navigate")).toBeInTheDocument();
   });
 
   it("supports keyboard-first primary navigation with number keys 1-8", async () => {
@@ -96,7 +95,7 @@ describe("App shell and navigation", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "[4] Code Intel",
+        name: "Tasks (4)",
       }),
     ).toHaveAttribute("aria-current", "page");
   });
@@ -109,13 +108,16 @@ describe("App shell and navigation", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "[8] Settings",
+        name: "Settings (8)",
       }),
     );
 
     expect(await screen.findByLabelText("Settings primary view")).toBeInTheDocument();
+    // Audio section is shown by default.
     expect(screen.getByRole("button", { name: /Soft chime/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Retro beep/i })).toBeInTheDocument();
+    // Navigate to Surfaces section to check visibility toggles.
+    fireEvent.click(screen.getByRole("button", { name: "Surfaces" }));
     expect(screen.getByRole("switch", { name: "Show runtime status strip" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Enable X Monitor" })).toBeInTheDocument();
   });

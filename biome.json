@@ -33,6 +33,15 @@
     }
   ],
   "files": {
-    "ignore": ["node_modules", "dist", "coverage", ".claude", ".octogent"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      "coverage",
+      ".claude",
+      ".octogent",
+      "graphify-out",
+      "worktrees",
+      "skills-catalog"
+    ]
   }
 }

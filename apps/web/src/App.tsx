@@ -56,7 +56,6 @@ export const App = () => {
   const [isShortcutsOverlayOpen, setIsShortcutsOverlayOpen] = useState(false);
   const [conversationsSidebarContent, setConversationsSidebarContent] = useState<ReactNode>(null);
   const [conversationsActionPanel, setConversationsActionPanel] = useState<ReactNode>(null);
-  const [promptsSidebarContent, setPromptsSidebarContent] = useState<ReactNode>(null);
   const terminalEventsRefreshTimerRef = useRef<number | null>(null);
   const runtimeStateStoreRef = useRef(createTerminalRuntimeStateStore());
   const runtimeStateStore = runtimeStateStoreRef.current;
@@ -470,9 +469,7 @@ export const App = () => {
                       ? (deckSidebarContent ?? undefined)
                       : activePrimaryNav === 6
                         ? (conversationsSidebarContent ?? undefined)
-                        : activePrimaryNav === 7
-                          ? (promptsSidebarContent ?? undefined)
-                          : undefined
+                        : undefined
                   }
                 />
               )}
@@ -660,8 +657,6 @@ export const App = () => {
               conversationsEnabled={isUiStateHydrated && activePrimaryNav === 6}
               onConversationsSidebarContent={setConversationsSidebarContent}
               onConversationsActionPanel={setConversationsActionPanel}
-              promptsEnabled={isUiStateHydrated && activePrimaryNav === 7}
-              onPromptsSidebarContent={setPromptsSidebarContent}
             />
           </div>
         </section>

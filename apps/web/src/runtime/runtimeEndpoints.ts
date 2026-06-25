@@ -389,6 +389,15 @@ export const buildBrainConversationUrl = (limit = 50, runtimeBaseUrl = readRunti
     runtimeBaseUrl,
   );
 
+export const buildBrainstormIdeasUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/brainstorm/ideas", runtimeBaseUrl);
+
+export const buildBrainstormIdeaUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brainstorm/ideas/${encodeURIComponent(id)}`, runtimeBaseUrl);
+
+export const buildBrainstormExpandUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/brainstorm/ideas/${encodeURIComponent(id)}/expand`, runtimeBaseUrl);
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 

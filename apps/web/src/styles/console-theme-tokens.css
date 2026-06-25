@@ -54,8 +54,7 @@ body {
   background: #000000;
   color: var(--text-primary);
   /* Neural Core 16px grid */
-  background-image:
-    linear-gradient(var(--hud-grid) 1px, transparent 1px),
+  background-image: linear-gradient(var(--hud-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--hud-grid) 1px, transparent 1px);
   background-size: 16px 16px;
 }
