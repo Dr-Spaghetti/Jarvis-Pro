@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
 import {
+  buildAnalyzerChatUrl,
   buildAnalyzerImageUrl,
   buildAnalyzerItemUrl,
   buildAnalyzerUrl,
@@ -47,6 +48,8 @@ type AnalysisRecord = {
   meta: AnalysisMeta;
   result: ImageBreakdown | VideoAnalysisResult | null;
 };
+
+type ChatMessage = { role: "user" | "assistant"; content: string };
 
 // ─── styles ──────────────────────────────────────────────────────────────────
 
@@ -234,6 +237,72 @@ const s = {
     padding: "4px 8px",
     marginTop: 6,
   },
+  chatSection: {
+    flexShrink: 0,
+    borderTop: `1px solid ${BORDER}`,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    maxHeight: 300,
+  },
+  chatHdr: {
+    padding: "6px 14px",
+    fontSize: 8,
+    letterSpacing: "0.2em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.3)",
+    borderBottom: `1px solid ${BORDER_DIM}`,
+    flexShrink: 0,
+  },
+  chatHistory: {
+    flex: 1,
+    overflowY: "auto" as const,
+    padding: "6px 14px",
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 6,
+    minHeight: 0,
+  },
+  chatBubble: (role: "user" | "assistant") => ({
+    padding: "5px 8px",
+    fontSize: 10,
+    lineHeight: 1.5,
+    color: role === "user" ? "#39ff14" : "#c0dcc0",
+    background: role === "user" ? "rgba(57,255,20,0.06)" : "#050705",
+    border: `1px solid ${BORDER_DIM}`,
+    borderLeft: `2px solid ${role === "user" ? GREEN : "rgba(57,255,20,0.15)"}`,
+    alignSelf: role === "user" ? ("flex-end" as const) : ("flex-start" as const),
+    maxWidth: "85%",
+    wordBreak: "break-word" as const,
+  }),
+  chatInputRow: {
+    display: "flex" as const,
+    gap: 6,
+    padding: "6px 14px 8px",
+    flexShrink: 0,
+  },
+  chatInput: {
+    flex: 1,
+    background: "#050705",
+    border: `1px solid rgba(57,255,20,0.22)`,
+    color: "#d0e8d0",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 10,
+    padding: "5px 8px",
+    outline: "none",
+  },
+  chatSendBtn: (disabled: boolean) => ({
+    background: "rgba(57,255,20,0.08)",
+    border: `1px solid rgba(57,255,20,0.3)`,
+    color: GREEN,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 8,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    padding: "5px 10px",
+    cursor: disabled ? ("not-allowed" as const) : ("pointer" as const),
+    opacity: disabled ? 0.4 : 1,
+    flexShrink: 0,
+  }),
 };
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -357,6 +426,10 @@ export const AnalyzerPrimaryView = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isLoadingRecord, setIsLoadingRecord] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatting, setIsChatting] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const fetchList = useCallback(async () => {
     try {
@@ -391,10 +464,39 @@ export const AnalyzerPrimaryView = () => {
   const handleSelect = useCallback(
     (id: string) => {
       setSelectedId(id);
+      setChatHistory([]);
+      setChatError(null);
       void fetchRecord(id);
     },
     [fetchRecord],
   );
+
+  const handleChat = useCallback(async () => {
+    const msg = chatInput.trim();
+    if (!msg || isChatting || !selectedId) return;
+    setIsChatting(true);
+    setChatError(null);
+    const next: ChatMessage[] = [...chatHistory, { role: "user", content: msg }];
+    setChatHistory(next);
+    setChatInput("");
+    try {
+      const res = await apiFetch(buildAnalyzerChatUrl(selectedId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg, history: chatHistory }),
+      });
+      const data = (await res.json()) as { reply?: string; error?: string };
+      if (!res.ok || !data.reply) {
+        setChatError(data.error ?? `Chat failed (${res.status}).`);
+        return;
+      }
+      setChatHistory([...next, { role: "assistant", content: data.reply }]);
+    } catch {
+      setChatError("Chat request failed — check Jarvis is running.");
+    } finally {
+      setIsChatting(false);
+    }
+  }, [chatInput, isChatting, selectedId, chatHistory]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -534,6 +636,48 @@ export const AnalyzerPrimaryView = () => {
               </div>
             )}
           </div>
+
+          {/* Analysis Chat — shown when an analysis is selected */}
+          {selectedRecord && (
+            <section aria-label="Analysis chat" style={s.chatSection}>
+              <p style={s.chatHdr}>⬡ Analysis Chat</p>
+              {chatHistory.length > 0 && (
+                <div style={s.chatHistory} aria-label="Chat history">
+                  {chatHistory.map((msg, i) => (
+                    <div key={i} style={s.chatBubble(msg.role)}>
+                      {msg.content}
+                    </div>
+                  ))}
+                  {isChatting && (
+                    <div style={s.chatBubble("assistant")}>…</div>
+                  )}
+                </div>
+              )}
+              {chatError && <p style={s.statusMsg(true)}>⚠ {chatError}</p>}
+              <div style={s.chatInputRow}>
+                <input
+                  type="text"
+                  style={s.chatInput}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleChat();
+                  }}
+                  placeholder="Ask about this analysis…"
+                  aria-label="Analysis chat input"
+                  disabled={isChatting}
+                />
+                <button
+                  type="button"
+                  style={s.chatSendBtn(isChatting || !chatInput.trim())}
+                  disabled={isChatting || !chatInput.trim()}
+                  onClick={() => void handleChat()}
+                >
+                  Send
+                </button>
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </section>

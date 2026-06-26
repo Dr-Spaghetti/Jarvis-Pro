@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
-import { buildBrainCaptureUrl, buildBrainDigestUrl } from "../runtime/runtimeEndpoints";
+import { buildBrainCaptureUrl, buildBrainDigestUrl, buildTasksPlanUrl } from "../runtime/runtimeEndpoints";
 
 type DigestResponse = {
   tasks?: { open?: string[]; openCount?: number };
 };
+
+type PlannedTask = { title: string; detail?: string; priority: string };
 
 const s = {
   panel: {
@@ -145,6 +147,80 @@ const s = {
     color: "rgba(57,255,20,0.2)",
     flexShrink: 0,
   },
+  planBtn: {
+    background: "none",
+    border: "1px solid rgba(57,255,20,0.28)",
+    color: "rgba(57,255,20,0.6)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 8,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "3px 8px",
+    cursor: "pointer",
+    marginLeft: 6,
+  },
+  planPanel: {
+    borderTop: "1px solid rgba(57,255,20,0.12)",
+    padding: "10px 14px",
+    flexShrink: 0,
+  },
+  planInputRow: {
+    display: "flex" as const,
+    gap: 8,
+    marginBottom: 8,
+  },
+  planList: {
+    margin: 0,
+    padding: 0,
+    listStyle: "none",
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 4,
+    maxHeight: 240,
+    overflowY: "auto" as const,
+  },
+  planItem: (priority: string) => ({
+    display: "flex" as const,
+    alignItems: "flex-start" as const,
+    gap: 8,
+    padding: "6px 8px",
+    background: "#050705",
+    border: "1px solid rgba(57,255,20,0.09)",
+    borderLeft: `2px solid ${priority === "high" ? "rgba(255,80,80,0.5)" : priority === "medium" ? "rgba(255,180,0,0.45)" : "rgba(57,255,20,0.28)"}`,
+  }),
+  planItemTitle: {
+    fontSize: 10,
+    color: "#c8dcc8",
+    flex: 1,
+    lineHeight: 1.45,
+  },
+  planItemDetail: {
+    fontSize: 9,
+    color: "rgba(57,255,20,0.38)",
+    marginTop: 2,
+  },
+  planAddBtn: {
+    background: "none",
+    border: "1px solid rgba(57,255,20,0.22)",
+    color: "rgba(57,255,20,0.5)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 8,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    padding: "2px 6px",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+  planAddAllRow: {
+    marginTop: 8,
+    display: "flex" as const,
+    justifyContent: "flex-end" as const,
+  },
+  planMsg: (isErr: boolean) => ({
+    fontSize: 9,
+    color: isErr ? "rgba(255,80,80,0.6)" : "rgba(57,255,20,0.4)",
+    margin: "4px 0 0",
+  }),
 };
 
 const cleanTask = (raw: string) =>
@@ -160,6 +236,12 @@ export const TasksPrimaryView = () => {
   const [quickAdd, setQuickAdd] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [addFeedback, setAddFeedback] = useState<string | null>(null);
+  const [showPlan, setShowPlan] = useState(false);
+  const [planGoal, setPlanGoal] = useState("");
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [plannedTasks, setPlannedTasks] = useState<PlannedTask[]>([]);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
@@ -203,21 +285,84 @@ export const TasksPrimaryView = () => {
     }
   }, [quickAdd, isAdding, fetchTasks]);
 
+  const handlePlan = useCallback(async () => {
+    const goal = planGoal.trim();
+    if (!goal || isPlanning) return;
+    setIsPlanning(true);
+    setPlanError(null);
+    setPlannedTasks([]);
+    setAddedIndices(new Set());
+    try {
+      const res = await apiFetch(buildTasksPlanUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal }),
+      });
+      const data = (await res.json()) as { tasks?: PlannedTask[]; error?: string };
+      if (!res.ok || !data.tasks) {
+        setPlanError(data.error ?? `Planning failed (${res.status}).`);
+        return;
+      }
+      setPlannedTasks(data.tasks);
+    } catch {
+      setPlanError("Planning failed — check Jarvis is running.");
+    } finally {
+      setIsPlanning(false);
+    }
+  }, [planGoal, isPlanning]);
+
+  const handleAddPlannedTask = useCallback(
+    async (task: PlannedTask, index: number) => {
+      try {
+        const res = await apiFetch(buildBrainCaptureUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: `- [ ] ${task.title}` }),
+        });
+        if (res.ok) {
+          setAddedIndices((prev) => new Set([...prev, index]));
+          void fetchTasks();
+        }
+      } catch {
+        // silent — individual adds are best-effort
+      }
+    },
+    [fetchTasks],
+  );
+
+  const handleAddAllPlanned = useCallback(async () => {
+    await Promise.all(plannedTasks.map((t, i) => handleAddPlannedTask(t, i)));
+  }, [plannedTasks, handleAddPlannedTask]);
+
   const tasksWithIds = tasks.map((task, i) => ({ id: `t${i}`, text: task }));
 
   return (
     <section className="tasks-view" aria-label="Tasks primary view" style={s.panel}>
       <header style={s.hdr}>
         <span style={s.hdrTitle}>◈ Tasks / Today</span>
-        <button
-          type="button"
-          style={s.refreshBtn}
-          onClick={() => {
-            void fetchTasks();
-          }}
-        >
-          ↺ Refresh
-        </button>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            type="button"
+            style={s.planBtn}
+            onClick={() => {
+              setShowPlan((v) => !v);
+              setPlannedTasks([]);
+              setPlanError(null);
+            }}
+            aria-label={showPlan ? "Close task planner" : "Open task planner"}
+          >
+            {showPlan ? "✕ Plan" : "⬡ Plan"}
+          </button>
+          <button
+            type="button"
+            style={s.refreshBtn}
+            onClick={() => {
+              void fetchTasks();
+            }}
+          >
+            ↺ Refresh
+          </button>
+        </div>
       </header>
 
       <div style={s.quickAddBar}>
@@ -272,6 +417,67 @@ export const TasksPrimaryView = () => {
         <footer style={s.footer}>
           {tasks.length} open task{tasks.length !== 1 ? "s" : ""}
         </footer>
+      )}
+
+      {/* Task Planning Panel */}
+      {showPlan && (
+        <section aria-label="Task planning panel" style={s.planPanel}>
+          <div style={s.planInputRow}>
+            <input
+              type="text"
+              style={s.input}
+              value={planGoal}
+              onChange={(e) => setPlanGoal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handlePlan();
+              }}
+              placeholder="Describe a goal — AI will break it into tasks…"
+              aria-label="Goal for AI task planning"
+              disabled={isPlanning}
+            />
+            <button
+              type="button"
+              style={s.addBtn(isPlanning || !planGoal.trim())}
+              disabled={isPlanning || !planGoal.trim()}
+              onClick={() => void handlePlan()}
+            >
+              {isPlanning ? "…" : "Plan"}
+            </button>
+          </div>
+          {planError && <p style={s.planMsg(true)}>⚠ {planError}</p>}
+          {plannedTasks.length > 0 && (
+            <>
+              <ol style={s.planList} aria-label="Planned tasks">
+                {plannedTasks.map((task, i) => (
+                  <li key={i} style={s.planItem(task.priority)}>
+                    <div style={{ flex: 1 }}>
+                      <p style={s.planItemTitle}>{task.title}</p>
+                      {task.detail && <p style={s.planItemDetail}>{task.detail}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      style={s.planAddBtn}
+                      onClick={() => void handleAddPlannedTask(task, i)}
+                      disabled={addedIndices.has(i)}
+                      aria-label={`Add task: ${task.title}`}
+                    >
+                      {addedIndices.has(i) ? "✓" : "+ Add"}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <div style={s.planAddAllRow}>
+                <button
+                  type="button"
+                  style={s.planAddBtn}
+                  onClick={() => void handleAddAllPlanned()}
+                >
+                  + Add All
+                </button>
+              </div>
+            </>
+          )}
+        </section>
       )}
     </section>
   );

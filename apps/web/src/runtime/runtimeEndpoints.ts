@@ -410,6 +410,9 @@ export const buildAnalyzerVideoUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
 export const buildAnalyzerItemUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl(`/api/analyzer/${encodeURIComponent(id)}`, runtimeBaseUrl);
 
+export const buildAnalyzerChatUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/analyzer/${encodeURIComponent(id)}/chat`, runtimeBaseUrl);
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 
@@ -620,3 +623,6 @@ export const buildSkillsRunUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/skills/run";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/skills/run");
 };
+
+export const buildTasksPlanUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/tasks/plan", runtimeBaseUrl);

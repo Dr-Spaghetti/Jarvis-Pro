@@ -37,6 +37,7 @@ import {
   handleBrainstormIdeasRoute,
 } from "./brainstormRoutes";
 import {
+  handleAnalyzerChatRoute,
   handleAnalyzerImageRoute,
   handleAnalyzerItemRoute,
   handleAnalyzerListRoute,
@@ -102,6 +103,7 @@ import {
   readHeaderValue,
 } from "./security";
 import { handleSkillsRunRoute } from "./skillsRoutes";
+import { handleTaskPlanRoute } from "./taskPlanRoutes";
 import { handleTokenTelemetryRoute } from "./telemetryRoutes";
 import {
   handleTerminalActionRoute,
@@ -208,6 +210,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleAnalyzerListRoute,
       handleAnalyzerImageRoute,
       handleAnalyzerVideoRoute,
+      handleAnalyzerChatRoute,
       handleAnalyzerItemRoute,
     ],
   ],
@@ -235,6 +238,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ],
   ["arsenal", [handleArsenalListRoute, handleArsenalDeployRoute]],
   ["skills", [handleSkillsRunRoute]],
+  ["tasks", [handleTaskPlanRoute]],
   ["terminal-snapshots", [handleTerminalSnapshotsRoute]],
   ["codex", [handleCodexUsageRoute]],
   ["claude", [handleClaudeUsageRoute]],

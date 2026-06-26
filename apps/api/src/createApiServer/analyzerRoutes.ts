@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 
 import type { IncomingMessage } from "node:http";
 import type { ApiRouteHandler } from "./routeHelpers";
-import { writeJson, writeMethodNotAllowed } from "./routeHelpers";
+import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
 
 // ─── storage helpers ─────────────────────────────────────────────────────────
 
@@ -742,5 +742,140 @@ export const handleAnalyzerItemRoute: ApiRouteHandler = async ({
     return true;
   }
   writeJson(response, 200, record, corsOrigin);
+  return true;
+};
+
+// ─── Analysis Chat ────────────────────────────────────────────────────────────
+
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
+const buildAnalysisContext = (record: AnalysisRecord): string => {
+  const { meta, result } = record;
+  if (!result) return `Analyzed ${meta.type}: ${meta.filename}. No result data available.`;
+
+  if (meta.type === "image") {
+    const img = result as ImageBreakdown;
+    return [
+      `Image analysis of "${meta.filename}" (via ${img.provider}):`,
+      `Objects: ${img.objects || "none"}`,
+      `People: ${img.people || "none"}`,
+      `Scene: ${img.scene || "unknown"}`,
+      `Text on image: ${img.text_on_image || "none"}`,
+      `Composition: ${img.composition || ""}`,
+      `Style: ${img.style || ""}`,
+      `Contextual cues: ${img.contextual_cues || ""}`,
+    ].join("\n");
+  }
+
+  const vid = result as VideoAnalysisResult;
+  const timelineSnippet = vid.timeline
+    .slice(0, 20)
+    .map((e) => {
+      const t = `${String(Math.floor(e.time_start / 60)).padStart(2, "0")}:${String(Math.floor(e.time_start % 60)).padStart(2, "0")}`;
+      const parts: string[] = [];
+      if (e.visual) parts.push(e.visual);
+      if (e.spoken) parts.push(`"${e.spoken}"`);
+      return `${t} — ${parts.join(" | ")}`;
+    })
+    .join("\n");
+
+  return [
+    `Video analysis of "${meta.filename}":`,
+    `Duration: ${vid.scenes.length} scenes, ${vid.transcript.length} transcript segments`,
+    timelineSnippet || "No timeline data.",
+  ].join("\n");
+};
+
+export const handleAnalyzerChatRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
+  const match = /^\/api\/analyzer\/([^/]+)\/chat$/.exec(requestUrl.pathname);
+  if (!match) return false;
+  const id = match[1] ?? "";
+  if (request.method !== "POST") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!anthropicKey) {
+    writeJson(response, 503, { error: "ANTHROPIC_API_KEY is required for Analysis Chat." }, corsOrigin);
+    return true;
+  }
+
+  const record = readAnalysis(id);
+  if (!record) {
+    writeJson(response, 404, { error: "Analysis not found." }, corsOrigin);
+    return true;
+  }
+
+  const bodyResult = await readJsonBodyOrWriteError(request, response, corsOrigin);
+  if (!bodyResult.ok) return true;
+  const bodyPayload = (typeof bodyResult.payload === "object" && bodyResult.payload !== null
+    ? bodyResult.payload
+    : {}) as Record<string, unknown>;
+
+  const message = typeof bodyPayload.message === "string" ? bodyPayload.message.trim() : "";
+  if (!message) {
+    writeJson(response, 400, { error: "message is required." }, corsOrigin);
+    return true;
+  }
+
+  const rawHistory = Array.isArray(bodyPayload.history) ? (bodyPayload.history as unknown[]) : [];
+  const history: ChatMessage[] = rawHistory
+    .filter(
+      (h): h is Record<string, unknown> =>
+        typeof h === "object" && h !== null && !Array.isArray(h),
+    )
+    .filter((h) => (h.role === "user" || h.role === "assistant") && typeof h.content === "string")
+    .map((h) => ({ role: h.role as "user" | "assistant", content: String(h.content) }));
+
+  const systemContext = buildAnalysisContext(record);
+  const messages: ChatMessage[] = [...history, { role: "user", content: message }];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45_000);
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        system: `You are a visual/media analysis assistant. The user has analyzed a piece of media and wants to discuss the findings. Here is the analysis context:\n\n${systemContext}\n\nAnswer questions about this media thoughtfully and concisely.`,
+        messages,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => `HTTP ${res.status}`);
+      writeJson(response, 502, { error: `Claude API error: ${errText}` }, corsOrigin);
+      return true;
+    }
+
+    const data = (await res.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+    };
+    const reply = data.content?.find((b) => b.type === "text")?.text ?? "";
+    writeJson(response, 200, { reply }, corsOrigin);
+  } catch (e) {
+    writeJson(
+      response,
+      500,
+      { error: e instanceof Error ? e.message : "Chat request failed." },
+      corsOrigin,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
   return true;
 };

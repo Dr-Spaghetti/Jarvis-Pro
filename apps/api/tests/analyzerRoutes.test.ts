@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  handleAnalyzerChatRoute,
   handleAnalyzerImageRoute,
   handleAnalyzerItemRoute,
   handleAnalyzerListRoute,
@@ -435,5 +436,101 @@ describe("mergeTimeline logic", () => {
     expect(json.result.scenes[0].description).toBe("Intro shot");
     // Timeline should exist (even with no transcript)
     expect(Array.isArray(json.result.timeline)).toBe(true);
+  });
+});
+
+// ─── Analysis Chat route ───────────────────────────────────────────────────────
+
+describe("handleAnalyzerChatRoute", () => {
+  it("returns not-handled for non-chat paths", async () => {
+    const { handled } = await call(handleAnalyzerChatRoute, "POST", "/api/analyzer/analysis-123");
+    expect(handled).toBe(false);
+  });
+
+  it("returns 405 for non-POST", async () => {
+    const { handled, status } = await call(handleAnalyzerChatRoute, "GET", "/api/analyzer/analysis-123/chat");
+    expect(handled).toBe(true);
+    expect(status).toBe(405);
+  });
+
+  it("returns 503 when ANTHROPIC_API_KEY is missing", async () => {
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+
+    const body = Buffer.from(JSON.stringify({ message: "What is this?" }));
+    const { handled, status, json } = await call(
+      handleAnalyzerChatRoute,
+      "POST",
+      "/api/analyzer/analysis-123/chat",
+      body,
+      { "content-type": "application/json" },
+    );
+    expect(handled).toBe(true);
+    expect(status).toBe(503);
+    expect(json.error).toMatch(/ANTHROPIC_API_KEY/);
+
+    process.env.ANTHROPIC_API_KEY = saved;
+  });
+
+  it("returns 404 for unknown analysis id", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    const body = Buffer.from(JSON.stringify({ message: "What is this?" }));
+    const { handled, status } = await call(
+      handleAnalyzerChatRoute,
+      "POST",
+      "/api/analyzer/unknown-id-9999/chat",
+      body,
+      { "content-type": "application/json" },
+    );
+    expect(handled).toBe(true);
+    expect(status).toBe(404);
+  });
+
+  it("returns chat reply for a valid analysis and message", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    // First create an analysis
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{
+          content: { parts: [{ text: JSON.stringify({
+            objects: "coffee mug", people: "none", scene: "desk", text_on_image: "none",
+            composition: "close-up", style: "photo", contextual_cues: "morning",
+          })}] },
+        }],
+      }),
+    });
+
+    const createResult = await call(
+      handleAnalyzerImageRoute,
+      "POST",
+      "/api/analyzer/image",
+      Buffer.from("fake-jpg"),
+      { "content-type": "image/jpeg", "x-filename": "mug.jpg" },
+    );
+    const analysisId = createResult.json.id as string;
+
+    // Now chat about it
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ type: "text", text: "The image shows a coffee mug on a desk, likely a morning workspace setup." }],
+      }),
+    });
+
+    const chatBody = Buffer.from(JSON.stringify({ message: "What does this tell you about the workspace?" }));
+    const { handled, status, json } = await call(
+      handleAnalyzerChatRoute,
+      "POST",
+      `/api/analyzer/${analysisId}/chat`,
+      chatBody,
+      { "content-type": "application/json" },
+    );
+    expect(handled).toBe(true);
+    expect(status).toBe(200);
+    expect(json.reply).toContain("coffee mug");
   });
 });
