@@ -177,9 +177,11 @@ const synthesizeWithPiper = (text: string): Promise<Buffer | null> =>
     }
   });
 
-// Available server-side TTS providers, best-first. The frontend offers these
-// (plus always-available "browser") and falls back to browser speech on failure.
-const availableTtsProviders = (): string[] => {
+// All supported TTS providers — always shown in the UI so users know what's available.
+const ALL_TTS_PROVIDERS = ["openai", "deepgram", "elevenlabs", "piper", "browser"] as const;
+
+// Providers that are actually configured (have the required API keys / binaries).
+const configuredTtsProviders = (): string[] => {
   const providers: string[] = [];
   if (getOpenAiApiKey()) providers.push("openai");
   if (getDeepgramApiKey()) providers.push("deepgram");
@@ -241,7 +243,7 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const ttsProviders = availableTtsProviders();
+  const configuredTts = configuredTtsProviders();
 
   // Which brain answers questions, so the UI can show it's wired (and confirm a
   // fresh build is actually running). Order mirrors handleBrainAskRoute:
@@ -274,10 +276,13 @@ export const handleVoiceConfigRoute: ApiRouteHandler = async ({
         whisperSupported: getOpenAiApiKey() !== null,
       },
       tts: {
-        // `configured` = a server (non-browser) provider is available.
-        configured: ttsProviders.some((provider) => provider !== "browser"),
-        providers: ttsProviders,
-        recommended: ttsProviders[0],
+        // `configured` = at least one server (non-browser) provider has keys set.
+        configured: configuredTts.some((provider) => provider !== "browser"),
+        // All supported providers — UI always shows these so users know what's available.
+        providers: [...ALL_TTS_PROVIDERS],
+        // Only the providers that have API keys / binaries configured right now.
+        configuredProviders: configuredTts,
+        recommended: configuredTts[0],
         fallback: "browser-speech-synthesis",
       },
       brain: {
@@ -467,7 +472,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
     ? (requested as TtsProvider)
     : null;
   if (!provider) {
-    const firstServer = availableTtsProviders().find((entry) => entry !== "browser");
+    const firstServer = configuredTtsProviders().find((entry) => entry !== "browser");
     provider = (firstServer as TtsProvider | undefined) ?? null;
   }
   if (!provider) {
@@ -542,7 +547,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       method: "POST",
       headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: getOpenAiTtsModel(),
+        model: readString(payload.model) ?? getOpenAiTtsModel(),
         voice: readString(payload.voice) ?? getOpenAiTtsVoice(),
         input: text,
         response_format: "mp3",

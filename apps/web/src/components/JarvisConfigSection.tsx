@@ -13,6 +13,7 @@ import {
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
   buildVoiceConfigUrl,
+  buildVoiceSpeakUrl,
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
@@ -26,7 +27,7 @@ type JournalEntry = {
 type VoiceConfig = {
   wake: { phrases: string[] };
   transcription: { configured: boolean; defaultModel: string; models: string[] };
-  tts: { configured: boolean; providers?: string[] };
+  tts: { configured: boolean; providers?: string[]; configuredProviders?: string[] };
   brain?: { provider: string; webSearch: boolean };
 };
 
@@ -40,6 +41,35 @@ const LS_KEYS = {
 } as const;
 
 const OPENAI_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
+const OPENAI_TTS_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"] as const;
+
+const DEEPGRAM_VOICES = [
+  { id: "aura-2-thalia-en", name: "Thalia — Warm female (Aura 2)" },
+  { id: "aura-2-luna-en", name: "Luna — Soft female (Aura 2)" },
+  { id: "aura-2-electra-en", name: "Electra — Expressive female (Aura 2)" },
+  { id: "aura-2-selene-en", name: "Selene — Clear female (Aura 2)" },
+  { id: "aura-2-minerva-en", name: "Minerva — Confident female (Aura 2)" },
+  { id: "aura-2-orpheus-en", name: "Orpheus — Professional male (Aura 2)" },
+  { id: "aura-2-odysseus-en", name: "Odysseus — Deep male (Aura 2)" },
+  { id: "aura-2-zeus-en", name: "Zeus — Powerful male (Aura 2)" },
+  { id: "aura-2-hermes-en", name: "Hermes — Casual male (Aura 2)" },
+  { id: "aura-asteria-en", name: "Asteria — Warm female (classic)" },
+  { id: "aura-orion-en", name: "Orion — Deep male (classic)" },
+  { id: "aura-helios-en", name: "Helios — British male (classic)" },
+] as const;
+
+const ELEVENLABS_PRESET_VOICES = [
+  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel — Calm American female" },
+  { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi — Warm American female" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Bella — Soft British female" },
+  { id: "ErXwobaYiN019PkySvjV", name: "Antoni — Deep American male" },
+  { id: "VR6AewLTigWG4xSOukaG", name: "Arnold — Confident American male" },
+  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam — Neutral American male" },
+  { id: "yoZ06aMxZJJ28mfd3POQ", name: "Sam — Raspy American male" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh — Deep American male" },
+  { id: "2EiwWnXFnvU5JabPnv8n", name: "Clyde — War veteran male" },
+  { id: "GBv7mTt0atIp3Br8iCZE", name: "Thomas — Calm British male" },
+] as const;
 
 const lsGet = (key: string) => {
   try {
@@ -61,17 +91,25 @@ type VoiceSettingsPanelProps = { voiceConfig: VoiceConfig };
 
 const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   const [ttsProvider, setTtsProvider] = useState(() => lsGet(LS_KEYS.ttsProvider));
-  const [deepgramVoice, setDeepgramVoice] = useState(() => lsGet(LS_KEYS.deepgramVoice));
+  const [deepgramVoice, setDeepgramVoice] = useState(
+    () => lsGet(LS_KEYS.deepgramVoice) || "aura-2-thalia-en",
+  );
   const [voiceModel, setVoiceModel] = useState(
     () => lsGet(LS_KEYS.voiceModel) || voiceConfig.transcription.defaultModel,
   );
   const [chatModel, setChatModel] = useState(() => lsGet(LS_KEYS.chatModel));
   const [openaiVoice, setOpenaiVoice] = useState(() => lsGet(LS_KEYS.openaiVoice) || "alloy");
+  const [openaiTtsModel, setOpenaiTtsModel] = useState<string>("gpt-4o-mini-tts");
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState(() =>
     lsGet(LS_KEYS.elevenlabsVoiceId),
   );
+  const [elevenlabsPreset, setElevenlabsPreset] = useState(
+    () => lsGet(LS_KEYS.elevenlabsVoiceId) || ELEVENLABS_PRESET_VOICES[0].id,
+  );
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {
     void apiFetch(buildBrainModelsUrl())
@@ -84,8 +122,11 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
       .catch(() => {});
   }, []);
 
-  const providers = voiceConfig.tts.providers ?? [];
-  const effectiveProvider = ttsProvider || (providers[0] ?? "browser");
+  const allProviders = voiceConfig.tts.providers ?? ["openai", "deepgram", "elevenlabs", "piper", "browser"];
+  const configuredProviders = voiceConfig.tts.configuredProviders ?? [];
+  const isProviderConfigured = (p: string) => configuredProviders.includes(p);
+  const effectiveProvider =
+    ttsProvider || configuredProviders.find((p) => p !== "browser") || "browser";
 
   const save = () => {
     lsSet(LS_KEYS.ttsProvider, ttsProvider);
@@ -93,9 +134,41 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
     lsSet(LS_KEYS.voiceModel, voiceModel);
     lsSet(LS_KEYS.chatModel, chatModel);
     lsSet(LS_KEYS.openaiVoice, openaiVoice);
-    lsSet(LS_KEYS.elevenlabsVoiceId, elevenlabsVoiceId);
+    lsSet(LS_KEYS.elevenlabsVoiceId, elevenlabsVoiceId || elevenlabsPreset);
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
+  };
+
+  const previewVoice = async () => {
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const body: Record<string, string> = {
+        text: "Jarvis online. Voice systems ready.",
+        provider: effectiveProvider,
+      };
+      if (effectiveProvider === "openai") { body.voice = openaiVoice; body.model = openaiTtsModel; }
+      if (effectiveProvider === "deepgram") body.model = deepgramVoice;
+      if (effectiveProvider === "elevenlabs") body.voiceId = elevenlabsVoiceId || elevenlabsPreset;
+      const res = await apiFetch(buildVoiceSpeakUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string };
+        throw new Error(err.error ?? "Preview failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : "Preview failed");
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const rowStyle = { display: "flex", flexDirection: "column" as const, gap: 4, marginBottom: 14 };
@@ -142,8 +215,8 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         >
           {statusDot(voiceConfig.transcription.configured)}STT:{" "}
           {voiceConfig.transcription.configured
-            ? `${voiceConfig.transcription.defaultModel}`
-            : "needs OPENAI_API_KEY"}
+            ? voiceConfig.transcription.defaultModel
+            : "needs DEEPGRAM_API_KEY or OPENAI_API_KEY"}
         </span>
         <span
           style={{
@@ -153,7 +226,7 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           }}
         >
           {statusDot(voiceConfig.tts.configured)}TTS:{" "}
-          {voiceConfig.tts.configured ? providers.join(", ") : "browser fallback"}
+          {voiceConfig.tts.configured ? configuredProviders.filter((p) => p !== "browser").join(", ") : "browser fallback"}
         </span>
         <span
           style={{ fontSize: 10, fontFamily: "var(--font-display)", color: "rgba(57,255,20,0.5)" }}
@@ -162,106 +235,170 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         </span>
       </div>
 
-      {/* TTS Provider */}
-      {providers.length > 0 && (
-        <div style={rowStyle}>
-          <label htmlFor="voice-tts-provider" style={labelStyle}>
-            TTS Provider
-          </label>
-          <select
-            id="voice-tts-provider"
-            style={selectStyle}
-            value={effectiveProvider}
-            onChange={(e) => setTtsProvider(e.target.value)}
-          >
-            {providers.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-            <option value="browser">browser (fallback)</option>
-          </select>
-        </div>
-      )}
+      {/* TTS Provider — always shown with all providers */}
+      <div style={rowStyle}>
+        <label htmlFor="voice-tts-provider" style={labelStyle}>
+          TTS Provider
+        </label>
+        <select
+          id="voice-tts-provider"
+          style={selectStyle}
+          value={effectiveProvider}
+          onChange={(e) => setTtsProvider(e.target.value)}
+        >
+          {allProviders.map((p) => (
+            <option key={p} value={p}>
+              {p === "browser"
+                ? "browser (built-in, no key needed)"
+                : isProviderConfigured(p)
+                  ? `${p} ✓`
+                  : `${p} — needs key`}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {/* Deepgram voice model — shown only when deepgram is selected */}
+      {/* Deepgram — voice dropdown */}
       {effectiveProvider === "deepgram" && (
         <div style={rowStyle}>
           <label htmlFor="voice-deepgram-model" style={labelStyle}>
-            Deepgram Voice Model
-          </label>
-          <input
-            id="voice-deepgram-model"
-            type="text"
-            style={{ ...selectStyle, border: "1px solid rgba(57,255,20,0.25)" }}
-            value={deepgramVoice}
-            placeholder="e.g. aura-asteria-en"
-            onChange={(e) => setDeepgramVoice(e.target.value)}
-          />
-          <span
-            style={{
-              fontSize: 9,
-              color: "rgba(57,255,20,0.28)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            Leave blank to use server default
-          </span>
-        </div>
-      )}
-
-      {/* OpenAI TTS voice — shown only when openai is selected */}
-      {effectiveProvider === "openai" && (
-        <div style={rowStyle}>
-          <label htmlFor="voice-openai-voice" style={labelStyle}>
-            OpenAI TTS Voice
+            Deepgram Voice
           </label>
           <select
-            id="voice-openai-voice"
+            id="voice-deepgram-model"
             style={selectStyle}
-            value={openaiVoice}
-            onChange={(e) => setOpenaiVoice(e.target.value)}
+            value={deepgramVoice}
+            onChange={(e) => setDeepgramVoice(e.target.value)}
           >
-            {OPENAI_VOICES.map((v) => (
-              <option key={v} value={v}>
-                {v}
+            {DEEPGRAM_VOICES.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
               </option>
             ))}
           </select>
         </div>
       )}
 
-      {/* ElevenLabs voice ID — shown only when elevenlabs is selected */}
+      {/* OpenAI TTS — voice + model dropdowns */}
+      {effectiveProvider === "openai" && (
+        <>
+          <div style={rowStyle}>
+            <label htmlFor="voice-openai-voice" style={labelStyle}>
+              OpenAI TTS Voice
+            </label>
+            <select
+              id="voice-openai-voice"
+              style={selectStyle}
+              value={openaiVoice}
+              onChange={(e) => setOpenaiVoice(e.target.value)}
+            >
+              {OPENAI_VOICES.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={rowStyle}>
+            <label htmlFor="voice-openai-tts-model" style={labelStyle}>
+              OpenAI TTS Model
+            </label>
+            <select
+              id="voice-openai-tts-model"
+              style={selectStyle}
+              value={openaiTtsModel}
+              onChange={(e) => setOpenaiTtsModel(e.target.value)}
+            >
+              {OPENAI_TTS_MODELS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* ElevenLabs — preset dropdown + optional custom ID */}
       {effectiveProvider === "elevenlabs" && (
-        <div style={rowStyle}>
-          <label htmlFor="voice-elevenlabs-id" style={labelStyle}>
-            ElevenLabs Voice ID
-          </label>
-          <input
-            id="voice-elevenlabs-id"
-            type="text"
-            style={{ ...selectStyle, border: "1px solid rgba(57,255,20,0.25)" }}
-            value={elevenlabsVoiceId}
-            placeholder="e.g. EXAVITQu4vr4xnSDxMaL"
-            onChange={(e) => setElevenlabsVoiceId(e.target.value)}
-          />
-          <span
-            style={{
-              fontSize: 9,
-              color: "rgba(57,255,20,0.28)",
-              fontFamily: "var(--font-display)",
-            }}
+        <>
+          <div style={rowStyle}>
+            <label htmlFor="voice-elevenlabs-preset" style={labelStyle}>
+              ElevenLabs Voice
+            </label>
+            <select
+              id="voice-elevenlabs-preset"
+              style={selectStyle}
+              value={elevenlabsPreset}
+              onChange={(e) => {
+                setElevenlabsPreset(e.target.value);
+                if (!elevenlabsVoiceId) setElevenlabsVoiceId("");
+              }}
+            >
+              {ELEVENLABS_PRESET_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={rowStyle}>
+            <label htmlFor="voice-elevenlabs-id" style={labelStyle}>
+              Custom Voice ID (overrides preset)
+            </label>
+            <input
+              id="voice-elevenlabs-id"
+              type="text"
+              style={{ ...selectStyle, border: "1px solid rgba(57,255,20,0.25)" }}
+              value={elevenlabsVoiceId}
+              placeholder="e.g. EXAVITQu4vr4xnSDxMaL"
+              onChange={(e) => setElevenlabsVoiceId(e.target.value)}
+            />
+            <span
+              style={{ fontSize: 9, color: "rgba(57,255,20,0.28)", fontFamily: "var(--font-display)" }}
+            >
+              Leave blank to use the preset above
+            </span>
+          </div>
+        </>
+      )}
+
+      {/* Piper note */}
+      {effectiveProvider === "piper" && (
+        <p style={{ fontSize: 10, color: "rgba(57,255,20,0.45)", fontFamily: "var(--font-display)", margin: "0 0 14px" }}>
+          Piper voice is configured via{" "}
+          <code style={{ background: "rgba(57,255,20,0.07)", padding: "0 4px" }}>PIPER_BIN</code>{" "}
+          +{" "}
+          <code style={{ background: "rgba(57,255,20,0.07)", padding: "0 4px" }}>PIPER_MODEL</code>{" "}
+          env vars.
+        </p>
+      )}
+
+      {/* Preview button */}
+      {effectiveProvider !== "browser" && (
+        <div style={{ marginBottom: 14 }}>
+          <button
+            type="button"
+            className="jarvis-btn"
+            onClick={() => { void previewVoice(); }}
+            disabled={previewLoading}
+            style={{ fontSize: 10, padding: "4px 12px" }}
           >
-            Voice ID from your ElevenLabs account
-          </span>
+            {previewLoading ? "▶ playing…" : "▶ Preview voice"}
+          </button>
+          {previewError && (
+            <span style={{ fontSize: 10, color: "rgba(255,80,80,0.8)", fontFamily: "var(--font-display)", marginLeft: 10 }}>
+              {previewError}
+            </span>
+          )}
         </div>
       )}
 
-      {/* Transcription model */}
-      {voiceConfig.transcription.configured && voiceConfig.transcription.models.length > 1 && (
+      {/* Transcription model — always shown */}
+      {voiceConfig.transcription.models.length > 1 && (
         <div style={rowStyle}>
           <label htmlFor="voice-transcription-model" style={labelStyle}>
-            Transcription Model (Whisper)
+            Transcription Model
           </label>
           <select
             id="voice-transcription-model"
@@ -289,11 +426,14 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         >
           ⚠ Set{" "}
           <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 4px" }}>
+            DEEPGRAM_API_KEY
+          </code>{" "}
+          or{" "}
+          <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 4px" }}>
             OPENAI_API_KEY
           </code>{" "}
           in <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 4px" }}>.env</code> to
-          enable voice transcription (Whisper). The tap-to-talk button requires this to process
-          speech.
+          enable voice transcription. The tap-to-talk button uses the browser mic as a fallback.
         </p>
       )}
 
