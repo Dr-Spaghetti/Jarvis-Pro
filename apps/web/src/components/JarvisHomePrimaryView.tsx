@@ -991,7 +991,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     async (audio: Blob) => {
       const model = voiceModel ?? voiceConfig?.transcription.defaultModel ?? null;
       if (!voiceConfig?.transcription.configured) {
-        setVoiceError("Set OPENAI_API_KEY to enable Whisper transcription");
+        setVoiceError("Set DEEPGRAM_API_KEY or OPENAI_API_KEY to enable voice commands");
         setVoiceStatus("Transcription unavailable");
         return;
       }
@@ -1043,6 +1043,53 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   const startCommandRecording = useCallback(async () => {
     if (isMutedRef.current) {
+      return;
+    }
+    // No server-side transcription key → use browser SpeechRecognition as fallback.
+    if (!voiceConfig?.transcription.configured) {
+      const Recognition = getSpeechRecognitionConstructor();
+      if (!Recognition) {
+        setVoiceError("Set DEEPGRAM_API_KEY or OPENAI_API_KEY to enable voice commands");
+        return;
+      }
+      setVoiceError(null);
+      setVoiceStatus("Listening for command");
+      isRecordingCommandRef.current = true;
+      setIsRecordingCommand(true);
+      const recognition = new Recognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+      recognition.onresult = (event) => {
+        const parts: string[] = [];
+        for (let i = 0; i < event.results.length; i++) {
+          const t = event.results[i]?.[0]?.transcript;
+          if (t) parts.push(t);
+        }
+        const transcript = parts.join(" ").trim();
+        isRecordingCommandRef.current = false;
+        setIsRecordingCommand(false);
+        if (transcript) {
+          setVoiceStatus("Command received");
+          void runVoiceIntent(transcript).finally(() => maybeContinueLoop());
+        } else {
+          setVoiceError("No speech detected");
+          setVoiceStatus("Voice idle");
+          maybeContinueLoop();
+        }
+      };
+      recognition.onerror = () => {
+        isRecordingCommandRef.current = false;
+        setIsRecordingCommand(false);
+        setVoiceError("Transcription failed — try again");
+        setVoiceStatus("Voice idle");
+        maybeContinueLoop();
+      };
+      recognition.onend = () => {
+        isRecordingCommandRef.current = false;
+        setIsRecordingCommand(false);
+      };
+      recognition.start();
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -1156,7 +1203,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     } catch {
       // Web Audio unavailable — the hard-cap timer handles stopping.
     }
-  }, [maybeContinueLoop, stopCommandRecording, transcribeCommandAudio]);
+  }, [maybeContinueLoop, runVoiceIntent, stopCommandRecording, transcribeCommandAudio, voiceConfig]);
 
   // Keep the loop's re-arm handle pointed at the latest startCommandRecording
   // (avoids a circular useCallback dependency with transcribeCommandAudio).
