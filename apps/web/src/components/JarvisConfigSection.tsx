@@ -636,35 +636,24 @@ export const JarvisConfigSection = () => {
 
   return (
     <section className="settings-panel" aria-label="Jarvis interface">
-      <header className="settings-panel-header">
-        <h2>JARVIS INTERFACE</h2>
-        <p>Brain, voice, memory, and activity panels — functional controls for Jarvis.</p>
-      </header>
-
-      {/* ── Status tiles ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-          gap: 10,
-          marginBottom: 24,
-        }}
-      >
-        {[
-          { label: "Skills", value: skillCount ?? "—" },
-          { label: "Agents", value: agentCount ?? "—" },
-          { label: "Memories", value: memoryItems.length || "—" },
-          { label: "Activity", value: journal.length || "—" },
-        ].map(({ label, value }) => (
-          <div key={label} className="jarvis-tile" style={{ cursor: "default" }}>
-            <div className="jarvis-tile-label">{label}</div>
-            <div className="jarvis-tile-value">{value}</div>
+      {/* ── Sphere ── */}
+      <div style={{ position: "relative", height: 220, overflow: "hidden", marginBottom: 20 }}>
+        <div
+          className="nc-core"
+          style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+          aria-hidden="true"
+        >
+          <div className="nc-core-ring" />
+          <div className="nc-core-ring nc-core-ring--mid" />
+          <div className="nc-core-ring nc-core-ring--inner" />
+          <div className="nc-core-orb">
+            <div className="nc-core-center-dot" />
           </div>
-        ))}
+        </div>
       </div>
 
       {/* ── Brain ── */}
-      <details open>
+      <details>
         <summary
           style={{
             color: "var(--gold)",
