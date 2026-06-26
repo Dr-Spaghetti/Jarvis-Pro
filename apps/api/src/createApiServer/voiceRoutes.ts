@@ -181,12 +181,13 @@ const synthesizeWithPiper = (text: string): Promise<Buffer | null> =>
 const ALL_TTS_PROVIDERS = ["openai", "deepgram", "elevenlabs", "piper", "browser"] as const;
 
 // Providers that are actually configured (have the required API keys / binaries).
+// Order: Deepgram first (fast, reliable), then ElevenLabs, Piper, OpenAI, browser.
 const configuredTtsProviders = (): string[] => {
   const providers: string[] = [];
-  if (getOpenAiApiKey()) providers.push("openai");
   if (getDeepgramApiKey()) providers.push("deepgram");
   if (getElevenLabsApiKey() && getElevenLabsVoiceId()) providers.push("elevenlabs");
   if (getPiperConfig()) providers.push("piper");
+  if (getOpenAiApiKey()) providers.push("openai");
   providers.push("browser");
   return providers;
 };

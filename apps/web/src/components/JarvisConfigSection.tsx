@@ -156,8 +156,9 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const err = (await res.json()) as { error?: string };
-        throw new Error(err.error ?? "Preview failed");
+        const err = (await res.json()) as { error?: string; detail?: string };
+        const detail = err.detail ? ` — ${err.detail.slice(0, 120)}` : "";
+        throw new Error((err.error ?? "Preview failed") + detail);
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
