@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "scheduled_automation_skill",
+      "label": "Scheduled Automation Skill",
+      "file_type": "document",
+      "source_file": "skills-catalog/scheduled-automation/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_windows_task_scheduler",
+      "label": "Windows Task Scheduler Automation",
+      "file_type": "concept",
+      "source_file": "skills-catalog/scheduled-automation/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "scheduled_automation_skill",
+      "target": "concept_windows_task_scheduler",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/scheduled-automation/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "scheduled_automation_skill",
+      "target": "concept_claude_code",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/scheduled-automation/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "scheduled_automation_skill",
+      "target": "obsidian_second_brain_skill",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "skills-catalog/scheduled-automation/SKILL.md",
+      "source_location": null,
+      "weight": 0.8
+    }
+  ],
+  "hyperedges": []
+}

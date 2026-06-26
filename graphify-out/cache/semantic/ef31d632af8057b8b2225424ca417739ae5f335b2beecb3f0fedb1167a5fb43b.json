@@ -1,0 +1,138 @@
+{
+  "nodes": [
+    {
+      "id": "docs_index_md",
+      "label": "docs/index.md",
+      "file_type": "document",
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "docs_index_md",
+      "target": "docs_mental_model_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_runtime_api_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_tentacles_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_working_todos_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_orchestrating_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_inter_agent_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_skills_catalog_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_api_ref_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_cli_ref_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_installation_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_quickstart_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_index_md",
+      "target": "docs_experimental_md",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/index.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

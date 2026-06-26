@@ -1,0 +1,49 @@
+{
+  "nodes": [
+    {
+      "id": "local_falcon_seo_skill",
+      "label": "Local Falcon SEO Skill",
+      "file_type": "document",
+      "source_file": "skills-catalog/local-falcon-seo/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_local_falcon_api",
+      "label": "Local Falcon API - Local SEO Data Source",
+      "file_type": "concept",
+      "source_file": "skills-catalog/local-falcon-seo/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "local_falcon_seo_skill",
+      "target": "concept_local_falcon_api",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/local-falcon-seo/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "local_falcon_seo_skill",
+      "target": "obsidian_second_brain_skill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "skills-catalog/local-falcon-seo/SKILL.md",
+      "source_location": null,
+      "weight": 0.9
+    }
+  ],
+  "hyperedges": []
+}

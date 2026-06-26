@@ -1,0 +1,236 @@
+{
+  "nodes": [
+    {
+      "id": "filesystem_layout_doc",
+      "label": "Filesystem Layout Reference",
+      "file_type": "document",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_tentacle",
+      "label": "Tentacle (Agent Context Domain)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_worktree",
+      "label": "Worktree (Execution Checkout)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_global_state",
+      "label": "Global Project State Directory",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_project_json",
+      "label": "project.json (Stable Project ID)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_tentacles_json",
+      "label": "tentacles.json (Terminal Registry)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_deck_json",
+      "label": "deck.json (Deck Presentation Metadata)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_transcripts",
+      "label": "Transcripts (JSONL Conversation Events)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_claude_code_skill",
+      "label": "Claude Code Skill (.claude/skills/)",
+      "file_type": "concept",
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_tentacle",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_worktree",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_global_state",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_project_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_tentacles_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_deck_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_transcripts",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_claude_code_skill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_tentacle",
+      "target": "concept_worktree",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "concept_tentacle",
+      "target": "concept_tentacles_json",
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_tentacle",
+      "target": "concept_global_state",
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "filesystem_layout_doc",
+      "target": "concept_project_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_project_json",
+      "target": "concept_global_state",
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/reference/filesystem-layout.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

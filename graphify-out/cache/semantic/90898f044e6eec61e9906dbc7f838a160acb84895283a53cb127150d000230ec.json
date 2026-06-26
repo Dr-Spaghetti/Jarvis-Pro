@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "id": "video_performance_analyzer_skill",
+      "label": "Video Performance Analyzer Skill",
+      "file_type": "document",
+      "source_file": "skills-catalog/video-performance-analyzer/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_gemini_api",
+      "label": "Google Gemini API",
+      "file_type": "concept",
+      "source_file": "skills-catalog/video-performance-analyzer/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "video_performance_analyzer_skill",
+      "target": "concept_gemini_api",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/video-performance-analyzer/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

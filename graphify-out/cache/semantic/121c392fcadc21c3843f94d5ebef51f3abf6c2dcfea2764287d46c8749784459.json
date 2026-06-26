@@ -1,0 +1,80 @@
+{
+  "nodes": [
+    {
+      "id": "core_agents_doc",
+      "label": "Core Package Guidelines (AGENTS.md)",
+      "file_type": "document",
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_core_package",
+      "label": "packages/core (Shared Domain Contract)",
+      "file_type": "concept",
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_ports_and_adapters",
+      "label": "Ports and Adapters Pattern",
+      "file_type": "concept",
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "core_agents_doc",
+      "target": "filesystem_layout_doc",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "core_agents_doc",
+      "target": "concept_core_package",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "core_agents_doc",
+      "target": "concept_ports_and_adapters",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_core_package",
+      "target": "concept_ports_and_adapters",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/AGENTS.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

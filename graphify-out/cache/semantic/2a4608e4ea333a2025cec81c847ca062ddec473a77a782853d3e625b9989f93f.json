@@ -1,0 +1,60 @@
+{
+  "nodes": [
+    {
+      "id": "credits_md",
+      "label": "CREDITS.md",
+      "file_type": "document",
+      "source_file": "CREDITS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "octogent_upstream",
+      "label": "Octogent (upstream project)",
+      "file_type": "rationale",
+      "source_file": "CREDITS.md",
+      "source_location": null,
+      "source_url": "https://github.com/hesamsheikh/octogent",
+      "captured_at": null,
+      "author": "Hesam Sheikh",
+      "contributor": null
+    },
+    {
+      "id": "rmskills_upstream",
+      "label": "rm-skills (upstream project)",
+      "file_type": "rationale",
+      "source_file": "CREDITS.md",
+      "source_location": null,
+      "source_url": "https://github.com/reymerekar7/rm-skills",
+      "captured_at": null,
+      "author": "reymerekar7",
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "credits_md",
+      "target": "octogent_upstream",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CREDITS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "credits_md",
+      "target": "rmskills_upstream",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CREDITS.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

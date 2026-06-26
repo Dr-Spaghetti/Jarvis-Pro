@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "id": "meta_prompt_generator_doc",
+      "label": "Meta Prompt Generator",
+      "file_type": "rationale",
+      "source_file": "prompts/meta-prompt-generator.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_seven_layer_architecture",
+      "label": "7-Layer Prompt Architecture",
+      "file_type": "concept",
+      "source_file": "prompts/meta-prompt-generator.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "meta_prompt_generator_doc",
+      "target": "concept_seven_layer_architecture",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "prompts/meta-prompt-generator.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

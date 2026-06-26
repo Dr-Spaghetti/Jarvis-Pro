@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "id": "preview_5_image",
+      "label": "OctoGent Code Intel View - Edit Frequency Treemap and Change Coupling",
+      "file_type": "image",
+      "source_file": "static/images/preview_5.jpg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "preview_5_image",
+      "target": "octogent_concept",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "static/images/preview_5.jpg",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

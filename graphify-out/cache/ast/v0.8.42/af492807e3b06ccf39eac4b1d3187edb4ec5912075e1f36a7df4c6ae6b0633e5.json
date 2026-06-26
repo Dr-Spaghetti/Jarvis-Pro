@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "c_users_nicks_octogent_skills_skills_catalog_twitter_reader_scripts_fetch_tweets_sh",
+      "label": "fetch_tweets.sh",
+      "file_type": "code",
+      "source_file": "skills-catalog/twitter-reader/scripts/fetch_tweets.sh",
+      "source_location": "L1",
+      "metadata": { "language": "bash", "kind": "file" }
+    },
+    {
+      "id": "c_users_nicks_octogent_skills_skills_catalog_twitter_reader_scripts_fetch_tweets_sh__entry",
+      "label": "fetch_tweets.sh script",
+      "file_type": "code",
+      "source_file": "skills-catalog/twitter-reader/scripts/fetch_tweets.sh",
+      "source_location": "L1",
+      "metadata": { "language": "bash", "kind": "bash_entrypoint" }
+    }
+  ],
+  "edges": [
+    {
+      "source": "c_users_nicks_octogent_skills_skills_catalog_twitter_reader_scripts_fetch_tweets_sh",
+      "target": "c_users_nicks_octogent_skills_skills_catalog_twitter_reader_scripts_fetch_tweets_sh__entry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "skills-catalog/twitter-reader/scripts/fetch_tweets.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "c_users_nicks_octogent_skills_skills_catalog_twitter_reader_scripts_fetch_tweets_sh",
+      "target": "dir_env",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "skills-catalog/twitter-reader/scripts/fetch_tweets.sh",
+      "source_location": "L10",
+      "weight": 1.0,
+      "context": "import"
+    }
+  ]
+}

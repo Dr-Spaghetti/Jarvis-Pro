@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "id": "meeting_notes_skill",
+      "label": "Meeting Notes Skill",
+      "file_type": "document",
+      "source_file": "skills-catalog/meeting-notes/SKILL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "meeting_notes_skill",
+      "target": "task_manager_skill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/meeting-notes/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "meeting_notes_skill",
+      "target": "obsidian_second_brain_skill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/meeting-notes/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "meeting_notes_skill",
+      "target": "concept_obsidian_vault",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "skills-catalog/meeting-notes/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": []
+}

@@ -1,0 +1,110 @@
+{
+  "nodes": [
+    {
+      "id": "docs_tentacles_md",
+      "label": "docs/concepts/tentacles.md",
+      "file_type": "document",
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_tentacle",
+      "label": "Tentacle (Core Concept)",
+      "file_type": "concept",
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_worktree",
+      "label": "Worktree (Git Isolation)",
+      "file_type": "concept",
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "docs_tentacles_md",
+      "target": "concept_tentacle",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_tentacles_md",
+      "target": "concept_worktree",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_tentacle",
+      "target": "concept_todo",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.95,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "concept_tentacle",
+      "target": "concept_worktree",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "concept_tentacle",
+      "target": "concept_terminal",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "app_api",
+      "target": "concept_tentacle",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "app_web",
+      "target": "concept_tentacle",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/concepts/tentacles.md",
+      "source_location": null,
+      "weight": 0.85
+    }
+  ],
+  "hyperedges": []
+}
