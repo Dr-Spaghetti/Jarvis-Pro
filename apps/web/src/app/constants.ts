@@ -10,7 +10,7 @@ export const PRIMARY_NAV_ITEMS = [
   { index: 9, label: "Jarvis HQ", icon: "◆" },
   { index: 1, label: "Agents", icon: "⬡" },
   { index: 2, label: "Arsenal", icon: "≡" },
-  { index: 3, label: "Surveillance", icon: "◉" },
+  { index: 3, label: "Analyzer", icon: "⬡" },
   { index: 4, label: "Tasks", icon: "◈" },
   { index: 5, label: "Monitor", icon: "▣" },
   { index: 6, label: "Convos", icon: "≋" },

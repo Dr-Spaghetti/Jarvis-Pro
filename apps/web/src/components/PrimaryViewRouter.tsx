@@ -3,6 +3,7 @@ import type { ComponentProps, ReactNode } from "react";
 import type { PrimaryNavIndex } from "../app/constants";
 import type { UseMonitorRuntimeResult } from "../app/hooks/useMonitorRuntime";
 import { ActivityPrimaryView } from "./ActivityPrimaryView";
+import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
 import { CanvasPrimaryView } from "./CanvasPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { DeckPrimaryView } from "./DeckPrimaryView";
@@ -57,7 +58,7 @@ export const PrimaryViewRouter = ({
   }
 
   if (activePrimaryNav === 3) {
-    return <ActivityPrimaryView {...activityPrimaryViewProps} />;
+    return <AnalyzerPrimaryView />;
   }
 
   if (activePrimaryNav === 4) {

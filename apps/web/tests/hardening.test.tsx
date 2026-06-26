@@ -157,33 +157,14 @@ describe("Hardening: integration paths", () => {
     });
   });
 
-  it("Activity Timeline renders journal entries after navigating to Activity", async () => {
-    const entries: JournalEntry[] = [
-      {
-        ts: "2026-06-10T08:00:00.000Z",
-        status: "ok",
-        skill: "deploy",
-        action: "Deployed to staging",
-        detail: null,
-      },
-      {
-        ts: "2026-06-10T09:00:00.000Z",
-        status: "warn",
-        skill: null,
-        action: "Vault sync warning",
-        detail: "slow response",
-      },
-    ];
-    mockRequests({ journalEntries: entries });
+  it("Analyzer view renders upload zone after navigating to Analyzer", async () => {
+    mockRequests();
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Surveillance (3)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Analyzer (3)" }));
 
-    const list = await screen.findByRole("list", { name: "Journal entries" });
-    expect(list).toBeInTheDocument();
-
-    expect(await screen.findByText("Deployed to staging")).toBeInTheDocument();
-    expect(screen.getByText("Vault sync warning")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Analyzer primary view")).toBeInTheDocument();
+    expect(screen.getByLabelText("Upload file for analysis")).toBeInTheDocument();
   });
 
   it("Settings view has a download link for the settings backup", async () => {

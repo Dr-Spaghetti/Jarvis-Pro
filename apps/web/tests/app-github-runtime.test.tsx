@@ -100,63 +100,17 @@ describe("App GitHub runtime views", () => {
     expect(sparkline?.getAttribute("points")).not.toBe("");
   });
 
-  it("renders the Activity view with the GitHub overview graph", async () => {
+  it("renders the Analyzer view when navigating to the Analyzer tab", async () => {
     mockGithubRuntimeRequests();
 
     const { container } = render(<App />);
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Surveillance (3)",
+        name: "Analyzer (3)",
       }),
     );
 
-    expect(await screen.findByLabelText("Activity primary view")).toBeInTheDocument();
-    const githubView = await screen.findByLabelText("GitHub primary view");
-    expect(within(githubView).getByText("hesamsheikh/octogent")).toBeInTheDocument();
-    expect(
-      within(githubView).getByRole("button", { name: "Refresh GitHub overview data" }),
-    ).toBeInTheDocument();
-    expect(within(githubView).getByText("Recent commits")).toBeInTheDocument();
-    expect(within(githubView).getByText("Showing last 50")).toBeInTheDocument();
-    expect(within(githubView).getByText("recent commit 1")).toBeInTheDocument();
-    expect(within(githubView).getByText("recent commit 50")).toBeInTheDocument();
-    expect(within(githubView).getAllByRole("listitem")).toHaveLength(50);
-
-    const graphPoint = container.querySelector(
-      ".github-overview-graph-point[aria-label='2026-02-27 · 8 commits']",
-    );
-    expect(graphPoint).not.toBeNull();
-    expect(container.querySelectorAll(".github-overview-graph-point")).toHaveLength(3);
-    fireEvent.mouseEnter(graphPoint as Element);
-
-    const hoverMeta = container.querySelector(".github-overview-graph-meta span");
-    expect(hoverMeta).not.toBeNull();
-    expect(hoverMeta).toHaveTextContent("2026-02-27 · 8 commits");
-
-    const graphSvg = container.querySelector(
-      ".github-overview-graph-surface svg",
-    ) as SVGElement | null;
-    expect(graphSvg).not.toBeNull();
-    if (!graphSvg) {
-      return;
-    }
-
-    vi.spyOn(graphSvg, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 40,
-      top: 40,
-      left: 100,
-      right: 740,
-      bottom: 220,
-      width: 640,
-      height: 180,
-      toJSON: () => ({}),
-    });
-
-    fireEvent.mouseMove(graphSvg, { clientX: 738 });
-    expect(hoverMeta).toHaveTextContent("2026-02-27 · 8 commits");
-    const graphTooltip = container.querySelector(".github-overview-graph-tooltip");
-    expect(graphTooltip).not.toBeNull();
-    expect(graphTooltip).toHaveTextContent("2026-02-27 · 8 commits");
+    expect(await screen.findByLabelText("Analyzer primary view")).toBeInTheDocument();
+    expect(screen.getByLabelText("Upload file for analysis")).toBeInTheDocument();
   });
 });

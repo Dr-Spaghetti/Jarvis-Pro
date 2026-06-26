@@ -398,6 +398,18 @@ export const buildBrainstormIdeaUrl = (id: string, runtimeBaseUrl = readRuntimeB
 export const buildBrainstormExpandUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl(`/api/brainstorm/ideas/${encodeURIComponent(id)}/expand`, runtimeBaseUrl);
 
+export const buildAnalyzerUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/analyzer", runtimeBaseUrl);
+
+export const buildAnalyzerImageUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/analyzer/image", runtimeBaseUrl);
+
+export const buildAnalyzerVideoUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/analyzer/video", runtimeBaseUrl);
+
+export const buildAnalyzerItemUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/analyzer/${encodeURIComponent(id)}`, runtimeBaseUrl);
+
 export const buildVoiceConfigUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/config", runtimeBaseUrl);
 

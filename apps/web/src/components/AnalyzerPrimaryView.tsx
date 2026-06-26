@@ -1,0 +1,541 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { apiFetch } from "../runtime/apiClient";
+import {
+  buildAnalyzerImageUrl,
+  buildAnalyzerItemUrl,
+  buildAnalyzerUrl,
+  buildAnalyzerVideoUrl,
+} from "../runtime/runtimeEndpoints";
+
+// ─── types ───────────────────────────────────────────────────────────────────
+
+type ImageBreakdown = {
+  provider: "gemini" | "claude";
+  objects: string;
+  people: string;
+  scene: string;
+  text_on_image: string;
+  composition: string;
+  style: string;
+  contextual_cues: string;
+};
+
+type VideoScene = { start: number; end: number; description: string };
+type TranscriptSegment = { start: number; end: number; transcript: string };
+type TimelineEntry = { time_start: number; time_end: number; visual: string; spoken: string };
+
+type VideoAnalysisResult = {
+  scenes: VideoScene[];
+  transcript: TranscriptSegment[];
+  timeline: TimelineEntry[];
+  ffmpeg_available: boolean;
+  gemini_available: boolean;
+  sampled?: boolean;
+  sample_note?: string;
+};
+
+type AnalysisMeta = {
+  id: string;
+  type: "image" | "video";
+  filename: string;
+  mimeType: string;
+  created: string;
+};
+
+type AnalysisRecord = {
+  meta: AnalysisMeta;
+  result: ImageBreakdown | VideoAnalysisResult | null;
+};
+
+// ─── styles ──────────────────────────────────────────────────────────────────
+
+const GREEN = "#39ff14";
+const DIM = "rgba(57,255,20,0.25)";
+const BORDER = "rgba(57,255,20,0.14)";
+const BORDER_DIM = "rgba(57,255,20,0.09)";
+
+const s = {
+  panel: {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    height: "100%",
+    background: "#000",
+    fontFamily: '"JetBrains Mono", "IBM Plex Mono", monospace',
+    minHeight: 0,
+    overflow: "hidden" as const,
+  },
+  hdr: {
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    padding: "10px 14px",
+    borderBottom: `1px solid ${BORDER}`,
+    flexShrink: 0,
+  },
+  hdrTitle: {
+    fontSize: 9,
+    letterSpacing: "0.28em",
+    textTransform: "uppercase" as const,
+    color: DIM,
+  },
+  hdrActions: { display: "flex" as const, gap: 8 },
+  smallBtn: {
+    background: "none",
+    border: `1px solid rgba(57,255,20,0.22)`,
+    color: "rgba(57,255,20,0.5)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 8,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "3px 8px",
+    cursor: "pointer",
+  },
+  body: {
+    display: "flex" as const,
+    flex: 1,
+    minHeight: 0,
+    overflow: "hidden" as const,
+  },
+  sidebar: {
+    width: 220,
+    flexShrink: 0,
+    borderRight: `1px solid ${BORDER_DIM}`,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    overflow: "hidden" as const,
+  },
+  sidebarHdr: {
+    padding: "8px 10px",
+    borderBottom: `1px solid ${BORDER_DIM}`,
+    fontSize: 8,
+    letterSpacing: "0.2em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.3)",
+    flexShrink: 0,
+  },
+  sidebarList: {
+    flex: 1,
+    overflowY: "auto" as const,
+    padding: "4px 0",
+  },
+  sidebarItem: (active: boolean) => ({
+    padding: "6px 10px",
+    cursor: "pointer",
+    background: active ? "rgba(57,255,20,0.07)" : "none",
+    borderLeft: `2px solid ${active ? GREEN : "transparent"}`,
+  }),
+  sidebarItemLabel: {
+    fontSize: 9,
+    color: "#b0ccb0",
+    overflow: "hidden" as const,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  sidebarItemMeta: { fontSize: 8, color: "rgba(57,255,20,0.3)", marginTop: 2 },
+  main: {
+    flex: 1,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    overflow: "hidden" as const,
+    minHeight: 0,
+  },
+  uploadZone: {
+    margin: "12px 14px",
+    border: `1px dashed rgba(57,255,20,0.3)`,
+    padding: "24px 16px",
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    flexShrink: 0,
+  },
+  uploadText: { fontSize: 10, color: "rgba(57,255,20,0.4)", textAlign: "center" as const },
+  uploadBtn: {
+    background: "rgba(57,255,20,0.08)",
+    border: `1px solid rgba(57,255,20,0.35)`,
+    color: GREEN,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "6px 16px",
+    cursor: "pointer",
+  },
+  resultArea: {
+    flex: 1,
+    overflowY: "auto" as const,
+    padding: "0 14px 14px",
+    minHeight: 0,
+  },
+  section: {
+    marginTop: 14,
+  },
+  sectionTitle: {
+    fontSize: 8,
+    letterSpacing: "0.22em",
+    textTransform: "uppercase" as const,
+    color: DIM,
+    marginBottom: 6,
+    borderBottom: `1px solid ${BORDER_DIM}`,
+    paddingBottom: 4,
+  },
+  field: {
+    display: "flex" as const,
+    gap: 8,
+    marginBottom: 6,
+    flexWrap: "wrap" as const,
+  },
+  fieldLabel: {
+    fontSize: 8,
+    color: "rgba(57,255,20,0.4)",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    minWidth: 90,
+    flexShrink: 0,
+  },
+  fieldValue: {
+    fontSize: 10,
+    color: "#c0dcc0",
+    flex: 1,
+    lineHeight: 1.5,
+    wordBreak: "break-word" as const,
+  },
+  timelineEntry: {
+    background: "#050705",
+    border: `1px solid ${BORDER_DIM}`,
+    borderLeft: `2px solid rgba(57,255,20,0.2)`,
+    padding: "6px 10px",
+    marginBottom: 6,
+  },
+  timelineTime: { fontSize: 8, color: "rgba(57,255,20,0.4)", marginBottom: 4 },
+  timelineVisual: { fontSize: 10, color: "#c0dcc0", lineHeight: 1.5 },
+  timelineSpoken: { fontSize: 10, color: "#8ab08a", fontStyle: "italic" as const, marginTop: 4 },
+  statusMsg: (isErr: boolean) => ({
+    fontSize: 10,
+    color: isErr ? "rgba(255,80,80,0.65)" : "rgba(57,255,20,0.5)",
+    padding: "8px 14px",
+  }),
+  emptyState: {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    height: "100%",
+    gap: 8,
+    color: "rgba(57,255,20,0.18)",
+  },
+  emptyLabel: { fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase" as const },
+  notice: {
+    fontSize: 9,
+    color: "rgba(255,180,0,0.6)",
+    background: "rgba(255,180,0,0.05)",
+    border: "1px solid rgba(255,180,0,0.2)",
+    padding: "4px 8px",
+    marginTop: 6,
+  },
+};
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+const fmtTime = (sec: number) => {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
+const fmtDate = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+};
+
+const isVideoResult = (r: ImageBreakdown | VideoAnalysisResult): r is VideoAnalysisResult =>
+  "scenes" in r && Array.isArray((r as VideoAnalysisResult).scenes);
+
+// ─── Image result display ─────────────────────────────────────────────────────
+
+const ImageResult = ({ result }: { result: ImageBreakdown }) => {
+  const fields: [string, string][] = [
+    ["Objects", result.objects],
+    ["People", result.people],
+    ["Scene", result.scene],
+    ["On-Image Text", result.text_on_image],
+    ["Composition", result.composition],
+    ["Style", result.style],
+    ["Context", result.contextual_cues],
+  ];
+  return (
+    <div style={s.section}>
+      <p style={s.sectionTitle}>Image Analysis — via {result.provider}</p>
+      {fields.map(([label, value]) => (
+        <div key={label} style={s.field}>
+          <span style={s.fieldLabel}>{label}</span>
+          <span style={s.fieldValue}>{value || "—"}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── Video result display ─────────────────────────────────────────────────────
+
+const VideoResult = ({ result }: { result: VideoAnalysisResult }) => (
+  <div>
+    {!result.ffmpeg_available && (
+      <p style={s.notice}>
+        ⚠ ffmpeg not found — transcript unavailable. Install:{" "}
+        <span style={{ color: GREEN }}>https://ffmpeg.org/download.html</span> then restart Jarvis.
+      </p>
+    )}
+    {!result.gemini_available && (
+      <p style={s.notice}>
+        ⚠ Gemini video analysis unavailable (check GEMINI_API_KEY quota). Scene breakdown may be
+        empty.
+      </p>
+    )}
+    {result.sample_note && <p style={s.notice}>ℹ {result.sample_note}</p>}
+
+    {result.timeline.length > 0 ? (
+      <div style={s.section}>
+        <p style={s.sectionTitle}>Timeline — {result.timeline.length} segments</p>
+        {result.timeline.map((entry, i) => (
+          <div key={i} style={s.timelineEntry}>
+            <p style={s.timelineTime}>
+              {fmtTime(entry.time_start)} → {fmtTime(entry.time_end)}
+            </p>
+            {entry.visual && <p style={s.timelineVisual}>{entry.visual}</p>}
+            {entry.spoken && <p style={s.timelineSpoken}>"{entry.spoken}"</p>}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <>
+        {result.scenes.length > 0 && (
+          <div style={s.section}>
+            <p style={s.sectionTitle}>Scenes — {result.scenes.length} detected</p>
+            {result.scenes.map((scene, i) => (
+              <div key={i} style={s.timelineEntry}>
+                <p style={s.timelineTime}>
+                  {fmtTime(scene.start)} → {fmtTime(scene.end)}
+                </p>
+                <p style={s.timelineVisual}>{scene.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {result.transcript.length > 0 && (
+          <div style={s.section}>
+            <p style={s.sectionTitle}>Transcript — {result.transcript.length} utterances</p>
+            {result.transcript.map((seg, i) => (
+              <div key={i} style={s.timelineEntry}>
+                <p style={s.timelineTime}>
+                  {fmtTime(seg.start)} → {fmtTime(seg.end)}
+                </p>
+                <p style={s.timelineSpoken}>"{seg.transcript}"</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {result.scenes.length === 0 && result.transcript.length === 0 && (
+          <div style={{ ...s.emptyState, height: "auto", padding: "24px 0" }}>
+            <span style={s.emptyLabel}>No analysis data available</span>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+);
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export const AnalyzerPrimaryView = () => {
+  const [analyses, setAnalyses] = useState<AnalysisMeta[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<AnalysisRecord | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isLoadingRecord, setIsLoadingRecord] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchList = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildAnalyzerUrl());
+      if (!res.ok) return;
+      const data = (await res.json()) as { analyses: AnalysisMeta[] };
+      setAnalyses(data.analyses);
+    } catch {
+      // silent — list is non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchList();
+  }, [fetchList]);
+
+  const fetchRecord = useCallback(async (id: string) => {
+    setIsLoadingRecord(true);
+    setSelectedRecord(null);
+    try {
+      const res = await apiFetch(buildAnalyzerItemUrl(id));
+      if (!res.ok) return;
+      const data = (await res.json()) as AnalysisRecord;
+      setSelectedRecord(data);
+    } catch {
+      // leave null
+    } finally {
+      setIsLoadingRecord(false);
+    }
+  }, []);
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      void fetchRecord(id);
+    },
+    [fetchRecord],
+  );
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      const isVideo = file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
+      if (!isVideo && !isImage) {
+        setUploadError("Select an image (jpeg, png, webp, gif) or video (mp4, mov, webm, avi).");
+        return;
+      }
+
+      setIsUploading(true);
+      setUploadError(null);
+
+      try {
+        const uploadUrl = isVideo ? buildAnalyzerVideoUrl() : buildAnalyzerImageUrl();
+        const res = await apiFetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": file.type,
+            "X-Filename": file.name,
+          },
+          body: file,
+        });
+        const data = (await res.json()) as { id?: string; error?: string; meta?: AnalysisMeta; result?: ImageBreakdown | VideoAnalysisResult };
+        if (!res.ok || !data.id) {
+          setUploadError(data.error ?? `Analysis failed (${res.status}).`);
+          return;
+        }
+        await fetchList();
+        setSelectedId(data.id);
+        if (data.meta && data.result !== undefined) {
+          setSelectedRecord({ meta: data.meta, result: data.result ?? null });
+        } else {
+          void fetchRecord(data.id);
+        }
+      } catch {
+        setUploadError("Upload failed — check that Jarvis is running and try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [fetchList, fetchRecord],
+  );
+
+  return (
+    <section className="analyzer-view" aria-label="Analyzer primary view" style={s.panel}>
+      <header style={s.hdr}>
+        <span style={s.hdrTitle}>⬡ Analyzer</span>
+        <div style={s.hdrActions}>
+          <button type="button" style={s.smallBtn} onClick={() => void fetchList()}>
+            ↺ Refresh
+          </button>
+        </div>
+      </header>
+
+      <div style={s.body}>
+        {/* Sidebar — past analyses */}
+        <aside style={s.sidebar}>
+          <p style={s.sidebarHdr}>Past Analyses</p>
+          <div style={s.sidebarList}>
+            {analyses.length === 0 ? (
+              <p style={{ ...s.statusMsg(false), fontSize: 9 }}>No analyses yet</p>
+            ) : (
+              analyses.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  style={{ ...s.sidebarItem(a.id === selectedId), width: "100%", textAlign: "left" as const, border: "none" }}
+                  onClick={() => handleSelect(a.id)}
+                >
+                  <p style={s.sidebarItemLabel}>{a.filename}</p>
+                  <p style={s.sidebarItemMeta}>
+                    {a.type} · {fmtDate(a.created)}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        </aside>
+
+        {/* Main area */}
+        <main style={s.main}>
+          {/* Upload zone */}
+          <div style={s.uploadZone}>
+            <p style={s.uploadText}>
+              {isUploading
+                ? "Analyzing… this may take up to a minute for video"
+                : "Drop an image or video here, or click to browse"}
+            </p>
+            {!isUploading && (
+              <button
+                type="button"
+                style={s.uploadBtn}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose File
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,video/x-msvideo"
+              style={{ display: "none" }}
+              onChange={(e) => void handleFileChange(e)}
+              aria-label="Upload file for analysis"
+            />
+            {uploadError && <p style={s.statusMsg(true)}>⚠ {uploadError}</p>}
+          </div>
+
+          {/* Result area */}
+          <div style={s.resultArea}>
+            {isLoadingRecord ? (
+              <p style={s.statusMsg(false)}>Loading analysis…</p>
+            ) : selectedRecord ? (
+              <>
+                <div style={s.section}>
+                  <p style={s.sectionTitle}>
+                    {selectedRecord.meta.filename} — {selectedRecord.meta.type}
+                  </p>
+                </div>
+                {selectedRecord.result == null ? (
+                  <p style={s.statusMsg(true)}>No result data for this analysis.</p>
+                ) : isVideoResult(selectedRecord.result) ? (
+                  <VideoResult result={selectedRecord.result} />
+                ) : (
+                  <ImageResult result={selectedRecord.result} />
+                )}
+              </>
+            ) : (
+              <div style={s.emptyState}>
+                <span style={{ fontSize: 24, color: "rgba(57,255,20,0.15)" }}>⬡</span>
+                <span style={s.emptyLabel}>Select an analysis or upload media</span>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </section>
+  );
+};
