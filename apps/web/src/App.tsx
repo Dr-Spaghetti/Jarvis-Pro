@@ -323,7 +323,7 @@ export const App = () => {
     terminalCompletionSound,
   );
   const { heatmapData, isLoadingHeatmap, refreshHeatmap } = useUsageHeatmapPolling({
-    enabled: isUiStateHydrated && (activePrimaryNav === 3 || isRuntimeStatusStripVisible),
+    enabled: isUiStateHydrated && (activePrimaryNav === 2 || isRuntimeStatusStripVisible),
   });
 
   const toggleShortcutsOverlay = useCallback(() => setIsShortcutsOverlayOpen((open) => !open), []);
@@ -449,12 +449,11 @@ export const App = () => {
 
         <section className="console-main-canvas" aria-label="Main content canvas">
           <div
-            className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 4 && activePrimaryNav !== 5 && activePrimaryNav !== 7 && activePrimaryNav !== 9 ? "" : " workspace-shell--full"}`}
+            className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 5 && activePrimaryNav !== 7 && activePrimaryNav !== 9 ? "" : " workspace-shell--full"}`}
           >
             {isAgentsSidebarVisible &&
               activePrimaryNav !== 1 &&
               activePrimaryNav !== 3 &&
-              activePrimaryNav !== 4 &&
               activePrimaryNav !== 5 &&
               activePrimaryNav !== 7 &&
               activePrimaryNav !== 9 && (
@@ -465,11 +464,9 @@ export const App = () => {
                   }}
                   actionPanel={sidebarActionPanel}
                   bodyContent={
-                    activePrimaryNav === 2
-                      ? (deckSidebarContent ?? undefined)
-                      : activePrimaryNav === 6
-                        ? (conversationsSidebarContent ?? undefined)
-                        : undefined
+                    activePrimaryNav === 4
+                      ? (conversationsSidebarContent ?? undefined)
+                      : undefined
                   }
                 />
               )}
@@ -654,7 +651,7 @@ export const App = () => {
                   await refreshColumns();
                 },
               }}
-              conversationsEnabled={isUiStateHydrated && activePrimaryNav === 6}
+              conversationsEnabled={isUiStateHydrated && activePrimaryNav === 4}
               onConversationsSidebarContent={setConversationsSidebarContent}
               onConversationsActionPanel={setConversationsActionPanel}
             />

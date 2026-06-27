@@ -95,7 +95,7 @@ export const JournalTimeline = () => {
   return (
     <section className="journal-timeline" aria-label="Activity timeline">
       <header className="journal-timeline-header">
-        <h2 className="journal-timeline-title">Activity Log</h2>
+        <h2 className="journal-timeline-title">Surveillance</h2>
         <div className="journal-timeline-controls">
           <fieldset className="journal-timeline-filter" aria-label="Status filter">
             {STATUS_FILTERS.map((f) => (
