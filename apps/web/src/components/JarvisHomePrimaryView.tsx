@@ -154,13 +154,13 @@ const voiceNavTargets: Record<
 > = {
   jarvis: 9,
   agents: 1,
-  deck: 2,
-  activity: 3,
-  "code-intel": 4,
-  monitor: 5,
-  conversations: 6,
-  prompts: 7,
-  settings: 8,
+  deck: 1,
+  activity: 2,
+  "code-intel": 5,
+  monitor: 2,
+  conversations: 4,
+  prompts: 6,
+  settings: 7,
 };
 
 const normalizeVoiceText = (value: string): string =>

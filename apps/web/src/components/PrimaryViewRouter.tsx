@@ -9,17 +9,18 @@ import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { DeckPrimaryView } from "./DeckPrimaryView";
 import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
-import { MonitorPrimaryView } from "./MonitorPrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
-import { TasksPrimaryView } from "./TasksPrimaryView";
+import { WorkflowsPrimaryView } from "./WorkflowsPrimaryView";
 
 type PrimaryViewRouterProps = {
   activePrimaryNav: PrimaryNavIndex;
   deckPrimaryViewProps: ComponentProps<typeof DeckPrimaryView>;
-  isMonitorVisible: boolean;
   activityPrimaryViewProps: ComponentProps<typeof ActivityPrimaryView>;
   settingsPrimaryViewProps: ComponentProps<typeof SettingsPrimaryView>;
-  canvasPrimaryViewProps: ComponentProps<typeof CanvasPrimaryView>;
+  /** Kept for App.tsx compatibility — no longer rendered */
+  canvasPrimaryViewProps?: ComponentProps<typeof CanvasPrimaryView>;
+  /** Kept for App.tsx compatibility — no longer rendered */
+  isMonitorVisible?: boolean;
   monitorRuntime: Pick<
     UseMonitorRuntimeResult,
     | "monitorConfig"
@@ -39,47 +40,35 @@ type PrimaryViewRouterProps = {
 export const PrimaryViewRouter = ({
   activePrimaryNav,
   deckPrimaryViewProps,
-  isMonitorVisible,
   activityPrimaryViewProps,
   settingsPrimaryViewProps,
-  canvasPrimaryViewProps,
-  monitorRuntime,
   conversationsEnabled,
   onConversationsSidebarContent,
   onConversationsActionPanel,
   onPrimaryNavChange,
 }: PrimaryViewRouterProps) => {
+  // 9 — Jarvis HQ
   if (activePrimaryNav === 9) {
     return <JarvisHomePrimaryView onNavigate={onPrimaryNavChange} />;
   }
 
-  if (activePrimaryNav === 2) {
+  // 1 — Agent Arsenal (agent deck + skills)
+  if (activePrimaryNav === 1) {
     return <DeckPrimaryView {...deckPrimaryViewProps} onNavigate={onPrimaryNavChange} />;
   }
 
+  // 2 — Surveillance (git / GitHub activity)
+  if (activePrimaryNav === 2) {
+    return <ActivityPrimaryView {...activityPrimaryViewProps} />;
+  }
+
+  // 3 — Workflows
   if (activePrimaryNav === 3) {
-    return <AnalyzerPrimaryView />;
+    return <WorkflowsPrimaryView />;
   }
 
+  // 4 — Recent Convos
   if (activePrimaryNav === 4) {
-    return <TasksPrimaryView />;
-  }
-
-  if (activePrimaryNav === 5) {
-    if (isMonitorVisible) {
-      return <MonitorPrimaryView monitorRuntime={monitorRuntime} />;
-    }
-    return (
-      <section className="monitor-view" aria-label="Monitor primary view disabled">
-        <section className="monitor-panel monitor-panel--configure">
-          <h3>Monitor is disabled</h3>
-          <p>Enable Monitor workspace view in Settings to restore this panel.</p>
-        </section>
-      </section>
-    );
-  }
-
-  if (activePrimaryNav === 6) {
     return (
       <ConversationsPrimaryView
         enabled={conversationsEnabled}
@@ -89,13 +78,16 @@ export const PrimaryViewRouter = ({
     );
   }
 
-  if (activePrimaryNav === 7) {
+  // 5 — Content Analyzer
+  if (activePrimaryNav === 5) {
+    return <AnalyzerPrimaryView />;
+  }
+
+  // 6 — Ideas
+  if (activePrimaryNav === 6) {
     return <IdeasPrimaryView />;
   }
 
-  if (activePrimaryNav === 8) {
-    return <SettingsPrimaryView {...settingsPrimaryViewProps} />;
-  }
-
-  return <CanvasPrimaryView {...canvasPrimaryViewProps} />;
+  // 7 — Settings
+  return <SettingsPrimaryView {...settingsPrimaryViewProps} />;
 };
