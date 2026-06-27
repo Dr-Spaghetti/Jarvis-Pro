@@ -2,20 +2,23 @@ import type { ComponentProps, ReactNode } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
 import type { UseMonitorRuntimeResult } from "../app/hooks/useMonitorRuntime";
-import { ActivityPrimaryView } from "./ActivityPrimaryView";
 import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
+import { AgentArsenalPanel } from "./AgentArsenalPanel";
 import { CanvasPrimaryView } from "./CanvasPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { DeckPrimaryView } from "./DeckPrimaryView";
 import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
+import { SurveillancePanel } from "./SurveillancePanel";
 import { WorkflowsPrimaryView } from "./WorkflowsPrimaryView";
 
 type PrimaryViewRouterProps = {
   activePrimaryNav: PrimaryNavIndex;
-  deckPrimaryViewProps: ComponentProps<typeof DeckPrimaryView>;
-  activityPrimaryViewProps: ComponentProps<typeof ActivityPrimaryView>;
+  /** Kept for App.tsx compatibility — no longer rendered */
+  deckPrimaryViewProps?: ComponentProps<typeof DeckPrimaryView>;
+  /** Kept for App.tsx compatibility — no longer rendered */
+  activityPrimaryViewProps?: Record<string, unknown>;
   settingsPrimaryViewProps: ComponentProps<typeof SettingsPrimaryView>;
   /** Kept for App.tsx compatibility — no longer rendered */
   canvasPrimaryViewProps?: ComponentProps<typeof CanvasPrimaryView>;
@@ -52,14 +55,14 @@ export const PrimaryViewRouter = ({
     return <JarvisHomePrimaryView onNavigate={onPrimaryNavChange} />;
   }
 
-  // 1 — Agent Arsenal (agent deck + skills)
+  // 1 — Agent Arsenal (archetype grid + deploy)
   if (activePrimaryNav === 1) {
-    return <DeckPrimaryView {...deckPrimaryViewProps} onNavigate={onPrimaryNavChange} />;
+    return <AgentArsenalPanel />;
   }
 
-  // 2 — Surveillance (git / GitHub activity)
+  // 2 — Surveillance (live CCTV agent monitor)
   if (activePrimaryNav === 2) {
-    return <ActivityPrimaryView {...activityPrimaryViewProps} />;
+    return <SurveillancePanel />;
   }
 
   // 3 — Workflows
