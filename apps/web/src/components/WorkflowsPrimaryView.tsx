@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
 import {
+  buildWorkflowImproveUrl,
   buildWorkflowItemUrl,
   buildWorkflowRunHistoryUrl,
   buildWorkflowRunUrl,
@@ -457,6 +458,126 @@ const nc = {
     color: "#c0d8c0",
     lineHeight: 1.6,
   },
+  // Inline editing
+  editBtn: {
+    background: "none",
+    border: "1px solid rgba(57,255,20,0.2)",
+    color: "rgba(57,255,20,0.45)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
+  saveEditBtn: {
+    background: "rgba(57,255,20,0.1)",
+    border: "1px solid rgba(57,255,20,0.4)",
+    color: "#39ff14",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "6px 12px",
+    cursor: "pointer",
+  },
+  improveBtn: (busy: boolean) => ({
+    background: busy ? "rgba(57,255,20,0.03)" : "rgba(57,255,20,0.07)",
+    border: `1px solid ${busy ? "rgba(57,255,20,0.15)" : "rgba(57,255,20,0.35)"}`,
+    color: busy ? "rgba(57,255,20,0.3)" : "rgba(57,255,20,0.8)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "6px 12px",
+    cursor: busy ? "not-allowed" : "pointer",
+  }),
+  stepsEditArea: {
+    background: "#000",
+    border: "1px solid rgba(57,255,20,0.28)",
+    color: "#d0e8d0",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 11,
+    padding: "10px 12px",
+    width: "100%",
+    minHeight: 120,
+    resize: "vertical" as const,
+    lineHeight: 1.8,
+    outline: "none",
+    boxSizing: "border-box" as const,
+  },
+  // Improvement panel
+  improvePanel: {
+    background: "#020a02",
+    border: "1px solid rgba(57,255,20,0.28)",
+    marginTop: 14,
+  },
+  improvePanelHdr: {
+    padding: "8px 12px",
+    borderBottom: "1px solid rgba(57,255,20,0.1)",
+    fontSize: 8,
+    letterSpacing: "0.22em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.45)",
+    display: "flex" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+  },
+  improveRationale: {
+    padding: "8px 12px",
+    fontSize: 10,
+    color: "rgba(57,255,20,0.55)",
+    lineHeight: 1.6,
+    borderBottom: "1px solid rgba(57,255,20,0.07)",
+  },
+  improveStepsPreview: {
+    padding: "10px 12px",
+    fontSize: 10,
+    color: "#b8d8b8",
+    whiteSpace: "pre-wrap" as const,
+    lineHeight: 1.8,
+    borderBottom: "1px solid rgba(57,255,20,0.07)",
+  },
+  improvePanelActions: {
+    padding: "8px 12px",
+    display: "flex" as const,
+    gap: 8,
+    justifyContent: "flex-end" as const,
+  },
+  applyBtn: {
+    background: "rgba(57,255,20,0.12)",
+    border: "1px solid rgba(57,255,20,0.45)",
+    color: "#39ff14",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "5px 14px",
+    cursor: "pointer",
+  },
+  dismissBtn: {
+    background: "none",
+    border: "1px solid rgba(57,255,20,0.12)",
+    color: "rgba(57,255,20,0.3)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "5px 10px",
+    cursor: "pointer",
+  },
+  // Step stats
+  stepStats: {
+    display: "flex" as const,
+    flexWrap: "wrap" as const,
+    gap: "6px 16px",
+    padding: "8px 0 2px",
+  },
+  stepStat: {
+    fontSize: 9,
+    color: "rgba(57,255,20,0.28)",
+    letterSpacing: "0.06em",
+  },
 };
 
 const STEP_ICON: Record<StepStatus, string> = {
@@ -493,6 +614,13 @@ export const WorkflowsPrimaryView = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Inline step editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  // AI improvement
+  const [isImproving, setIsImproving] = useState(false);
+  const [improvement, setImprovement] = useState<{ improvedSteps: string; rationale: string } | null>(null);
   // Live step progress during a run
   const [liveSteps, setLiveSteps] = useState<Array<{ step: string; status: StepStatus; answer?: string; durationMs?: number }>>([]);
   // Run history for the selected workflow
@@ -572,6 +700,49 @@ export const WorkflowsPrimaryView = () => {
       // ignore
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSaveEdit = async (workflowId: string) => {
+    if (isSavingEdit) return;
+    setIsSavingEdit(true);
+    try {
+      const res = await apiFetch(buildWorkflowItemUrl(workflowId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ steps: editDraft.trim() }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { workflow: Workflow };
+      setWorkflows((prev) => prev.map((w) => (w.id === workflowId ? data.workflow : w)));
+      setIsEditing(false);
+      setImprovement(null);
+    } catch {
+      // stay in edit mode on error
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleImprove = async (workflowId: string) => {
+    if (isImproving) return;
+    setIsImproving(true);
+    setImprovement(null);
+    try {
+      const res = await apiFetch(buildWorkflowImproveUrl(workflowId), { method: "POST" });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setRunError(data.error ?? "Improvement failed");
+        return;
+      }
+      const data = (await res.json()) as { improvedSteps?: string; rationale?: string };
+      if (data.improvedSteps) {
+        setImprovement({ improvedSteps: data.improvedSteps, rationale: data.rationale ?? "" });
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Improvement failed");
+    } finally {
+      setIsImproving(false);
     }
   };
 
@@ -721,6 +892,8 @@ export const WorkflowsPrimaryView = () => {
                       setCreating(false);
                       setLiveSteps([]);
                       setRunError(null);
+                      setIsEditing(false);
+                      setImprovement(null);
                     }}
                   >
                     {w.name}
@@ -805,28 +978,135 @@ export const WorkflowsPrimaryView = () => {
                 <div style={nc.detailCard}>
                   <p style={nc.detailName}>{active.name}</p>
                   {active.description && <p style={nc.detailDesc}>{active.description}</p>}
-                  {active.steps && (
-                    <pre style={nc.stepsBlock}>{active.steps}</pre>
+
+                  {/* Steps — view or edit */}
+                  {isEditing ? (
+                    <textarea
+                      style={nc.stepsEditArea}
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      autoFocus
+                    />
+                  ) : (
+                    active.steps && <pre style={nc.stepsBlock}>{active.steps}</pre>
                   )}
 
+                  {/* Per-step avg duration strip (requires ≥2 runs) */}
+                  {!isEditing && runHistory.length >= 2 && (() => {
+                    const stepCount = active.steps.split("\n").filter(Boolean).length;
+                    if (stepCount === 0) return null;
+                    const stats = Array.from({ length: stepCount }, (_, i) => {
+                      const durations = runHistory
+                        .map((r) => r.steps[i]?.durationMs)
+                        .filter((d): d is number => typeof d === "number");
+                      const avg = durations.length > 0
+                        ? durations.reduce((a, b) => a + b, 0) / durations.length
+                        : null;
+                      return { i, avg };
+                    });
+                    return (
+                      <div style={nc.stepStats}>
+                        {stats.map(({ i, avg }) => (
+                          avg !== null && (
+                            <span key={i} style={nc.stepStat}>
+                              step {i + 1} avg {(avg / 1000).toFixed(1)}s
+                            </span>
+                          )
+                        ))}
+                      </div>
+                    );
+                  })()}
+
                   <div style={nc.detailActions}>
-                    <button
-                      type="button"
-                      style={nc.runBtn(isRunning)}
-                      disabled={isRunning}
-                      onClick={() => void handleRun(active)}
-                    >
-                      {isRunning ? "Running…" : "▶ Run"}
-                    </button>
-                    <button
-                      type="button"
-                      style={nc.deleteBtn}
-                      disabled={isDeleting}
-                      onClick={() => void handleDelete(active.id)}
-                    >
-                      {isDeleting ? "Deleting…" : "Delete"}
-                    </button>
+                    {isEditing ? (
+                      <>
+                        <button
+                          type="button"
+                          style={nc.saveEditBtn}
+                          disabled={isSavingEdit}
+                          onClick={() => void handleSaveEdit(active.id)}
+                        >
+                          {isSavingEdit ? "Saving…" : "Save Steps"}
+                        </button>
+                        <button
+                          type="button"
+                          style={nc.cancelBtn}
+                          onClick={() => { setIsEditing(false); setImprovement(null); }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          style={nc.runBtn(isRunning)}
+                          disabled={isRunning}
+                          onClick={() => void handleRun(active)}
+                        >
+                          {isRunning ? "Running…" : "▶ Run"}
+                        </button>
+                        <button
+                          type="button"
+                          style={nc.editBtn}
+                          onClick={() => { setIsEditing(true); setEditDraft(active.steps); setImprovement(null); }}
+                        >
+                          Edit
+                        </button>
+                        {runHistory.length > 0 && (
+                          <button
+                            type="button"
+                            style={nc.improveBtn(isImproving)}
+                            disabled={isImproving}
+                            onClick={() => void handleImprove(active.id)}
+                          >
+                            {isImproving ? "Analyzing…" : "✦ Improve"}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          style={nc.deleteBtn}
+                          disabled={isDeleting}
+                          onClick={() => void handleDelete(active.id)}
+                        >
+                          {isDeleting ? "Deleting…" : "Delete"}
+                        </button>
+                      </>
+                    )}
                   </div>
+
+                  {/* AI improvement panel */}
+                  {improvement && (
+                    <div style={nc.improvePanel}>
+                      <div style={nc.improvePanelHdr}>
+                        <span>✦ Suggested Improvements</span>
+                      </div>
+                      {improvement.rationale && (
+                        <p style={nc.improveRationale}>{improvement.rationale}</p>
+                      )}
+                      <pre style={nc.improveStepsPreview}>{improvement.improvedSteps}</pre>
+                      <div style={nc.improvePanelActions}>
+                        <button
+                          type="button"
+                          style={nc.applyBtn}
+                          onClick={() => {
+                            setEditDraft(improvement.improvedSteps);
+                            setIsEditing(true);
+                            setImprovement(null);
+                          }}
+                        >
+                          Apply & Edit
+                        </button>
+                        <button
+                          type="button"
+                          style={nc.dismissBtn}
+                          onClick={() => setImprovement(null)}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {runError && <div style={nc.runError}>⚠ {runError}</div>}
 

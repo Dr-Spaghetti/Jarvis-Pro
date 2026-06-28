@@ -302,6 +302,103 @@ export const handleWorkflowRunsRecentRoute: ApiRouteHandler = async (
   return true;
 };
 
+// --- AI improvement suggestions: POST /api/workflows/:id/improve ---
+
+export const handleWorkflowImproveRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { projectStateDir, getApiBaseUrl, authToken },
+) => {
+  const match = /^\/api\/workflows\/([^/]+)\/improve$/.exec(requestUrl.pathname);
+  if (!match) return false;
+  if (request.method !== "POST") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const id = match[1] ?? "";
+  const dir = workflowsDir(projectStateDir);
+  const filePath = safeWorkflowPath(dir, id);
+  if (!filePath || !existsSync(filePath)) {
+    writeJson(response, 404, { error: "Workflow not found." }, corsOrigin);
+    return true;
+  }
+
+  let workflow: Workflow;
+  try {
+    workflow = JSON.parse(readFileSync(filePath, "utf8")) as Workflow;
+  } catch {
+    writeJson(response, 500, { error: "Failed to read workflow." }, corsOrigin);
+    return true;
+  }
+
+  const runsDir = workflowRunsDir(projectStateDir);
+  const recentRuns = loadRuns(runsDir, id).slice(0, 5);
+
+  if (recentRuns.length === 0) {
+    writeJson(response, 400, { error: "Run the workflow at least once before improving." }, corsOrigin);
+    return true;
+  }
+
+  const runsContext = recentRuns
+    .map((run, ri) => {
+      const stepSummary = run.steps
+        .map((s, si) => {
+          const snippet = s.answer.length > 280 ? `${s.answer.slice(0, 280)}…` : s.answer;
+          return `  Step ${si + 1} ("${s.step}"): ${snippet}`;
+        })
+        .join("\n");
+      return `Run ${ri + 1} (${run.status}):\n${stepSummary}`;
+    })
+    .join("\n\n");
+
+  const question = `You are optimizing a multi-step AI workflow. Analyze the current steps and recent run results, then rewrite each step prompt to produce more specific, actionable, and valuable output.
+
+Workflow: "${workflow.name}"
+Description: "${workflow.description}"
+
+Current steps (one per line):
+${workflow.steps}
+
+Recent run results:
+${runsContext}
+
+Respond in EXACTLY this format (no extra text before or after):
+IMPROVED_STEPS:
+[rewritten step 1]
+[rewritten step 2]
+[... same count as original steps]
+RATIONALE: [one sentence explaining the key improvement]`;
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/api/brain/ask`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ question }),
+    });
+    const data = (await res.json()) as { answer?: string };
+    const answer = typeof data.answer === "string" ? data.answer : "";
+
+    const improvedMatch = /IMPROVED_STEPS:\s*\n([\s\S]+?)(?:\nRATIONALE:|$)/i.exec(answer);
+    const rationaleMatch = /RATIONALE:\s*(.+)/i.exec(answer);
+
+    const improvedSteps = improvedMatch ? improvedMatch[1].trim() : workflow.steps;
+    const rationale = rationaleMatch ? rationaleMatch[1].trim() : "Steps refined based on run history.";
+
+    writeJson(response, 200, { improvedSteps, rationale }, corsOrigin);
+  } catch (error) {
+    writeJson(
+      response,
+      500,
+      { error: error instanceof Error ? error.message : "Improvement failed" },
+      corsOrigin,
+    );
+  }
+  return true;
+};
+
 // --- Run a workflow with SSE streaming: POST /api/workflows/:id/run ---
 
 export const handleWorkflowRunRoute: ApiRouteHandler = async (

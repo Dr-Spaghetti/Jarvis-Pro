@@ -58,6 +58,7 @@ import {
   handleNotificationsReadRoute,
 } from "./notificationRoutes";
 import {
+  handleWorkflowImproveRoute,
   handleWorkflowItemRoute,
   handleWorkflowRunHistoryRoute,
   handleWorkflowRunRoute,
@@ -296,6 +297,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleWorkflowsCollectionRoute,
       handleWorkflowItemRoute,
       handleWorkflowRunHistoryRoute,
+      handleWorkflowImproveRoute,
       handleWorkflowRunRoute,
     ],
   ],
