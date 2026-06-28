@@ -1,4 +1,22 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { apiFetch } from "../runtime/apiClient";
+import {
+  buildWorkflowItemUrl,
+  buildWorkflowRunUrl,
+  buildWorkflowsUrl,
+} from "../runtime/runtimeEndpoints";
+
+type Workflow = {
+  id: string;
+  name: string;
+  description: string;
+  steps: string;
+  created: string;
+  updated: string;
+};
+
+type RunResult = { step: string; answer: string };
 
 const nc = {
   view: {
@@ -90,11 +108,19 @@ const nc = {
     flex: 1,
     display: "flex" as const,
     flexDirection: "column" as const,
+    minHeight: 0,
+    overflowY: "auto" as const,
+    padding: 24,
+    gap: 16,
+  },
+  mainCentered: {
+    flex: 1,
+    display: "flex" as const,
+    flexDirection: "column" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 16,
     padding: 24,
-    overflowY: "auto" as const,
   },
   emptyGlyph: {
     fontSize: 28,
@@ -127,7 +153,6 @@ const nc = {
     padding: "7px 18px",
     cursor: "pointer",
     marginTop: 8,
-    transition: "all 0.12s",
   },
   form: {
     width: "100%",
@@ -208,28 +233,204 @@ const nc = {
     padding: "5px 12px",
     cursor: disabled ? "not-allowed" : "pointer",
   }),
+  detailCard: {
+    width: "100%",
+    maxWidth: 580,
+  },
+  detailName: {
+    fontSize: 13,
+    color: "#39ff14",
+    fontWeight: "bold" as const,
+    margin: "0 0 8px",
+    letterSpacing: "0.08em",
+  },
+  detailDesc: {
+    fontSize: 10,
+    color: "rgba(57,255,20,0.5)",
+    marginBottom: 14,
+  },
+  stepsBlock: {
+    background: "#050705",
+    border: "1px solid rgba(57,255,20,0.12)",
+    padding: "12px 14px",
+    fontSize: 10,
+    color: "rgba(57,255,20,0.55)",
+    whiteSpace: "pre-wrap" as const,
+    lineHeight: 1.8,
+    margin: 0,
+  },
+  detailActions: {
+    display: "flex" as const,
+    gap: 8,
+    marginTop: 14,
+  },
+  runBtn: (running: boolean) => ({
+    background: running ? "rgba(57,255,20,0.05)" : "rgba(57,255,20,0.12)",
+    border: `1px solid ${running ? "rgba(57,255,20,0.2)" : "rgba(57,255,20,0.45)"}`,
+    color: running ? "rgba(57,255,20,0.4)" : "#39ff14",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.14em",
+    textTransform: "uppercase" as const,
+    padding: "6px 14px",
+    cursor: running ? "not-allowed" : "pointer",
+  }),
+  deleteBtn: {
+    background: "none",
+    border: "1px solid rgba(255,80,80,0.25)",
+    color: "rgba(255,80,80,0.5)",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
+  runResults: {
+    marginTop: 16,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 10,
+  },
+  runResultHdr: {
+    fontSize: 8,
+    letterSpacing: "0.2em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.3)",
+    marginBottom: 4,
+  },
+  runResultItem: {
+    background: "#050705",
+    border: "1px solid rgba(57,255,20,0.1)",
+    padding: "10px 12px",
+  },
+  runResultStep: {
+    fontSize: 9,
+    color: "rgba(57,255,20,0.4)",
+    letterSpacing: "0.08em",
+    marginBottom: 4,
+  },
+  runResultAnswer: {
+    fontSize: 10,
+    color: "#c8dcc8",
+    lineHeight: 1.6,
+  },
+  runError: {
+    fontSize: 10,
+    color: "rgba(255,80,80,0.7)",
+    padding: "8px 10px",
+    border: "1px solid rgba(255,80,80,0.2)",
+    background: "rgba(255,80,80,0.04)",
+  },
+  runResultStepLabel: {
+    fontSize: 8,
+    letterSpacing: "0.22em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.22)",
+    marginBottom: 4,
+  },
+  runResultConnector: {
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    color: "rgba(57,255,20,0.18)",
+    padding: "5px 12px",
+    textAlign: "center" as const,
+    userSelect: "none" as const,
+  },
+  runResultErrorAnswer: {
+    fontSize: 10,
+    color: "rgba(255,80,80,0.65)",
+    lineHeight: 1.6,
+    fontStyle: "italic" as const,
+  },
 };
-
-type Workflow = { id: string; name: string; description: string; steps: string };
 
 export const WorkflowsPrimaryView = () => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: "", description: "", steps: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [runResults, setRunResults] = useState<RunResult[] | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const save = () => {
-    if (!draft.name.trim()) return;
-    const w: Workflow = {
-      id: `wf-${Date.now()}`,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      steps: draft.steps.trim(),
-    };
-    setWorkflows((prev) => [...prev, w]);
-    setSelected(w.id);
-    setCreating(false);
-    setDraft({ name: "", description: "", steps: "" });
+  const fetchWorkflows = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildWorkflowsUrl(), { method: "GET" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { workflows: Workflow[] };
+      setWorkflows(Array.isArray(data.workflows) ? data.workflows : []);
+    } catch {
+      // ignore load errors silently
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchWorkflows();
+  }, [fetchWorkflows]);
+
+  const handleSave = async () => {
+    if (!draft.name.trim() || isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await apiFetch(buildWorkflowsUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: draft.name.trim(),
+          description: draft.description.trim(),
+          steps: draft.steps.trim(),
+        }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { workflow: Workflow };
+      setWorkflows((prev) => [data.workflow, ...prev]);
+      setSelected(data.workflow.id);
+      setCreating(false);
+      setDraft({ name: "", description: "", steps: "" });
+    } catch {
+      // stay in creating mode on error
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await apiFetch(buildWorkflowItemUrl(id), { method: "DELETE" });
+      setWorkflows((prev) => prev.filter((w) => w.id !== id));
+      if (selected === id) setSelected(null);
+      setRunResults(null);
+      setRunError(null);
+    } catch {
+      // ignore
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRun = async (id: string) => {
+    if (isRunning) return;
+    setIsRunning(true);
+    setRunResults(null);
+    setRunError(null);
+    try {
+      const res = await apiFetch(buildWorkflowRunUrl(id), { method: "POST" });
+      const data = (await res.json()) as { ok?: boolean; results?: RunResult[]; error?: string };
+      if (!res.ok || !data.ok) {
+        setRunError(data.error ?? `Run failed (${res.status})`);
+        return;
+      }
+      setRunResults(Array.isArray(data.results) ? data.results : []);
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Run failed");
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const active = workflows.find((w) => w.id === selected) ?? null;
@@ -244,6 +445,8 @@ export const WorkflowsPrimaryView = () => {
           onClick={() => {
             setCreating(true);
             setSelected(null);
+            setRunResults(null);
+            setRunError(null);
           }}
         >
           + New Workflow
@@ -252,24 +455,20 @@ export const WorkflowsPrimaryView = () => {
 
       <div style={nc.body}>
         {workflows.length === 0 && !creating ? (
-          <div style={nc.main}>
+          <div style={nc.mainCentered}>
             <span style={nc.emptyGlyph}>⟐</span>
             <p style={nc.emptyTitle}>No workflows yet</p>
             <p style={nc.emptyDesc}>
-              Workflows chain skills, prompts, and brain queries into repeatable automated pipelines.
-              Design one here and run it from Jarvis HQ.
+              Workflows chain prompts and brain queries into repeatable automated pipelines. Design
+              one here and run it on demand.
             </p>
-            <button
-              type="button"
-              style={nc.createBtn}
-              onClick={() => setCreating(true)}
-            >
+            <button type="button" style={nc.createBtn} onClick={() => setCreating(true)}>
               Design first workflow
             </button>
           </div>
         ) : (
           <div style={nc.cols}>
-            {/* Sidebar list */}
+            {/* Sidebar */}
             <div style={nc.sidebar}>
               <div style={nc.sideHdr}>Library</div>
               <div style={nc.sideList}>
@@ -281,6 +480,8 @@ export const WorkflowsPrimaryView = () => {
                     onClick={() => {
                       setSelected(w.id);
                       setCreating(false);
+                      setRunResults(null);
+                      setRunError(null);
                     }}
                   >
                     {w.name}
@@ -296,7 +497,9 @@ export const WorkflowsPrimaryView = () => {
                   <div style={nc.formHdr}>New Workflow</div>
                   <div style={nc.formBody}>
                     <div style={nc.fieldRow}>
-                      <label style={nc.label} htmlFor="wf-name">Name</label>
+                      <label style={nc.label} htmlFor="wf-name">
+                        Name
+                      </label>
                       <input
                         id="wf-name"
                         style={nc.textInput}
@@ -307,7 +510,9 @@ export const WorkflowsPrimaryView = () => {
                       />
                     </div>
                     <div style={nc.fieldRow}>
-                      <label style={nc.label} htmlFor="wf-desc">Description</label>
+                      <label style={nc.label} htmlFor="wf-desc">
+                        Description
+                      </label>
                       <input
                         id="wf-desc"
                         style={nc.textInput}
@@ -318,15 +523,22 @@ export const WorkflowsPrimaryView = () => {
                       />
                     </div>
                     <div style={nc.fieldRow}>
-                      <label style={nc.label} htmlFor="wf-steps">Steps</label>
+                      <label style={nc.label} htmlFor="wf-steps">
+                        Steps
+                      </label>
                       <textarea
                         id="wf-steps"
                         style={{ ...nc.textInput, minHeight: 80, resize: "vertical" as const }}
-                        placeholder={"Step 1: Fetch brain digest\nStep 2: Summarize open tasks\nStep 3: Draft priority list"}
+                        placeholder={
+                          "Step 1: Fetch brain digest\nStep 2: Summarize open tasks\nStep 3: Draft priority list"
+                        }
                         value={draft.steps}
                         onChange={(e) => setDraft((d) => ({ ...d, steps: e.target.value }))}
                       />
-                      <span style={nc.stepHint}>One step per line. Jarvis will execute each step in sequence.</span>
+                      <span style={nc.stepHint}>
+                        One step per line. Each step's answer is passed as context to the next —
+                        chain prompts to build multi-step reasoning pipelines.
+                      </span>
                     </div>
                   </div>
                   <div style={nc.formFoot}>
@@ -342,35 +554,73 @@ export const WorkflowsPrimaryView = () => {
                     </button>
                     <button
                       type="button"
-                      style={nc.saveBtn(!draft.name.trim())}
-                      disabled={!draft.name.trim()}
-                      onClick={save}
+                      style={nc.saveBtn(!draft.name.trim() || isSaving)}
+                      disabled={!draft.name.trim() || isSaving}
+                      onClick={() => void handleSave()}
                     >
-                      Save Workflow
+                      {isSaving ? "Saving…" : "Save Workflow"}
                     </button>
                   </div>
                 </div>
               ) : active ? (
-                <div style={{ width: "100%", maxWidth: 480 }}>
-                  <p style={{ ...nc.emptyTitle, color: "#39ff14", marginBottom: 10 }}>{active.name}</p>
-                  {active.description && (
-                    <p style={{ ...nc.emptyDesc, marginBottom: 14, textAlign: "left" as const }}>{active.description}</p>
-                  )}
+                <div style={nc.detailCard}>
+                  <p style={nc.detailName}>{active.name}</p>
+                  {active.description && <p style={nc.detailDesc}>{active.description}</p>}
                   {active.steps && (
-                    <pre
-                      style={{
-                        background: "#050705",
-                        border: "1px solid rgba(57,255,20,0.12)",
-                        padding: "12px 14px",
-                        fontSize: 10,
-                        color: "rgba(57,255,20,0.55)",
-                        whiteSpace: "pre-wrap" as const,
-                        lineHeight: 1.8,
-                        margin: 0,
-                      }}
+                    <pre style={nc.stepsBlock}>{active.steps}</pre>
+                  )}
+                  <div style={nc.detailActions}>
+                    <button
+                      type="button"
+                      style={nc.runBtn(isRunning)}
+                      disabled={isRunning}
+                      onClick={() => void handleRun(active.id)}
                     >
-                      {active.steps}
-                    </pre>
+                      {isRunning ? "Running…" : "▶ Run"}
+                    </button>
+                    <button
+                      type="button"
+                      style={nc.deleteBtn}
+                      disabled={isDeleting}
+                      onClick={() => void handleDelete(active.id)}
+                    >
+                      {isDeleting ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
+
+                  {runError && <div style={nc.runError}>⚠ {runError}</div>}
+
+                  {runResults && runResults.length > 0 && (
+                    <div style={nc.runResults}>
+                      <p style={nc.runResultHdr}>
+                        Run complete — {runResults.length} step
+                        {runResults.length !== 1 ? "s" : ""}
+                      </p>
+                      {runResults.map((r, i) => {
+                        const isError =
+                          r.answer.startsWith("[timed out") || r.answer.startsWith("Error:");
+                        const total = runResults.length;
+                        return (
+                          // biome-ignore lint/suspicious/noArrayIndexKey: run results are positional
+                          <div key={i}>
+                            {i > 0 && (
+                              <div style={nc.runResultConnector}>
+                                ↓ context passed to step {i + 1}
+                              </div>
+                            )}
+                            <div style={nc.runResultItem}>
+                              <p style={nc.runResultStepLabel}>
+                                Step {i + 1} of {total}
+                              </p>
+                              <p style={nc.runResultStep}>{r.step}</p>
+                              <p style={isError ? nc.runResultErrorAnswer : nc.runResultAnswer}>
+                                {r.answer}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               ) : null}

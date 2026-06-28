@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { PrimaryNavIndex } from "../app/constants";
 import { apiFetch } from "../runtime/apiClient";
 import {
+  buildBrainAskUrl,
+  buildBrainCaptureUrl,
   buildBrainstormExpandUrl,
   buildBrainstormIdeaUrl,
   buildBrainstormIdeasUrl,
+  buildWorkflowsUrl,
 } from "../runtime/runtimeEndpoints";
 
 type Idea = {
@@ -291,6 +295,61 @@ const s = {
     color: "rgba(57,255,20,0.2)",
     flexShrink: 0,
   },
+  actionRow2: {
+    display: "flex" as const,
+    gap: 6,
+    marginTop: 6,
+    flexWrap: "wrap" as const,
+    paddingTop: 8,
+    borderTop: `1px solid rgba(57,255,20,0.08)`,
+  },
+  actionBtn2: (variant: "ask" | "workflow" | "brain" | "analyzer", busy = false) => {
+    const color = {
+      ask: "rgba(57,255,20,0.85)",
+      workflow: "rgba(100,210,210,0.65)",
+      brain: "rgba(57,255,20,0.5)",
+      analyzer: "rgba(210,210,80,0.65)",
+    }[variant];
+    return {
+      background: "none",
+      border: `1px solid ${color}`,
+      color,
+      fontFamily: '"JetBrains Mono", monospace',
+      fontSize: 8,
+      letterSpacing: "0.1em",
+      textTransform: "uppercase" as const,
+      padding: "4px 9px",
+      cursor: busy ? ("not-allowed" as const) : ("pointer" as const),
+      opacity: busy ? 0.55 : 1,
+    };
+  },
+  ideaAnswer: {
+    marginTop: 10,
+    padding: "8px 10px",
+    background: "rgba(57,255,20,0.04)",
+    borderLeft: "2px solid rgba(57,255,20,0.3)",
+  },
+  ideaAnswerLabel: {
+    fontSize: 7,
+    letterSpacing: "0.22em",
+    color: "rgba(57,255,20,0.38)",
+    margin: "0 0 5px",
+    textTransform: "uppercase" as const,
+  },
+  ideaAnswerText: {
+    fontSize: 10,
+    color: "rgba(57,255,20,0.72)",
+    margin: 0,
+    lineHeight: 1.65,
+    whiteSpace: "pre-wrap" as const,
+    wordBreak: "break-word" as const,
+  },
+  inlineMsg: (ok: boolean) => ({
+    fontSize: 9,
+    color: ok ? "rgba(57,255,20,0.6)" : "rgba(255,80,80,0.55)",
+    margin: "5px 0 0",
+    letterSpacing: "0.06em",
+  }),
 };
 
 const fmtDate = (iso: string) => {
@@ -307,7 +366,7 @@ const parseTags = (raw: string): string[] =>
     .map((t) => t.trim())
     .filter(Boolean);
 
-export const IdeasPrimaryView = () => {
+export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNavIndex) => void }) => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -330,6 +389,13 @@ export const IdeasPrimaryView = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  // Action pipeline state
+  const [askingIdeaId, setAskingIdeaId] = useState<string | null>(null);
+  const [ideaAnswers, setIdeaAnswers] = useState<Record<string, string>>({});
+  const [brainSavingId, setBrainSavingId] = useState<string | null>(null);
+  const [brainSaveMsg, setBrainSaveMsg] = useState<Record<string, string>>({});
+  const [workflowCreatingId, setWorkflowCreatingId] = useState<string | null>(null);
 
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -444,6 +510,86 @@ export const IdeasPrimaryView = () => {
     },
     [fetchIdeas],
   );
+
+  const handleAskJarvis = useCallback(async (idea: Idea) => {
+    if (askingIdeaId === idea.id) return;
+    setAskingIdeaId(idea.id);
+    try {
+      const question = idea.body
+        ? `Regarding this idea: "${idea.title}"\n\n${idea.body}\n\nWhat are the most important next steps and considerations?`
+        : `What are the most important next steps and considerations for this idea: "${idea.title}"?`;
+      const res = await apiFetch(buildBrainAskUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      if (!res.ok) {
+        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: "Ask failed — check that a brain model is configured." }));
+        return;
+      }
+      const data = (await res.json()) as { answer?: string; available?: boolean; hint?: string };
+      if (data.available && typeof data.answer === "string") {
+        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: data.answer as string }));
+      } else {
+        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: data.hint ?? "No answer model available." }));
+      }
+    } catch {
+      setIdeaAnswers((prev) => ({ ...prev, [idea.id]: "Error reaching Jarvis." }));
+    } finally {
+      setAskingIdeaId(null);
+    }
+  }, [askingIdeaId]);
+
+  const handleCreateWorkflow = useCallback(async (idea: Idea) => {
+    if (workflowCreatingId === idea.id) return;
+    setWorkflowCreatingId(idea.id);
+    try {
+      await apiFetch(buildWorkflowsUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: idea.title,
+          description: idea.body || "",
+          steps: [
+            `Research and validate: ${idea.title}`,
+            "Identify the key risks and obstacles",
+            "Outline 3–5 concrete next steps",
+          ].join("\n"),
+        }),
+      });
+    } catch {
+      // swallow — navigate anyway
+    } finally {
+      setWorkflowCreatingId(null);
+      onNavigate(3);
+    }
+  }, [workflowCreatingId, onNavigate]);
+
+  const handleSaveToBrain = useCallback(async (idea: Idea) => {
+    if (brainSavingId === idea.id) return;
+    setBrainSavingId(idea.id);
+    const text = idea.body ? `${idea.title}\n\n${idea.body}` : idea.title;
+    try {
+      const res = await apiFetch(buildBrainCaptureUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const msg = res.ok ? "✓ Saved to brain inbox" : "⚠ Save failed";
+      setBrainSaveMsg((prev) => ({ ...prev, [idea.id]: msg }));
+    } catch {
+      setBrainSaveMsg((prev) => ({ ...prev, [idea.id]: "⚠ Error" }));
+    } finally {
+      setBrainSavingId(null);
+      setTimeout(() => setBrainSaveMsg((prev) => { const n = { ...prev }; delete n[idea.id]; return n; }), 2500);
+    }
+  }, [brainSavingId]);
+
+  const handleOpenInAnalyzer = useCallback((idea: Idea) => {
+    const text = idea.body ? `${idea.title}\n\n${idea.body}` : idea.title;
+    try { void navigator.clipboard.writeText(text); } catch { /* ignore */ }
+    onNavigate(5);
+  }, [onNavigate]);
 
   const allTags = Array.from(new Set(ideas.flatMap((i) => i.tags))).sort();
   const filtered = activeTag ? ideas.filter((i) => i.tags.includes(activeTag)) : ideas;
@@ -644,6 +790,54 @@ export const IdeasPrimaryView = () => {
                             {isDeletingThis ? "Deleting…" : "Delete"}
                           </button>
                         </div>
+
+                        {/* Action pipeline */}
+                        <div style={s.actionRow2}>
+                          <button
+                            type="button"
+                            style={s.actionBtn2("ask", askingIdeaId === idea.id)}
+                            disabled={askingIdeaId === idea.id}
+                            onClick={() => void handleAskJarvis(idea)}
+                          >
+                            {askingIdeaId === idea.id ? "Asking…" : "◆ Ask Jarvis"}
+                          </button>
+                          <button
+                            type="button"
+                            style={s.actionBtn2("workflow", workflowCreatingId === idea.id)}
+                            disabled={workflowCreatingId === idea.id}
+                            onClick={() => void handleCreateWorkflow(idea)}
+                          >
+                            {workflowCreatingId === idea.id ? "Creating…" : "⟐ → Workflow"}
+                          </button>
+                          <button
+                            type="button"
+                            style={s.actionBtn2("brain", brainSavingId === idea.id)}
+                            disabled={brainSavingId === idea.id}
+                            onClick={() => void handleSaveToBrain(idea)}
+                          >
+                            {brainSavingId === idea.id ? "Saving…" : "◈ → Brain"}
+                          </button>
+                          <button
+                            type="button"
+                            style={s.actionBtn2("analyzer")}
+                            onClick={() => handleOpenInAnalyzer(idea)}
+                          >
+                            ⊞ → Analyzer
+                          </button>
+                        </div>
+
+                        {brainSaveMsg[idea.id] != null && (
+                          <p style={s.inlineMsg((brainSaveMsg[idea.id] ?? "").startsWith("✓"))}>
+                            {brainSaveMsg[idea.id]}
+                          </p>
+                        )}
+
+                        {ideaAnswers[idea.id] && (
+                          <div style={s.ideaAnswer}>
+                            <p style={s.ideaAnswerLabel}>◆ Jarvis says</p>
+                            <p style={s.ideaAnswerText}>{ideaAnswers[idea.id]}</p>
+                          </div>
+                        )}
                       </>
                     )}
                   </section>

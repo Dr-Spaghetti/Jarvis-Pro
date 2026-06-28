@@ -28,6 +28,8 @@ import type { TerminalView } from "./app/types";
 import { clampSidebarWidth } from "./app/uiStateNormalizers";
 import { ActiveAgentsSidebar } from "./components/ActiveAgentsSidebar";
 import { ConsolePrimaryNav } from "./components/ConsolePrimaryNav";
+import { GlobalSearch } from "./components/GlobalSearch";
+import { NotificationPanel } from "./components/NotificationPanel";
 import { PrimaryViewRouter } from "./components/PrimaryViewRouter";
 import { RuntimeStatusStrip } from "./components/RuntimeStatusStrip";
 import { SidebarActionPanel } from "./components/SidebarActionPanel";
@@ -38,6 +40,7 @@ import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader
 import { apiFetch, appendAuthTokenParam } from "./runtime/apiClient";
 
 import {
+  buildNotificationsUrl,
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
 } from "./runtime/runtimeEndpoints";
@@ -56,6 +59,9 @@ export const App = () => {
   const [isShortcutsOverlayOpen, setIsShortcutsOverlayOpen] = useState(false);
   const [conversationsSidebarContent, setConversationsSidebarContent] = useState<ReactNode>(null);
   const [conversationsActionPanel, setConversationsActionPanel] = useState<ReactNode>(null);
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const terminalEventsRefreshTimerRef = useRef<number | null>(null);
   const runtimeStateStoreRef = useRef(createTerminalRuntimeStateStore());
   const runtimeStateStore = runtimeStateStoreRef.current;
@@ -331,6 +337,17 @@ export const App = () => {
     setActivePrimaryNav,
     onToggleShortcutsOverlay: toggleShortcutsOverlay,
   });
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
   const monitorRuntime = useMonitorRuntime({
     enabled: isUiStateHydrated && isMonitorVisible,
   });
@@ -395,6 +412,28 @@ export const App = () => {
     setIsAgentsSidebarVisible(true);
   }, [isAgentsSidebarVisible, setIsAgentsSidebarVisible, hasSidebarActionPanel]);
 
+  // Load initial unread notification count and refresh when a new one arrives.
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await apiFetch(buildNotificationsUrl(), {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { unreadCount?: number };
+        if (typeof data.unreadCount === "number") setUnreadNotificationCount(data.unreadCount);
+      } catch {
+        // ignore
+      }
+    };
+    void fetchUnread();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "jarvis.lastNotificationAt") void fetchUnread();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const handleTerminalRenamed = useCallback((terminalId: string, tentacleName: string) => {
     setTerminals((current) =>
       current.map((t) =>
@@ -445,7 +484,15 @@ export const App = () => {
         <ConsolePrimaryNav
           activePrimaryNav={activePrimaryNav}
           onPrimaryNavChange={setActivePrimaryNav}
+          unreadNotificationCount={unreadNotificationCount}
+          onBellClick={() => setIsNotificationPanelOpen((v) => !v)}
         />
+        {isNotificationPanelOpen && (
+          <NotificationPanel
+            onClose={() => setIsNotificationPanelOpen(false)}
+            onUnreadChange={setUnreadNotificationCount}
+          />
+        )}
 
         <section className="console-main-canvas" aria-label="Main content canvas">
           <div
@@ -660,6 +707,16 @@ export const App = () => {
 
         {isUiStateHydrated && isMonitorVisible && isBottomTelemetryVisible && (
           <TelemetryTape monitorFeed={monitorRuntime.monitorFeed} />
+        )}
+
+        {isSearchOpen && (
+          <GlobalSearch
+            onClose={() => setIsSearchOpen(false)}
+            onNavigate={(index) => {
+              setActivePrimaryNav(index);
+              setIsSearchOpen(false);
+            }}
+          />
         )}
 
         {isShortcutsOverlayOpen && (

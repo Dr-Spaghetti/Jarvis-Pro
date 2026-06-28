@@ -7,7 +7,7 @@ const apiProxyTarget = process.env.OCTOGENT_API_ORIGIN ?? "http://127.0.0.1:8787
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: resolve(__dirname, "../../dist/web"),
+    outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,
   },
   server: {

@@ -52,6 +52,16 @@ import {
   handleConversationSearchRoute,
   handleConversationsCollectionRoute,
 } from "./conversationRoutes";
+import { handleJarvisConversationTurnRoute } from "./jarvisConversationRoute";
+import {
+  handleNotificationsCollectionRoute,
+  handleNotificationsReadRoute,
+} from "./notificationRoutes";
+import {
+  handleWorkflowItemRoute,
+  handleWorkflowRunRoute,
+  handleWorkflowsCollectionRoute,
+} from "./workflowRoutes";
 import {
   handleDeckSkillsRoute,
   handleDeckTentacleItemRoute,
@@ -102,6 +112,7 @@ import {
   isAuthorizedRequest,
   readHeaderValue,
 } from "./security";
+import { handleSearchRoute } from "./searchRoutes";
 import { handleSkillsRunRoute } from "./skillsRoutes";
 import { handleTaskPlanRoute } from "./taskPlanRoutes";
 import { handleTokenTelemetryRoute } from "./telemetryRoutes";
@@ -237,6 +248,11 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
     ],
   ],
   ["arsenal", [handleArsenalListRoute, handleArsenalDeployRoute]],
+  [
+    "notifications",
+    [handleNotificationsReadRoute, handleNotificationsCollectionRoute],
+  ],
+  ["search", [handleSearchRoute]],
   ["skills", [handleSkillsRunRoute]],
   ["tasks", [handleTaskPlanRoute]],
   ["terminal-snapshots", [handleTerminalSnapshotsRoute]],
@@ -263,12 +279,17 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   [
     "conversations",
     [
+      handleJarvisConversationTurnRoute,
       handleConversationsCollectionRoute,
       handleConversationSearchRoute,
       handleConversationExportRoute,
       handleConversationMetaRoute,
       handleConversationItemRoute,
     ],
+  ],
+  [
+    "workflows",
+    [handleWorkflowsCollectionRoute, handleWorkflowItemRoute, handleWorkflowRunRoute],
   ],
   [
     "terminals",

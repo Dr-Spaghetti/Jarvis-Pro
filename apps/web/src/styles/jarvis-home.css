@@ -417,6 +417,61 @@
   text-transform: uppercase;
   padding: 8px 0;
 }
+.nc-hq-attribution {
+  padding: 2px 0 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.nc-hq-attribution-line {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(57, 255, 20, 0.3);
+  transition: color 0.15s;
+  text-align: left;
+}
+.nc-hq-attribution-line:hover {
+  color: rgba(57, 255, 20, 0.55);
+}
+.nc-hq-attribution-arrow {
+  font-size: 9px;
+  margin-left: 3px;
+  opacity: 0.6;
+}
+.nc-hq-attribution-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-left: 1px solid rgba(57, 255, 20, 0.18);
+  background: rgba(57, 255, 20, 0.03);
+  max-width: 520px;
+}
+.nc-hq-attribution-item {
+  font-size: 10px;
+  color: rgba(57, 255, 20, 0.45);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  line-height: 1.55;
+}
+.nc-hq-attribution-cite {
+  font-size: 10px;
+  color: rgba(57, 255, 20, 0.35);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  line-height: 1.55;
+  text-decoration: none;
+}
+.nc-hq-attribution-cite:hover {
+  color: rgba(57, 255, 20, 0.6);
+  text-decoration: underline;
+}
 .nc-blink {
   animation: ncBlink 1.2s step-end infinite;
 }
@@ -524,30 +579,44 @@
   color: var(--term-red);
 }
 
-/* skill confirm dialog */
-.nc-hq-skill-confirm {
+/* voice intent confirmation overlay */
+.nc-hq-intent-confirm {
   position: absolute;
   bottom: 310px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(500px, calc(100% - 80px));
+  width: min(520px, calc(100% - 80px));
   border: 1px solid var(--glass-border-hot);
-  background: rgba(5, 7, 5, 0.95);
-  padding: 18px 20px;
+  background: rgba(5, 7, 5, 0.97);
+  padding: 16px 20px 14px;
   z-index: 30;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.nc-hq-skill-confirm-msg {
+.nc-hq-intent-confirm-countdown {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: rgba(57, 255, 20, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+.nc-hq-intent-confirm-label {
   font-size: 12px;
   color: var(--text-primary);
-  margin: 0 0 14px;
+  margin: 0;
   line-height: 1.5;
+  padding-right: 32px;
 }
-.nc-hq-skill-confirm-actions {
+.nc-hq-intent-confirm-actions {
   display: flex;
   gap: 10px;
 }
-.nc-hq-skill-confirm-ok {
+.nc-hq-intent-confirm-ok {
   padding: 9px 18px;
   background: var(--gold);
   color: #000;
@@ -559,7 +628,7 @@
   cursor: pointer;
   text-transform: uppercase;
 }
-.nc-hq-skill-confirm-cancel {
+.nc-hq-intent-confirm-cancel {
   padding: 9px 18px;
   background: transparent;
   border: 1px solid var(--glass-border);
@@ -569,6 +638,13 @@
   letter-spacing: .14em;
   cursor: pointer;
   text-transform: uppercase;
+}
+.nc-hq-intent-confirm-hint {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: rgba(57, 255, 20, 0.22);
+  font-family: var(--font-display);
 }
 .nc-hq-voice-error {
   position: absolute;

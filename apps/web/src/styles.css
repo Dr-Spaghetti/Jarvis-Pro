@@ -29,3 +29,6 @@
 
 /* NC OS global color overrides — all views except .nc-hq home tab */
 @import "./styles/nc-os-overrides.css";
+
+/* Global Ctrl/Cmd+K search palette */
+@import "./styles/global-search.css";

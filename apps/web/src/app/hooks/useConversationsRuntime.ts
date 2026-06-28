@@ -351,6 +351,16 @@ export const useConversationsRuntime = ({
     void refreshSessions();
   }, [enabled, refreshSessions]);
 
+  // Refresh sessions when Jarvis HQ saves a new turn (cross-tab event via localStorage).
+  useEffect(() => {
+    if (!enabled) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "jarvis.lastTurnAt") void refreshSessions();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [enabled, refreshSessions]);
+
   useEffect(() => {
     if (!enabled || !selectedSessionId) {
       setSelectedSession(null);

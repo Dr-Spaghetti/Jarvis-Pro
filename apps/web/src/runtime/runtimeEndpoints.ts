@@ -435,6 +435,15 @@ export const buildVoiceSpeakUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
 export const buildVoiceVoicesUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/voice/voices", runtimeBaseUrl);
 
+export const buildSearchUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/search", runtimeBaseUrl);
+
+export const buildNotificationsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/notifications", runtimeBaseUrl);
+
+export const buildNotificationsReadUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/notifications/read", runtimeBaseUrl);
+
 export const buildDeckTentacleUrl = (tentacleId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
   const encodedTentacleId = encodeURIComponent(tentacleId);
   const path = `/api/deck/tentacles/${encodedTentacleId}`;
@@ -626,3 +635,25 @@ export const buildSkillsRunUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
 
 export const buildTasksPlanUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/tasks/plan", runtimeBaseUrl);
+
+export const buildWorkflowsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/workflows";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/workflows");
+};
+
+export const buildWorkflowItemUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/workflows/${encodeURIComponent(id)}`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowRunUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/workflows/${encodeURIComponent(id)}/run`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildJarvisConversationTurnUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/conversations/jarvis/turn";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/conversations/jarvis/turn");
+};

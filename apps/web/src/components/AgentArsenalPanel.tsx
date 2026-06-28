@@ -37,6 +37,7 @@ type DeployState = {
   archetypeId: string;
   task: string;
   isDeploying: boolean;
+  error?: string;
 };
 
 type AgentArsenalPanelProps = {
@@ -112,8 +113,9 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
 
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        showToast(body.error ?? `Deploy failed (${res.status})`, "error");
-        setDeployState((prev) => prev && { ...prev, isDeploying: false });
+        const msg = body.error ?? `Deploy failed (${res.status})`;
+        showToast(msg, "error");
+        setDeployState((prev) => prev && { ...prev, isDeploying: false, error: msg });
         return;
       }
 
@@ -124,7 +126,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Deploy failed";
       showToast(msg, "error");
-      setDeployState((prev) => prev && { ...prev, isDeploying: false });
+      setDeployState((prev) => prev && { ...prev, isDeploying: false, error: msg });
     }
   };
 
@@ -208,6 +210,9 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                     }
                     disabled={deployState?.isDeploying}
                   />
+                  {deployState?.error && (
+                    <p className="arsenal-deploy-error">{deployState.error}</p>
+                  )}
                   <div className="arsenal-deploy-actions">
                     <button
                       type="button"

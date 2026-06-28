@@ -17,6 +17,7 @@ export type JarvisVoiceIntent =
   | { type: "remember"; text: string }
   | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
   | { type: "run-skill"; skillName: string }
+  | { type: "run-workflow"; workflowName: string }
   | { type: "ask"; question: string }
   | { type: "unknown"; text: string };
 
@@ -164,6 +165,23 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
       transcript,
       commandText,
       intent: { type: "ask", question: stripTrailingAddress(command) },
+    };
+  }
+
+  // "run workflow [name]" / "execute workflow [name]"
+  const runWorkflowExplicit = afterAnyPrefix(command, [
+    "run workflow",
+    "execute workflow",
+    "launch workflow",
+    "start workflow",
+    "run the workflow",
+    "execute the workflow",
+  ]);
+  if (runWorkflowExplicit !== null && runWorkflowExplicit.length > 0) {
+    return {
+      transcript,
+      commandText,
+      intent: { type: "run-workflow", workflowName: runWorkflowExplicit },
     };
   }
 

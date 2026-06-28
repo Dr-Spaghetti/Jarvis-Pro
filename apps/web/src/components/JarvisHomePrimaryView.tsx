@@ -19,7 +19,9 @@ import {
   buildBrainSemanticUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
+  buildNotificationsUrl,
   buildSkillsRunUrl,
+  buildJarvisConversationTurnUrl,
   buildVoiceConfigUrl,
   buildVoiceIntentUrl,
   buildVoiceSpeakUrl,
@@ -94,6 +96,7 @@ type JarvisIntentResolution = {
     | { type: "remember"; text: string }
     | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
     | { type: "run-skill"; skillName: string }
+    | { type: "run-workflow"; workflowName: string }
     | { type: "ask"; question: string }
     | { type: "unknown"; text: string };
 };
@@ -115,6 +118,13 @@ type SpeechRecognitionLike = {
   stop: () => void;
 };
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+type PendingVoiceIntent = {
+  displayLabel: string;
+  confirmLabel: string;
+  onConfirm: () => Promise<void>;
+  expiresAt: number;
+};
 
 type JarvisHomePrimaryViewProps = {
   onNavigate: (index: PrimaryNavIndex) => void;
@@ -146,6 +156,20 @@ const asNotes = (value: unknown): BrainNote[] => {
       typeof (n as BrainNote).title === "string" &&
       typeof (n as BrainNote).path === "string",
   );
+};
+
+const pushNotification = (title: string, detail?: string): void => {
+  apiFetch(buildNotificationsUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "action", title, detail }),
+  })
+    .then(() => {
+      const ts = Date.now().toString();
+      try { window.localStorage.setItem("jarvis.lastNotificationAt", ts); } catch { /* ignore */ }
+      window.dispatchEvent(new StorageEvent("storage", { key: "jarvis.lastNotificationAt", newValue: ts }));
+    })
+    .catch(() => {});
 };
 
 const voiceNavTargets: Record<
@@ -212,9 +236,23 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [answerSources, setAnswerSources] = useState<{ title: string; path: string }[]>([]);
   const [answerCitations, setAnswerCitations] = useState<{ title: string; url: string }[]>([]);
   const [answerVia, setAnswerVia] = useState<string | null>(null);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
+  const [jarvisSessionId, setJarvisSessionId] = useState<string>(() => {
+    try {
+      const stored = window.localStorage.getItem("jarvis.sessionId");
+      if (stored) return stored;
+      const fresh = `jarvis-${Date.now()}`;
+      window.localStorage.setItem("jarvis.sessionId", fresh);
+      return fresh;
+    } catch {
+      return `jarvis-${Date.now()}`;
+    }
+  });
   const [memoryItems, setMemoryItems] = useState<string[]>([]);
-  const [skillRunConfirmName, setSkillRunConfirmName] = useState<string | null>(null);
+  const [pendingVoiceIntent, setPendingVoiceIntent] = useState<PendingVoiceIntent | null>(null);
+  const [intentCountdown, setIntentCountdown] = useState(10);
+  const pendingVoiceIntentRef = useRef<PendingVoiceIntent | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   // Which local Ollama model answers. Empty = server default. Persisted so the
   // choice sticks; mirrored to a ref so the voice loop reads it without re-binding.
@@ -339,6 +377,20 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
   }, []);
 
+  const loadJournal = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildBrainJournalUrl(6), {
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { entries?: unknown };
+        if (Array.isArray(data.entries)) setJournal(data.entries as JournalEntry[]);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     void loadRecent();
     void loadConversation();
@@ -365,17 +417,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       } catch {
         /* ignore */
       }
-      try {
-        const res = await apiFetch(buildBrainJournalUrl(6), {
-          headers: { Accept: "application/json" },
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { entries?: unknown };
-          if (Array.isArray(data.entries)) setJournal(data.entries as JournalEntry[]);
-        }
-      } catch {
-        /* ignore */
-      }
+      void loadJournal();
       void loadMemory();
       try {
         const res = await apiFetch(buildBrainDigestUrl(), {
@@ -389,7 +431,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
     })();
-  }, [loadRecent, loadConversation, loadMemory]);
+  }, [loadRecent, loadConversation, loadMemory, loadJournal]);
 
   useEffect(() => {
     (async () => {
@@ -427,16 +469,18 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   }, []);
 
   // Sync voice settings changed from the Settings tab (written to localStorage).
+  // Also refresh journal when Analyzer (or any other tab) logs a new entry.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "jarvis.ttsProvider" && e.newValue !== null) setTtsProvider(e.newValue);
       if (e.key === "jarvis.deepgramVoice" && e.newValue !== null) setDeepgramVoice(e.newValue);
       if (e.key === "jarvis.chatModel" && e.newValue !== null) setChatModel(e.newValue);
       if (e.key === "jarvis.voiceModel" && e.newValue !== null) setVoiceModel(e.newValue);
+      if (e.key === "jarvis.lastJournalEntry") void loadJournal();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [loadJournal]);
 
   useEffect(() => {
     isListeningRef.current = isListening;
@@ -450,6 +494,28 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   useEffect(() => {
     chatModelRef.current = chatModel;
   }, [chatModel]);
+
+  useEffect(() => {
+    pendingVoiceIntentRef.current = pendingVoiceIntent;
+  }, [pendingVoiceIntent]);
+
+  // 10-second auto-expire countdown. Fires every 250ms when an intent is pending.
+  useEffect(() => {
+    if (!pendingVoiceIntent) return;
+    setIntentCountdown(Math.ceil((pendingVoiceIntent.expiresAt - Date.now()) / 1000));
+    const interval = window.setInterval(() => {
+      const remaining = Math.ceil((pendingVoiceIntentRef.current?.expiresAt ?? Date.now()) - Date.now()) / 1000;
+      if (remaining <= 0) {
+        setPendingVoiceIntent(null);
+        setIntentCountdown(10);
+        speakJarvisRef.current?.("Cancelled.").catch(() => {});
+        clearInterval(interval);
+        return;
+      }
+      setIntentCountdown(Math.ceil(remaining));
+    }, 250);
+    return () => clearInterval(interval);
+  }, [pendingVoiceIntent]);
 
   // Load the list of installed Ollama chat models for the answer-model picker.
   useEffect(() => {
@@ -496,21 +562,30 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     };
   }, []);
 
+  const [isSearching, setIsSearching] = useState(false);
+
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = query.trim();
     if (q.length === 0) {
       setResults(null);
+      setIsSearching(false);
       return;
     }
+    setIsSearching(true);
     searchTimer.current = setTimeout(async () => {
       try {
         const res = await apiFetch(buildBrainSemanticUrl(q), {
           headers: { Accept: "application/json" },
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          setIsSearching(false);
+          return;
+        }
         setResults(asNotes(await res.json()));
+        setIsSearching(false);
       } catch {
+        setIsSearching(false);
         /* ignore */
       }
     }, 220);
@@ -552,7 +627,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     setAnswerSources([]);
     setAnswerCitations([]);
     setAnswerVia(null);
+    setSourcesExpanded(false);
     setAskNote(null);
+    const askedAt = new Date().toISOString();
     try {
       const res = await apiFetch(buildBrainAskUrl(), {
         method: "POST",
@@ -573,11 +650,30 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       };
       if (data.available && typeof data.answer === "string") {
         const cleanAnswer = stripMarkdownForSpeech(data.answer);
+        const answeredAt = new Date().toISOString();
         setAnswer(cleanAnswer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
         setAnswerCitations(Array.isArray(data.citations) ? data.citations : []);
         setAnswerVia(typeof data.via === "string" ? data.via : null);
         void loadConversation();
+        // Persist turn to transcripts so it appears in Recent Convos.
+        // On success, dispatch a storage event so the Recent Convos tab refreshes live.
+        void apiFetch(buildJarvisConversationTurnUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: jarvisSessionId,
+            question,
+            answer: cleanAnswer,
+            askedAt,
+            answeredAt,
+          }),
+        }).then((r) => {
+          if (!r.ok) return;
+          const ts = new Date().toISOString();
+          try { window.localStorage.setItem("jarvis.lastTurnAt", ts); } catch { /* ignore */ }
+          window.dispatchEvent(new StorageEvent("storage", { key: "jarvis.lastTurnAt", newValue: ts }));
+        });
         // Auto-speak the clean answer when running hands-free.
         if (isListeningRef.current && !isMutedRef.current) {
           void speakJarvisRef.current?.(cleanAnswer);
@@ -592,7 +688,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     } finally {
       setAsking(false);
     }
-  }, [ask, chatModel, loadConversation]);
+  }, [ask, chatModel, jarvisSessionId, loadConversation]);
 
   // Prime audio playback inside a real user gesture so the browser's autoplay
   // policy never blocks Jarvis from speaking later (TTS fires from async
@@ -808,6 +904,24 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       // drop, bad JSON) can never leave the indicator stuck on "Thinking" and
       // freeze the hands-free loop. The finally always clears it.
       try {
+        // If a confirmation is already pending, intercept confirm/cancel before routing.
+        const pending = pendingVoiceIntentRef.current;
+        if (pending) {
+          const lower = transcript.toLowerCase().trim();
+          if (/^(confirm|yes|do it|proceed|go ahead|run it)\b/.test(lower)) {
+            setPendingVoiceIntent(null);
+            await speakJarvis("Confirmed.");
+            await pending.onConfirm();
+            return;
+          }
+          if (/^(cancel|no|stop|abort|nevermind|never mind|dismiss)\b/.test(lower)) {
+            setPendingVoiceIntent(null);
+            setVoiceStatus("Voice idle");
+            await speakJarvis("Cancelled.");
+            return;
+          }
+        }
+
         const intentResponse = await apiFetch(buildVoiceIntentUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -835,87 +949,133 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         }
 
         if (intent.type === "brain-capture") {
-          const response = await apiFetch(buildBrainCaptureUrl(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: intent.text }),
+          const captureText = intent.text;
+          const captureLabel = captureText.length > 60 ? `${captureText.slice(0, 60)}…` : captureText;
+          setPendingVoiceIntent({
+            displayLabel: `Capture to brain: "${captureLabel}"`,
+            confirmLabel: "CONFIRM CAPTURE",
+            onConfirm: async () => {
+              const response = await apiFetch(buildBrainCaptureUrl(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: captureText }),
+              });
+              if (!response.ok) {
+                setVoiceError("Capture failed");
+                return;
+              }
+              setCaptureMsg("Captured to Inbox");
+              void loadRecent();
+              setVoiceStatus("Captured");
+              pushNotification("Captured to brain", captureText);
+              await speakJarvisRef.current?.("Captured.");
+            },
+            expiresAt: Date.now() + 10_000,
           });
-          if (!response.ok) {
-            setVoiceError("Capture failed");
-            return;
-          }
-          setCaptureMsg("Captured to Inbox");
-          void loadRecent();
-          setVoiceStatus("Captured");
-          await speakJarvis("Captured.");
+          setVoiceStatus("Awaiting confirmation");
+          await speakJarvis(`Capture: "${captureLabel}". Confirm or cancel.`);
           return;
         }
 
         if (intent.type === "remember") {
-          const response = await apiFetch(buildBrainRememberUrl(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: intent.text }),
+          const rememberText = intent.text;
+          const rememberLabel = rememberText.length > 60 ? `${rememberText.slice(0, 60)}…` : rememberText;
+          setPendingVoiceIntent({
+            displayLabel: `Remember: "${rememberLabel}"`,
+            confirmLabel: "CONFIRM REMEMBER",
+            onConfirm: async () => {
+              const response = await apiFetch(buildBrainRememberUrl(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: rememberText }),
+              });
+              if (!response.ok) {
+                setVoiceError("Couldn't save that to memory");
+                await speakJarvisRef.current?.("I couldn't save that. Try again.").catch(() => {});
+                return;
+              }
+              void loadMemory();
+              setVoiceStatus("Saved to memory");
+              pushNotification("Saved to memory", rememberText);
+              await speakJarvisRef.current?.("Got it. I'll remember that from now on.");
+            },
+            expiresAt: Date.now() + 10_000,
           });
-          if (!response.ok) {
-            setVoiceError("Couldn't save that to memory");
-            await speakJarvis("I couldn't save that. Try again.").catch(() => {});
-            return;
-          }
-          void loadMemory();
-          setVoiceStatus("Saved to memory");
-          await speakJarvis("Got it. I'll remember that from now on.");
+          setVoiceStatus("Awaiting confirmation");
+          await speakJarvis(`Remember: "${rememberLabel}". Confirm or cancel.`);
           return;
         }
 
         if (intent.type === "create-terminal") {
-          const response = await apiFetch("/api/terminals", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              workspaceMode: intent.workspaceMode,
-              tentacleId: "octoboss",
-            }),
+          const terminalMode = intent.workspaceMode;
+          setPendingVoiceIntent({
+            displayLabel: `Create agent terminal (${terminalMode} mode)`,
+            confirmLabel: "CONFIRM CREATE AGENT",
+            onConfirm: async () => {
+              const response = await apiFetch("/api/terminals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ workspaceMode: terminalMode, tentacleId: "octoboss" }),
+              });
+              if (!response.ok) {
+                setVoiceError("Unable to create agent");
+                return;
+              }
+              onNavigate(1);
+              setVoiceStatus("Agent created");
+              pushNotification("Agent terminal created", `${terminalMode} mode`);
+              await speakJarvisRef.current?.("Agent created.");
+            },
+            expiresAt: Date.now() + 10_000,
           });
-          if (!response.ok) {
-            setVoiceError("Unable to create agent");
-            return;
-          }
-          onNavigate(1);
-          setVoiceStatus("Agent created");
-          await speakJarvis("Agent created.");
+          setVoiceStatus("Awaiting confirmation");
+          await speakJarvis("Create a new agent terminal. Confirm or cancel.");
           return;
         }
 
         if (intent.type === "run-skill") {
-          const res = await apiFetch(buildSkillsRunUrl(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ skillName: intent.skillName }),
+          const skillName = intent.skillName;
+          setPendingVoiceIntent({
+            displayLabel: `Run skill: ${skillName}`,
+            confirmLabel: "CONFIRM RUN SKILL",
+            onConfirm: async () => {
+              const res = await apiFetch(buildSkillsRunUrl(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skillName, confirmed: true }),
+              });
+              if (!res.ok) {
+                const data = (await res.json().catch(() => null)) as { error?: string } | null;
+                setVoiceError(data?.error ?? `Could not run skill: ${skillName}`);
+                return;
+              }
+              onNavigate(1);
+              setVoiceStatus(`Running skill: ${skillName}`);
+              pushNotification(`Skill run: ${skillName}`);
+              await speakJarvisRef.current?.(`Running ${skillName}.`);
+            },
+            expiresAt: Date.now() + 10_000,
           });
-          if (res.status === 403) {
-            const data = (await res.json().catch(() => null)) as {
-              requiresConfirmation?: boolean;
-              skillName?: string;
-            } | null;
-            if (data?.requiresConfirmation) {
-              const displayName = data.skillName ?? intent.skillName;
-              setSkillRunConfirmName(displayName);
-              setVoiceStatus(`Approval needed: ${displayName}`);
-              await speakJarvis(
-                `I need your approval to run ${displayName}. Tap Confirm to proceed.`,
-              );
-              return;
-            }
-          }
-          if (!res.ok) {
-            const data = (await res.json().catch(() => null)) as { error?: string } | null;
-            setVoiceError(data?.error ?? `Could not run skill: ${intent.skillName}`);
-            return;
-          }
-          onNavigate(1);
-          setVoiceStatus(`Running skill: ${intent.skillName}`);
-          await speakJarvis(`Running ${intent.skillName}.`);
+          setVoiceStatus(`Approval needed: ${skillName}`);
+          await speakJarvis(`Run skill: ${skillName}. Confirm or cancel.`);
+          return;
+        }
+
+        if (intent.type === "run-workflow") {
+          const workflowName = intent.workflowName;
+          setPendingVoiceIntent({
+            displayLabel: `Run workflow: ${workflowName}`,
+            confirmLabel: "CONFIRM RUN WORKFLOW",
+            onConfirm: async () => {
+              onNavigate(3);
+              setVoiceStatus(`Opening workflows: ${workflowName}`);
+              pushNotification(`Workflow opened: ${workflowName}`);
+              await speakJarvisRef.current?.(`Opening workflows to run ${workflowName}.`);
+            },
+            expiresAt: Date.now() + 10_000,
+          });
+          setVoiceStatus("Awaiting confirmation");
+          await speakJarvis(`Run workflow: ${workflowName}. Confirm or cancel.`);
           return;
         }
 
@@ -1518,53 +1678,36 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         </button>
       </div>
 
-      {/* skill confirm dialog */}
-      {skillRunConfirmName && (
-        <div className="nc-hq-skill-confirm" role="alertdialog" aria-label="Approval required">
-          <p className="nc-hq-skill-confirm-msg">
-            Run <strong>{skillRunConfirmName}</strong>? This skill may send emails or outreach.
-          </p>
-          <div className="nc-hq-skill-confirm-actions">
+      {/* voice intent confirmation overlay */}
+      {pendingVoiceIntent && (
+        <div className="nc-hq-intent-confirm" role="alertdialog" aria-label="Confirm voice action">
+          <span className="nc-hq-intent-confirm-countdown">{intentCountdown}s</span>
+          <p className="nc-hq-intent-confirm-label">{pendingVoiceIntent.displayLabel}</p>
+          <div className="nc-hq-intent-confirm-actions">
             <button
               type="button"
-              className="nc-hq-skill-confirm-ok"
+              className="nc-hq-intent-confirm-ok"
               onClick={() => {
-                const name = skillRunConfirmName;
-                setSkillRunConfirmName(null);
-                apiFetch(buildSkillsRunUrl(), {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ skillName: name, confirmed: true }),
-                })
-                  .then(async (res) => {
-                    if (!res.ok) {
-                      const data = (await res.json().catch(() => null)) as {
-                        error?: string;
-                      } | null;
-                      setVoiceError(data?.error ?? `Could not run skill: ${name}`);
-                      return;
-                    }
-                    onNavigate(1);
-                    setVoiceStatus(`Running skill: ${name}`);
-                  })
-                  .catch(() => {
-                    setVoiceError(`Could not run skill: ${name}`);
-                  });
+                const p = pendingVoiceIntent;
+                setPendingVoiceIntent(null);
+                void speakJarvis("Confirmed.").then(() => p.onConfirm()).catch(() => p.onConfirm());
               }}
             >
-              Confirm
+              {pendingVoiceIntent.confirmLabel}
             </button>
             <button
               type="button"
-              className="nc-hq-skill-confirm-cancel"
+              className="nc-hq-intent-confirm-cancel"
               onClick={() => {
-                setSkillRunConfirmName(null);
+                setPendingVoiceIntent(null);
                 setVoiceStatus("Voice idle");
+                void speakJarvis("Cancelled.");
               }}
             >
-              Cancel
+              CANCEL
             </button>
           </div>
+          <p className="nc-hq-intent-confirm-hint">or say "confirm" / "cancel"</p>
         </div>
       )}
 
@@ -1594,7 +1737,19 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             {conversation.length > 0 && (
               <button
                 type="button"
-                onClick={() => setConversation([])}
+                onClick={() => {
+                  const newId = `jarvis-${Date.now()}`;
+                  try {
+                    window.localStorage.setItem("jarvis.sessionId", newId);
+                  } catch {
+                    /* ignore */
+                  }
+                  setJarvisSessionId(newId);
+                  setConversation([]);
+                  setAnswer(null);
+                  setAskNote(null);
+                  setAsk("");
+                }}
                 style={{
                   background: "none",
                   border: "1px solid rgba(57,255,20,0.18)",
@@ -1645,6 +1800,43 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           {isThinking && (
             <div className="nc-hq-thinking">
               PROCESSING<span className="nc-blink">_</span>
+            </div>
+          )}
+          {answerVia && !asking && (
+            <div className="nc-hq-attribution">
+              <button
+                type="button"
+                className="nc-hq-attribution-line"
+                onClick={() => setSourcesExpanded((v) => !v)}
+              >
+                via {answerVia}
+                {answerSources.length > 0 &&
+                  ` · ${answerSources.length} note${answerSources.length !== 1 ? "s" : ""}`}
+                {answerCitations.length > 0 && " · web"}
+                <span className="nc-hq-attribution-arrow">
+                  {sourcesExpanded ? "▴" : "▾"}
+                </span>
+              </button>
+              {sourcesExpanded && (answerSources.length > 0 || answerCitations.length > 0) && (
+                <div className="nc-hq-attribution-detail">
+                  {answerSources.map((s) => (
+                    <div key={s.path} className="nc-hq-attribution-item">
+                      ◆ {s.title}
+                    </div>
+                  ))}
+                  {answerCitations.map((c) => (
+                    <a
+                      key={c.url}
+                      className="nc-hq-attribution-cite"
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      ◆ {c.title || c.url}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

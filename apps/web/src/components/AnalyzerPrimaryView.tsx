@@ -7,6 +7,7 @@ import {
   buildAnalyzerItemUrl,
   buildAnalyzerUrl,
   buildAnalyzerVideoUrl,
+  buildBrainJournalAppendUrl,
 } from "../runtime/runtimeEndpoints";
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -536,6 +537,22 @@ export const AnalyzerPrimaryView = () => {
         } else {
           void fetchRecord(data.id);
         }
+        // Log successful analysis to the brain journal, then signal JarvisHome to reload it.
+        void apiFetch(buildBrainJournalAppendUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: `Analyzed ${file.name}`,
+            skill: "Content Analyzer",
+            status: "ok",
+            detail: `${isVideo ? "video" : "image"} analysis complete`,
+          }),
+        }).then((r) => {
+          if (!r.ok) return;
+          const ts = new Date().toISOString();
+          try { window.localStorage.setItem("jarvis.lastJournalEntry", ts); } catch { /* ignore */ }
+          window.dispatchEvent(new StorageEvent("storage", { key: "jarvis.lastJournalEntry", newValue: ts }));
+        });
       } catch {
         setUploadError("Upload failed — check that Jarvis is running and try again.");
       } finally {

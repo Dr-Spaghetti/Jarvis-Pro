@@ -88,7 +88,7 @@ export const PrimaryViewRouter = ({
 
   // 6 — Ideas
   if (activePrimaryNav === 6) {
-    return <IdeasPrimaryView />;
+    return <IdeasPrimaryView onNavigate={onPrimaryNavChange} />;
   }
 
   // 7 — Settings
