@@ -1511,3 +1511,66 @@
 .jarvis-skill-confirm-btn--cancel:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
 }
+
+/* ── EXEC_LOG activity feed ── */
+.nc-hq-activity {
+  position: absolute;
+  bottom: 160px;
+  right: 20px;
+  width: 280px;
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid rgba(57, 255, 20, 0.14);
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+.nc-hq-activity-hdr {
+  padding: 5px 10px;
+  font-family: var(--font-display);
+  font-size: 7px;
+  letter-spacing: 0.28em;
+  color: rgba(57, 255, 20, 0.22);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.08);
+}
+.nc-hq-activity-list {
+  display: flex;
+  flex-direction: column;
+}
+.nc-hq-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.05);
+}
+.nc-hq-activity-item:last-child {
+  border-bottom: none;
+}
+.nc-hq-activity-badge {
+  font-size: 8px;
+  flex-shrink: 0;
+  color: rgba(57, 255, 20, 0.3);
+}
+.nc-hq-activity-badge[data-status="ok"] {
+  color: #39ff14;
+}
+.nc-hq-activity-badge[data-status="error"] {
+  color: rgba(255, 80, 80, 0.7);
+}
+.nc-hq-activity-name {
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: rgba(57, 255, 20, 0.6);
+  letter-spacing: 0.04em;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nc-hq-activity-meta {
+  font-family: var(--font-display);
+  font-size: 8px;
+  color: rgba(57, 255, 20, 0.22);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}

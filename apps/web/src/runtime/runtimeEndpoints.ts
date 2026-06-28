@@ -653,6 +653,17 @@ export const buildWorkflowRunUrl = (id: string, runtimeBaseUrl = readRuntimeBase
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildWorkflowRunHistoryUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/workflows/${encodeURIComponent(id)}/runs`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowRunsRecentUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/workflow-runs/recent";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/workflow-runs/recent");
+};
+
 export const buildJarvisConversationTurnUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/conversations/jarvis/turn";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/conversations/jarvis/turn");

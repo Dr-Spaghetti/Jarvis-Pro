@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../runtime/apiClient";
 import {
   buildWorkflowItemUrl,
+  buildWorkflowRunHistoryUrl,
   buildWorkflowRunUrl,
   buildWorkflowsUrl,
 } from "../runtime/runtimeEndpoints";
@@ -16,7 +17,19 @@ type Workflow = {
   updated: string;
 };
 
-type RunResult = { step: string; answer: string };
+type RunStep = { step: string; answer: string; durationMs?: number };
+
+type WorkflowRun = {
+  id: string;
+  workflowId: string;
+  workflowName: string;
+  startedAt: string;
+  completedAt: string;
+  status: "ok" | "error";
+  steps: RunStep[];
+};
+
+type StepStatus = "pending" | "running" | "done" | "error";
 
 const nc = {
   view: {
@@ -93,7 +106,6 @@ const nc = {
     textAlign: "left" as const,
     padding: "7px 14px",
     background: active ? "rgba(57,255,20,0.07)" : "none",
-    borderLeft: `2px solid ${active ? "#39ff14" : "transparent"}`,
     border: "none",
     borderLeftStyle: "solid" as const,
     borderLeftWidth: 2,
@@ -235,7 +247,10 @@ const nc = {
   }),
   detailCard: {
     width: "100%",
-    maxWidth: 580,
+    maxWidth: 600,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 0,
   },
   detailName: {
     fontSize: 13,
@@ -286,34 +301,97 @@ const nc = {
     padding: "6px 10px",
     cursor: "pointer",
   },
-  runResults: {
-    marginTop: 16,
-    display: "flex" as const,
-    flexDirection: "column" as const,
-    gap: 10,
+  divider: {
+    height: 1,
+    background: "rgba(57,255,20,0.08)",
+    margin: "18px 0",
   },
-  runResultHdr: {
+  sectionLabel: {
     fontSize: 8,
-    letterSpacing: "0.2em",
+    letterSpacing: "0.22em",
+    textTransform: "uppercase" as const,
+    color: "rgba(57,255,20,0.22)",
+    marginBottom: 10,
+  },
+  // Live step progress
+  liveStepsBox: {
+    background: "#050705",
+    border: "1px solid rgba(57,255,20,0.18)",
+    marginTop: 14,
+  },
+  liveStepsHdr: {
+    padding: "8px 12px",
+    borderBottom: "1px solid rgba(57,255,20,0.08)",
+    fontSize: 8,
+    letterSpacing: "0.22em",
     textTransform: "uppercase" as const,
     color: "rgba(57,255,20,0.3)",
-    marginBottom: 4,
   },
-  runResultItem: {
-    background: "#050705",
-    border: "1px solid rgba(57,255,20,0.1)",
+  liveStep: (status: StepStatus) => ({
     padding: "10px 12px",
+    borderBottom: "1px solid rgba(57,255,20,0.06)",
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 4,
+    background:
+      status === "running"
+        ? "rgba(57,255,20,0.04)"
+        : "transparent",
+  }),
+  liveStepRow: {
+    display: "flex" as const,
+    alignItems: "flex-start" as const,
+    gap: 8,
   },
-  runResultStep: {
-    fontSize: 9,
-    color: "rgba(57,255,20,0.4)",
-    letterSpacing: "0.08em",
-    marginBottom: 4,
-  },
-  runResultAnswer: {
+  liveStepIcon: (status: StepStatus) => ({
+    fontSize: 10,
+    flexShrink: 0,
+    marginTop: 1,
+    color:
+      status === "done"
+        ? "#39ff14"
+        : status === "error"
+          ? "rgba(255,80,80,0.8)"
+          : status === "running"
+            ? "rgba(57,255,20,0.7)"
+            : "rgba(57,255,20,0.2)",
+  }),
+  liveStepText: (status: StepStatus) => ({
+    fontSize: 10,
+    color:
+      status === "running"
+        ? "#d8ecd8"
+        : status === "done" || status === "error"
+          ? "rgba(57,255,20,0.55)"
+          : "rgba(57,255,20,0.25)",
+    lineHeight: 1.5,
+  }),
+  liveStepAnswer: {
     fontSize: 10,
     color: "#c8dcc8",
     lineHeight: 1.6,
+    paddingLeft: 18,
+    marginTop: 2,
+  },
+  liveStepAnswerError: {
+    fontSize: 10,
+    color: "rgba(255,80,80,0.65)",
+    lineHeight: 1.6,
+    paddingLeft: 18,
+    marginTop: 2,
+    fontStyle: "italic" as const,
+  },
+  liveStepDuration: {
+    fontSize: 8,
+    color: "rgba(57,255,20,0.2)",
+    paddingLeft: 18,
+  },
+  liveStepConnector: {
+    fontSize: 9,
+    color: "rgba(57,255,20,0.15)",
+    padding: "4px 12px",
+    textAlign: "center" as const,
+    userSelect: "none" as const,
   },
   runError: {
     fontSize: 10,
@@ -321,28 +399,89 @@ const nc = {
     padding: "8px 10px",
     border: "1px solid rgba(255,80,80,0.2)",
     background: "rgba(255,80,80,0.04)",
+    marginTop: 12,
   },
-  runResultStepLabel: {
+  // Run history
+  historyList: {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 6,
+  },
+  historyItem: (expanded: boolean) => ({
+    background: "#050705",
+    border: `1px solid ${expanded ? "rgba(57,255,20,0.22)" : "rgba(57,255,20,0.1)"}`,
+    cursor: "pointer" as const,
+  }),
+  historyItemHdr: {
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    padding: "8px 12px",
+    gap: 8,
+  },
+  historyBadge: (status: "ok" | "error") => ({
     fontSize: 8,
-    letterSpacing: "0.22em",
+    letterSpacing: "0.12em",
     textTransform: "uppercase" as const,
-    color: "rgba(57,255,20,0.22)",
-    marginBottom: 4,
-  },
-  runResultConnector: {
+    padding: "2px 6px",
+    background:
+      status === "ok" ? "rgba(57,255,20,0.08)" : "rgba(255,80,80,0.08)",
+    border: `1px solid ${status === "ok" ? "rgba(57,255,20,0.22)" : "rgba(255,80,80,0.22)"}`,
+    color: status === "ok" ? "#39ff14" : "rgba(255,80,80,0.8)",
+    flexShrink: 0,
+  }),
+  historyMeta: {
     fontSize: 9,
+    color: "rgba(57,255,20,0.3)",
+    flex: 1,
+  },
+  historyExpandedSteps: {
+    borderTop: "1px solid rgba(57,255,20,0.08)",
+    padding: "10px 12px",
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 8,
+  },
+  historyStep: {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 3,
+  },
+  historyStepLabel: {
+    fontSize: 8,
+    color: "rgba(57,255,20,0.25)",
     letterSpacing: "0.08em",
-    color: "rgba(57,255,20,0.18)",
-    padding: "5px 12px",
-    textAlign: "center" as const,
-    userSelect: "none" as const,
   },
-  runResultErrorAnswer: {
+  historyStepAnswer: {
     fontSize: 10,
-    color: "rgba(255,80,80,0.65)",
+    color: "#c0d8c0",
     lineHeight: 1.6,
-    fontStyle: "italic" as const,
   },
+};
+
+const STEP_ICON: Record<StepStatus, string> = {
+  pending: "○",
+  running: "⟳",
+  done: "✓",
+  error: "✗",
+};
+
+const formatRelTime = (iso: string): string => {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+};
+
+const formatDuration = (startedAt: string, completedAt: string): string => {
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "";
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
 };
 
 export const WorkflowsPrimaryView = () => {
@@ -352,9 +491,13 @@ export const WorkflowsPrimaryView = () => {
   const [draft, setDraft] = useState({ name: "", description: "", steps: "" });
   const [isSaving, setIsSaving] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [runResults, setRunResults] = useState<RunResult[] | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Live step progress during a run
+  const [liveSteps, setLiveSteps] = useState<Array<{ step: string; status: StepStatus; answer?: string; durationMs?: number }>>([]);
+  // Run history for the selected workflow
+  const [runHistory, setRunHistory] = useState<WorkflowRun[]>([]);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   const fetchWorkflows = useCallback(async () => {
     try {
@@ -363,13 +506,31 @@ export const WorkflowsPrimaryView = () => {
       const data = (await res.json()) as { workflows: Workflow[] };
       setWorkflows(Array.isArray(data.workflows) ? data.workflows : []);
     } catch {
-      // ignore load errors silently
+      // ignore
+    }
+  }, []);
+
+  const fetchRunHistory = useCallback(async (workflowId: string) => {
+    try {
+      const res = await apiFetch(buildWorkflowRunHistoryUrl(workflowId), { method: "GET" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { runs: WorkflowRun[] };
+      setRunHistory(Array.isArray(data.runs) ? data.runs : []);
+    } catch {
+      // ignore
     }
   }, []);
 
   useEffect(() => {
     void fetchWorkflows();
   }, [fetchWorkflows]);
+
+  useEffect(() => {
+    if (selected) {
+      setRunHistory([]);
+      void fetchRunHistory(selected);
+    }
+  }, [selected, fetchRunHistory]);
 
   const handleSave = async () => {
     if (!draft.name.trim() || isSaving) return;
@@ -404,8 +565,9 @@ export const WorkflowsPrimaryView = () => {
       await apiFetch(buildWorkflowItemUrl(id), { method: "DELETE" });
       setWorkflows((prev) => prev.filter((w) => w.id !== id));
       if (selected === id) setSelected(null);
-      setRunResults(null);
+      setLiveSteps([]);
       setRunError(null);
+      setRunHistory([]);
     } catch {
       // ignore
     } finally {
@@ -413,21 +575,97 @@ export const WorkflowsPrimaryView = () => {
     }
   };
 
-  const handleRun = async (id: string) => {
+  const handleRun = async (workflow: Workflow) => {
     if (isRunning) return;
     setIsRunning(true);
-    setRunResults(null);
     setRunError(null);
+    setExpandedRunId(null);
+
+    // Initialize live step display from the workflow definition
+    const stepLines = workflow.steps
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const initialSteps = stepLines.map((step, i) => ({
+      step,
+      status: (i === 0 ? "running" : "pending") as StepStatus,
+    }));
+    setLiveSteps(initialSteps);
+
     try {
-      const res = await apiFetch(buildWorkflowRunUrl(id), { method: "POST" });
-      const data = (await res.json()) as { ok?: boolean; results?: RunResult[]; error?: string };
-      if (!res.ok || !data.ok) {
-        setRunError(data.error ?? `Run failed (${res.status})`);
+      const response = await apiFetch(buildWorkflowRunUrl(workflow.id), { method: "POST" });
+
+      if (!response.ok || !response.body) {
+        const data = (await response.json()) as { error?: string };
+        setRunError(data.error ?? `Run failed (${response.status})`);
+        setLiveSteps([]);
         return;
       }
-      setRunResults(Array.isArray(data.results) ? data.results : []);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as {
+              type?: string;
+              stepIndex?: number;
+              step?: string;
+              answer?: string;
+              durationMs?: number;
+              error?: boolean;
+              runId?: string;
+              status?: string;
+            };
+
+            if (event.type === "step-start" && typeof event.stepIndex === "number") {
+              setLiveSteps((prev) => {
+                const next = [...prev];
+                if (next[event.stepIndex!]) {
+                  next[event.stepIndex!] = { ...next[event.stepIndex!]!, status: "running" };
+                }
+                return next;
+              });
+            } else if (event.type === "step-done" && typeof event.stepIndex === "number") {
+              setLiveSteps((prev) => {
+                const next = [...prev];
+                const idx = event.stepIndex!;
+                const cur = next[idx];
+                if (cur) {
+                  const updated: typeof cur = {
+                    step: event.step ?? cur.step,
+                    status: event.error ? "error" : "done",
+                  };
+                  if (event.answer !== undefined) updated.answer = event.answer;
+                  if (event.durationMs !== undefined) updated.durationMs = event.durationMs;
+                  next[idx] = updated;
+                }
+                return next;
+              });
+            }
+          } catch {
+            // skip malformed events
+          }
+        }
+      }
+
+      // Refresh run history after completion
+      void fetchRunHistory(workflow.id);
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Run failed");
+      setLiveSteps([]);
     } finally {
       setIsRunning(false);
     }
@@ -445,8 +683,9 @@ export const WorkflowsPrimaryView = () => {
           onClick={() => {
             setCreating(true);
             setSelected(null);
-            setRunResults(null);
+            setLiveSteps([]);
             setRunError(null);
+            setRunHistory([]);
           }}
         >
           + New Workflow
@@ -480,7 +719,7 @@ export const WorkflowsPrimaryView = () => {
                     onClick={() => {
                       setSelected(w.id);
                       setCreating(false);
-                      setRunResults(null);
+                      setLiveSteps([]);
                       setRunError(null);
                     }}
                   >
@@ -569,12 +808,13 @@ export const WorkflowsPrimaryView = () => {
                   {active.steps && (
                     <pre style={nc.stepsBlock}>{active.steps}</pre>
                   )}
+
                   <div style={nc.detailActions}>
                     <button
                       type="button"
                       style={nc.runBtn(isRunning)}
                       disabled={isRunning}
-                      onClick={() => void handleRun(active.id)}
+                      onClick={() => void handleRun(active)}
                     >
                       {isRunning ? "Running…" : "▶ Run"}
                     </button>
@@ -590,37 +830,96 @@ export const WorkflowsPrimaryView = () => {
 
                   {runError && <div style={nc.runError}>⚠ {runError}</div>}
 
-                  {runResults && runResults.length > 0 && (
-                    <div style={nc.runResults}>
-                      <p style={nc.runResultHdr}>
-                        Run complete — {runResults.length} step
-                        {runResults.length !== 1 ? "s" : ""}
-                      </p>
-                      {runResults.map((r, i) => {
-                        const isError =
-                          r.answer.startsWith("[timed out") || r.answer.startsWith("Error:");
-                        const total = runResults.length;
-                        return (
-                          // biome-ignore lint/suspicious/noArrayIndexKey: run results are positional
-                          <div key={i}>
-                            {i > 0 && (
-                              <div style={nc.runResultConnector}>
-                                ↓ context passed to step {i + 1}
-                              </div>
-                            )}
-                            <div style={nc.runResultItem}>
-                              <p style={nc.runResultStepLabel}>
-                                Step {i + 1} of {total}
-                              </p>
-                              <p style={nc.runResultStep}>{r.step}</p>
-                              <p style={isError ? nc.runResultErrorAnswer : nc.runResultAnswer}>
-                                {r.answer}
-                              </p>
+                  {/* Live step progress */}
+                  {liveSteps.length > 0 && (
+                    <div style={nc.liveStepsBox}>
+                      <div style={nc.liveStepsHdr}>
+                        {isRunning ? "⟳ Running…" : "Run complete"}
+                      </div>
+                      {liveSteps.map((s, i) => (
+                        <div key={`live-${i}`}>
+                          {i > 0 && s.status !== "pending" && (
+                            <div style={nc.liveStepConnector}>↓ context passed to step {i + 1}</div>
+                          )}
+                          <div style={nc.liveStep(s.status)}>
+                            <div style={nc.liveStepRow}>
+                              <span style={nc.liveStepIcon(s.status)}>
+                                {STEP_ICON[s.status]}
+                              </span>
+                              <span style={nc.liveStepText(s.status)}>{s.step}</span>
                             </div>
+                            {s.answer != null && (
+                              <p
+                                style={
+                                  s.status === "error"
+                                    ? nc.liveStepAnswerError
+                                    : nc.liveStepAnswer
+                                }
+                              >
+                                {s.answer}
+                              </p>
+                            )}
+                            {s.durationMs != null && (
+                              <span style={nc.liveStepDuration}>
+                                {(s.durationMs / 1000).toFixed(1)}s
+                              </span>
+                            )}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
+                  )}
+
+                  {/* Run history */}
+                  {runHistory.length > 0 && (
+                    <>
+                      <div style={nc.divider} />
+                      <p style={nc.sectionLabel}>Past Runs</p>
+                      <div style={nc.historyList}>
+                        {runHistory.map((run) => {
+                          const isExpanded = expandedRunId === run.id;
+                          return (
+                            <div
+                              key={run.id}
+                              style={nc.historyItem(isExpanded)}
+                              onClick={() =>
+                                setExpandedRunId(isExpanded ? null : run.id)
+                              }
+                            >
+                              <div style={nc.historyItemHdr}>
+                                <span style={nc.historyBadge(run.status)}>
+                                  {run.status === "ok" ? "✓" : "✗"}
+                                </span>
+                                <span style={nc.historyMeta}>
+                                  {run.steps.length} step{run.steps.length !== 1 ? "s" : ""} ·{" "}
+                                  {formatDuration(run.startedAt, run.completedAt)} ·{" "}
+                                  {formatRelTime(run.startedAt)}
+                                </span>
+                                <span style={{ fontSize: 9, color: "rgba(57,255,20,0.2)" }}>
+                                  {isExpanded ? "▲" : "▼"}
+                                </span>
+                              </div>
+                              {isExpanded && (
+                                <div style={nc.historyExpandedSteps}>
+                                  {run.steps.map((step, i) => (
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: positional steps
+                                    <div key={i} style={nc.historyStep}>
+                                      <span style={nc.historyStepLabel}>
+                                        Step {i + 1}: {step.step}
+                                        {step.durationMs != null
+                                          ? ` (${(step.durationMs / 1000).toFixed(1)}s)`
+                                          : ""}
+                                      </span>
+                                      <p style={nc.historyStepAnswer}>{step.answer}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               ) : null}

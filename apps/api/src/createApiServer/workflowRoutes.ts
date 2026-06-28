@@ -1,6 +1,14 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve, sep } from "node:path";
 
+import { withCors } from "./security";
 import type { ApiRouteHandler } from "./routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
 
@@ -13,11 +21,31 @@ type Workflow = {
   updated: string;
 };
 
+export type WorkflowRunStep = {
+  step: string;
+  answer: string;
+  durationMs: number;
+};
+
+export type WorkflowRun = {
+  id: string;
+  workflowId: string;
+  workflowName: string;
+  startedAt: string;
+  completedAt: string;
+  status: "ok" | "error";
+  steps: WorkflowRunStep[];
+};
+
 const WORKFLOWS_SUBDIR = join("state", "workflows");
+const WORKFLOW_RUNS_SUBDIR = join("state", "workflow-runs");
 
 const STEP_TIMEOUT_MS = 30_000;
+const MAX_RUNS_PER_WORKFLOW = 20;
+const MAX_RECENT_RUNS = 20;
 
 const workflowsDir = (projectStateDir: string) => join(projectStateDir, WORKFLOWS_SUBDIR);
+const workflowRunsDir = (projectStateDir: string) => join(projectStateDir, WORKFLOW_RUNS_SUBDIR);
 
 const safeWorkflowPath = (dir: string, id: string): string | null => {
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) return null;
@@ -49,10 +77,48 @@ const listWorkflows = (dir: string): Workflow[] => {
   return workflows.sort((a, b) => b.created.localeCompare(a.created));
 };
 
+const loadRuns = (runsDir: string, workflowId?: string): WorkflowRun[] => {
+  if (!existsSync(runsDir)) return [];
+  let entries: string[];
+  try {
+    entries = readdirSync(runsDir) as string[];
+  } catch {
+    return [];
+  }
+  const runs: WorkflowRun[] = [];
+  for (const entry of entries) {
+    if (!entry.endsWith(".json")) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(join(runsDir, entry), "utf8")) as WorkflowRun;
+      if (!parsed.id || !parsed.workflowId) continue;
+      if (workflowId && parsed.workflowId !== workflowId) continue;
+      runs.push(parsed);
+    } catch {
+      // skip malformed
+    }
+  }
+  return runs.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+};
+
+const saveRun = (runsDir: string, run: WorkflowRun): void => {
+  if (!existsSync(runsDir)) mkdirSync(runsDir, { recursive: true });
+  writeFileSync(join(runsDir, `${run.id}.json`), JSON.stringify(run, null, 2), "utf8");
+
+  // Prune old runs for this workflow beyond MAX_RUNS_PER_WORKFLOW
+  const all = loadRuns(runsDir, run.workflowId);
+  if (all.length > MAX_RUNS_PER_WORKFLOW) {
+    for (const old of all.slice(MAX_RUNS_PER_WORKFLOW)) {
+      try { rmSync(join(runsDir, `${old.id}.json`)); } catch { /* ignore */ }
+    }
+  }
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+
+// --- Collection route: GET/POST /api/workflows ---
 
 export const handleWorkflowsCollectionRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
@@ -104,6 +170,8 @@ export const handleWorkflowsCollectionRoute: ApiRouteHandler = async (
   writeMethodNotAllowed(response, corsOrigin);
   return true;
 };
+
+// --- Item route: GET/PATCH/DELETE /api/workflows/:id ---
 
 export const handleWorkflowItemRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
@@ -191,6 +259,51 @@ export const handleWorkflowItemRoute: ApiRouteHandler = async (
   return true;
 };
 
+// --- Run history for a workflow: GET /api/workflows/:id/runs ---
+
+export const handleWorkflowRunHistoryRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { projectStateDir },
+) => {
+  const match = /^\/api\/workflows\/([^/]+)\/runs$/.exec(requestUrl.pathname);
+  if (!match) return false;
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const workflowId = match[1] ?? "";
+  if (!/^[a-zA-Z0-9_-]+$/.test(workflowId)) {
+    writeJson(response, 400, { error: "Invalid workflow ID." }, corsOrigin);
+    return true;
+  }
+
+  const runsDir = workflowRunsDir(projectStateDir);
+  const runs = loadRuns(runsDir, workflowId).slice(0, MAX_RUNS_PER_WORKFLOW);
+  writeJson(response, 200, { runs }, corsOrigin);
+  return true;
+};
+
+// --- Recent runs across all workflows: GET /api/workflow-runs/recent ---
+
+export const handleWorkflowRunsRecentRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { projectStateDir },
+) => {
+  if (requestUrl.pathname !== "/api/workflow-runs/recent") return false;
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const runsDir = workflowRunsDir(projectStateDir);
+  const runs = loadRuns(runsDir).slice(0, MAX_RECENT_RUNS);
+  writeJson(response, 200, { runs }, corsOrigin);
+  return true;
+};
+
+// --- Run a workflow with SSE streaming: POST /api/workflows/:id/run ---
+
 export const handleWorkflowRunRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
   { projectStateDir, getApiBaseUrl, authToken },
@@ -228,17 +341,40 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
     return true;
   }
 
-  const brainAskUrl = `${getApiBaseUrl()}/api/brain/ask`;
-  const results: Array<{ step: string; answer: string }> = [];
-  const accumulated: Array<{ step: string; answer: string }> = [];
+  // Start SSE stream
+  const sseHeaders = withCors(
+    {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+    corsOrigin,
+  );
+  response.writeHead(200, sseHeaders);
 
-  for (const step of steps) {
-    // Build the prompt: for step 1 use the raw step text; for steps 2+ prepend all prior
-    // step questions + answers so each step has full context of what came before.
+  const sendEvent = (data: unknown): void => {
+    response.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const brainAskUrl = `${getApiBaseUrl()}/api/brain/ask`;
+  const runSteps: WorkflowRunStep[] = [];
+  const accumulated: Array<{ step: string; answer: string }> = [];
+  const startedAt = new Date().toISOString();
+  const runId = `run-${Date.now()}`;
+  let runStatus: "ok" | "error" = "ok";
+
+  // Signal first step is running
+  sendEvent({ type: "step-start", stepIndex: 0, step: steps[0] });
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i] ?? "";
+    const stepStart = Date.now();
+
     let question = step;
     if (accumulated.length > 0) {
       const priorContext = accumulated
-        .map((r, i) => `Step ${i + 1} — "${r.step}":\n${r.answer}`)
+        .map((r, idx) => `Step ${idx + 1} — "${r.step}":\n${r.answer}`)
         .join("\n\n");
       question = `Context from prior steps:\n\n${priorContext}\n\nCurrent step: ${step}`;
     }
@@ -265,16 +401,49 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
       } else {
         answer = `Error: ${err instanceof Error ? err.message : "unknown"}`;
       }
+      runStatus = "error";
     } finally {
       clearTimeout(timeoutId);
     }
 
-    // Push to accumulated first so the next step's context includes this result,
-    // even if it was a timeout or error — the next step should know what happened.
+    const durationMs = Date.now() - stepStart;
     accumulated.push({ step, answer });
-    results.push({ step, answer });
+    runSteps.push({ step, answer, durationMs });
+
+    const isError = answer.startsWith("[timed out") || answer.startsWith("Error:");
+    sendEvent({
+      type: "step-done",
+      stepIndex: i,
+      step,
+      answer,
+      durationMs,
+      error: isError,
+    });
+
+    // Signal next step starting
+    if (i + 1 < steps.length) {
+      sendEvent({ type: "step-start", stepIndex: i + 1, step: steps[i + 1] });
+    }
   }
 
-  writeJson(response, 200, { ok: true, workflowId: id, results }, corsOrigin);
+  const completedAt = new Date().toISOString();
+  const run: WorkflowRun = {
+    id: runId,
+    workflowId: id,
+    workflowName: workflow.name,
+    startedAt,
+    completedAt,
+    status: runStatus,
+    steps: runSteps,
+  };
+
+  try {
+    saveRun(workflowRunsDir(projectStateDir), run);
+  } catch {
+    // don't fail the run if persistence fails
+  }
+
+  sendEvent({ type: "done", runId, status: runStatus });
+  response.end();
   return true;
 };

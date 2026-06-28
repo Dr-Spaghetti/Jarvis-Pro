@@ -3,7 +3,6 @@
 import type { PrimaryNavIndex } from "../app/constants";
 import { VOICE_PHASE_LABELS, deriveVoicePhase, shouldResumeWakeLoop } from "../app/voicePhase";
 import { apiFetch } from "../runtime/apiClient";
-import { HomeTilesPanel } from "./HomeTilesPanel";
 
 import {
   buildBrainAskUrl,
@@ -27,10 +26,19 @@ import {
   buildVoiceSpeakUrl,
   buildVoiceTranscribeUrl,
   buildVoiceVoicesUrl,
+  buildWorkflowRunsRecentUrl,
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
 type ConversationTurn = { time: string; question: string; answer: string };
+type RecentWorkflowRun = {
+  id: string;
+  workflowName: string;
+  startedAt: string;
+  completedAt: string;
+  status: "ok" | "error";
+  steps: { step: string; answer: string }[];
+};
 
 function stripMarkdownForSpeech(text: string): string {
   return text
@@ -228,6 +236,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<{ title: string; content: string } | null>(null);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [recentRuns, setRecentRuns] = useState<RecentWorkflowRun[]>([]);
   const [memoryCount, setMemoryCount] = useState<number | null>(null);
   const [openTaskCount, setOpenTaskCount] = useState<number | null>(null);
   const [ask, setAsk] = useState("");
@@ -391,6 +400,20 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
     }
   }, []);
 
+  const loadRecentRuns = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildWorkflowRunsRecentUrl(), {
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { runs?: unknown };
+        if (Array.isArray(data.runs)) setRecentRuns(data.runs as RecentWorkflowRun[]);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     void loadRecent();
     void loadConversation();
@@ -419,6 +442,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       }
       void loadJournal();
       void loadMemory();
+      void loadRecentRuns();
       try {
         const res = await apiFetch(buildBrainDigestUrl(), {
           headers: { Accept: "application/json" },
@@ -431,7 +455,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         /* ignore */
       }
     })();
-  }, [loadRecent, loadConversation, loadMemory, loadJournal]);
+  }, [loadRecent, loadConversation, loadMemory, loadJournal, loadRecentRuns]);
 
   useEffect(() => {
     (async () => {
@@ -1712,6 +1736,37 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       )}
 
       {voiceError && <div className="nc-hq-voice-error">{voiceError}</div>}
+
+      {/* Execution activity feed */}
+      {recentRuns.length > 0 && (
+        <div className="nc-hq-activity">
+          <div className="nc-hq-activity-hdr">EXEC_LOG</div>
+          <div className="nc-hq-activity-list">
+            {recentRuns.slice(0, 6).map((run) => {
+              const minsAgo = Math.round(
+                (Date.now() - new Date(run.startedAt).getTime()) / 60000,
+              );
+              const timeLabel =
+                minsAgo < 1
+                  ? "just now"
+                  : minsAgo < 60
+                    ? `${minsAgo}m ago`
+                    : `${Math.round(minsAgo / 60)}h ago`;
+              return (
+                <div key={run.id} className="nc-hq-activity-item">
+                  <span className="nc-hq-activity-badge" data-status={run.status}>
+                    {run.status === "ok" ? "✓" : "✗"}
+                  </span>
+                  <span className="nc-hq-activity-name">{run.workflowName}</span>
+                  <span className="nc-hq-activity-meta">
+                    {run.steps.length} step{run.steps.length !== 1 ? "s" : ""} · {timeLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* bottom conversational console */}
       <div className="nc-hq-console">
