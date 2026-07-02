@@ -6,7 +6,7 @@ import { OCTOBOSS_ID } from "./app/hooks/useCanvasGraphData";
 import { useClaudeUsagePolling } from "./app/hooks/useClaudeUsagePolling";
 import { useCodexUsagePolling } from "./app/hooks/useCodexUsagePolling";
 import { useConsoleKeyboardShortcuts } from "./app/hooks/useConsoleKeyboardShortcuts";
-import { useGitHubPrimaryViewModel } from "./app/hooks/useGitHubPrimaryViewModel";
+import { useGitHubSparkline } from "./app/hooks/useGitHubSparkline";
 import { useGithubSummaryPolling } from "./app/hooks/useGithubSummaryPolling";
 import { useGmailStatus } from "./app/hooks/useGmailStatus";
 import { useInitialColumnsHydration } from "./app/hooks/useInitialColumnsHydration";
@@ -52,9 +52,7 @@ export const App = () => {
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [hoveredGitHubOverviewPointIndex, setHoveredGitHubOverviewPointIndex] = useState<
-    number | null
-  >(null);
+
   const [deckSidebarContent, setDeckSidebarContent] = useState<ReactNode>(null);
   const [isShortcutsOverlayOpen, setIsShortcutsOverlayOpen] = useState(false);
   const [conversationsSidebarContent, setConversationsSidebarContent] = useState<ReactNode>(null);
@@ -302,8 +300,7 @@ export const App = () => {
     useClaudeUsagePolling();
   const backendLivenessStatus = useBackendLivenessPolling();
   const { gmailStatus, isConnectingGmail, connectGmail, disconnectGmail } = useGmailStatus();
-  const { githubRepoSummary, isRefreshingGitHubSummary, refreshGitHubRepoSummary } =
-    useGithubSummaryPolling();
+  const { githubRepoSummary } = useGithubSummaryPolling();
   const handleMaximizeTerminal = useCallback(
     (terminalId: string) => {
       setMinimizedTerminalIds((current) =>
@@ -352,23 +349,7 @@ export const App = () => {
     enabled: isUiStateHydrated && isMonitorVisible,
   });
 
-  const {
-    githubCommitCount30d,
-    sparklinePoints,
-    githubOverviewGraphSeries,
-    githubOverviewGraphPolylinePoints,
-    githubOverviewHoverLabel,
-    githubStatusPill,
-    githubRepoLabel,
-    githubStarCountLabel,
-    githubOpenIssuesLabel,
-    githubOpenPrsLabel,
-    githubRecentCommits,
-  } = useGitHubPrimaryViewModel({
-    githubRepoSummary,
-    hoveredGitHubOverviewPointIndex,
-    setHoveredGitHubOverviewPointIndex,
-  });
+  const sparklinePoints = useGitHubSparkline(githubRepoSummary);
   const hasSidebarActionPanel =
     conversationsActionPanel !== null ||
     pendingDeleteTerminal !== null ||
@@ -538,24 +519,6 @@ export const App = () => {
                   data: heatmapData,
                   isLoading: isLoadingHeatmap,
                   onRefresh: refreshHeatmap,
-                },
-                githubPrimaryViewProps: {
-                  githubCommitCount30d,
-                  githubOpenIssuesLabel,
-                  githubOpenPrsLabel,
-                  githubRecentCommits,
-                  githubOverviewGraphPolylinePoints,
-                  githubOverviewGraphSeries,
-                  githubOverviewHoverLabel,
-                  githubRepoLabel,
-                  githubStarCountLabel,
-                  githubStatusPill,
-                  hoveredGitHubOverviewPointIndex,
-                  isRefreshingGitHubSummary,
-                  onHoveredGitHubOverviewPointIndexChange: setHoveredGitHubOverviewPointIndex,
-                  onRefresh: () => {
-                    void refreshGitHubRepoSummary();
-                  },
                 },
               }}
               monitorRuntime={monitorRuntime}
