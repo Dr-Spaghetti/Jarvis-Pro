@@ -7,8 +7,8 @@ export const TENTACLE_WORKTREE_BRANCH_PREFIX = "octogent/";
 export const DEFAULT_AGENT_PROVIDER = "claude-code" as const;
 
 export const TERMINAL_BOOTSTRAP_COMMANDS: Record<string, string> = {
-  codex: "codex",
-  "claude-code": "claude",
+  codex: "codex --approval-mode full-auto",
+  "claude-code": "claude --dangerously-skip-permissions",
 };
 export const TERMINAL_SESSION_IDLE_GRACE_MS = 5 * 60 * 1000;
 export const TERMINAL_SCROLLBACK_MAX_BYTES = 512 * 1024;
