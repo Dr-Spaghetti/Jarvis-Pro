@@ -396,6 +396,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
   const [brainSavingId, setBrainSavingId] = useState<string | null>(null);
   const [brainSaveMsg, setBrainSaveMsg] = useState<Record<string, string>>({});
   const [workflowCreatingId, setWorkflowCreatingId] = useState<string | null>(null);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
 
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -544,7 +545,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
     if (workflowCreatingId === idea.id) return;
     setWorkflowCreatingId(idea.id);
     try {
-      await apiFetch(buildWorkflowsUrl(), {
+      const res = await apiFetch(buildWorkflowsUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -557,11 +558,17 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
           ].join("\n"),
         }),
       });
-    } catch {
-      // swallow — navigate anyway
-    } finally {
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(errData.error ?? `HTTP ${res.status}`);
+      }
       setWorkflowCreatingId(null);
       onNavigate(3);
+    } catch (e) {
+      setWorkflowCreatingId(null);
+      const msg = e instanceof Error ? e.message : "Failed to create workflow";
+      setWorkflowError(msg);
+      setTimeout(() => setWorkflowError(null), 5000);
     }
   }, [workflowCreatingId, onNavigate]);
 
@@ -849,6 +856,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
       </div>
 
       {expandError && <p style={s.err}>⚠ Expand failed: {expandError}</p>}
+      {workflowError && <p style={s.err}>⚠ Workflow failed: {workflowError}</p>}
 
       <footer style={s.footer}>
         {!isLoading && !error && configured
