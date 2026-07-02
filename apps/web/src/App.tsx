@@ -175,89 +175,119 @@ export const App = () => {
   }, []);
 
   useEffect(() => {
-    const socket = new WebSocket(appendAuthTokenParam(buildTerminalEventsSocketUrl()));
+    let destroyed = false;
+    let reconnectDelay = 1000;
+    let reconnectTimer: number | null = null;
+    let activeSocket: WebSocket | null = null;
 
-    socket.addEventListener("message", (event) => {
-      if (typeof event.data !== "string") {
-        return;
-      }
+    const connect = () => {
+      if (destroyed) return;
+      const socket = new WebSocket(appendAuthTokenParam(buildTerminalEventsSocketUrl()));
+      activeSocket = socket;
 
-      try {
-        const payload = JSON.parse(event.data) as
-          | {
-              type?: unknown;
-              snapshot?: TerminalSnapshot;
-              terminalId?: string;
-              agentRuntimeState?: string;
-              toolName?: string;
+      socket.addEventListener("open", () => {
+        reconnectDelay = 1000;
+      });
+
+      socket.addEventListener("message", (event) => {
+        if (typeof event.data !== "string") {
+          return;
+        }
+
+        try {
+          const payload = JSON.parse(event.data) as
+            | {
+                type?: unknown;
+                snapshot?: TerminalSnapshot;
+                terminalId?: string;
+                agentRuntimeState?: string;
+                toolName?: string;
+              }
+            | undefined;
+          if (!payload || typeof payload.type !== "string") {
+            return;
+          }
+
+          if (payload.type === "terminal-created" || payload.type === "terminal-updated") {
+            if (!payload.snapshot) {
+              return;
             }
-          | undefined;
-        if (!payload || typeof payload.type !== "string") {
-          return;
-        }
-
-        if (payload.type === "terminal-created" || payload.type === "terminal-updated") {
-          if (!payload.snapshot) {
+            const runtimeState = getTerminalRuntimeStateInfo(payload.snapshot);
+            runtimeStateStore.setRuntimeState(payload.snapshot.terminalId, runtimeState);
+            const structuralSnapshot = stripTerminalRuntimeState(payload.snapshot);
+            setTerminals((current) =>
+              sortTerminalSnapshots([
+                ...current.filter(
+                  (terminal) => terminal.terminalId !== structuralSnapshot.terminalId,
+                ),
+                structuralSnapshot,
+              ]),
+            );
             return;
           }
-          const runtimeState = getTerminalRuntimeStateInfo(payload.snapshot);
-          runtimeStateStore.setRuntimeState(payload.snapshot.terminalId, runtimeState);
-          const structuralSnapshot = stripTerminalRuntimeState(payload.snapshot);
-          setTerminals((current) =>
-            sortTerminalSnapshots([
-              ...current.filter(
-                (terminal) => terminal.terminalId !== structuralSnapshot.terminalId,
-              ),
-              structuralSnapshot,
-            ]),
-          );
-          return;
-        }
 
-        if (payload.type === "terminal-state-changed") {
-          if (!payload.terminalId || !isAgentRuntimeState(payload.agentRuntimeState)) {
+          if (payload.type === "terminal-state-changed") {
+            if (!payload.terminalId || !isAgentRuntimeState(payload.agentRuntimeState)) {
+              return;
+            }
+            runtimeStateStore.setRuntimeState(payload.terminalId, {
+              state: payload.agentRuntimeState,
+              ...(payload.toolName ? { toolName: payload.toolName } : {}),
+            });
             return;
           }
-          runtimeStateStore.setRuntimeState(payload.terminalId, {
-            state: payload.agentRuntimeState,
-            ...(payload.toolName ? { toolName: payload.toolName } : {}),
-          });
-          return;
-        }
 
-        if (payload.type === "terminal-deleted") {
-          if (!payload.terminalId) {
+          if (payload.type === "terminal-deleted") {
+            if (!payload.terminalId) {
+              return;
+            }
+            runtimeStateStore.removeTerminal(payload.terminalId);
+            setTerminals((current) =>
+              current.filter((terminal) => terminal.terminalId !== payload.terminalId),
+            );
             return;
           }
-          runtimeStateStore.removeTerminal(payload.terminalId);
-          setTerminals((current) =>
-            current.filter((terminal) => terminal.terminalId !== payload.terminalId),
-          );
+
+          if (payload.type !== "terminal-list-changed") {
+            return;
+          }
+        } catch {
           return;
         }
 
-        if (payload.type !== "terminal-list-changed") {
-          return;
+        if (terminalEventsRefreshTimerRef.current !== null) {
+          window.clearTimeout(terminalEventsRefreshTimerRef.current);
         }
-      } catch {
-        return;
-      }
+        terminalEventsRefreshTimerRef.current = window.setTimeout(() => {
+          terminalEventsRefreshTimerRef.current = null;
+          void refreshColumns();
+        }, 100);
+      });
 
-      if (terminalEventsRefreshTimerRef.current !== null) {
-        window.clearTimeout(terminalEventsRefreshTimerRef.current);
-      }
-      terminalEventsRefreshTimerRef.current = window.setTimeout(() => {
-        terminalEventsRefreshTimerRef.current = null;
-        void refreshColumns();
-      }, 100);
-    });
+      const scheduleReconnect = () => {
+        if (destroyed) return;
+        const delay = Math.min(reconnectDelay, 30000);
+        reconnectDelay = Math.min(delay * 2, 30000);
+        reconnectTimer = window.setTimeout(connect, delay);
+      };
+
+      socket.addEventListener("close", scheduleReconnect);
+      socket.addEventListener("error", scheduleReconnect);
+    };
+
+    connect();
 
     return () => {
+      destroyed = true;
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       if (terminalEventsRefreshTimerRef.current !== null) {
         window.clearTimeout(terminalEventsRefreshTimerRef.current);
         terminalEventsRefreshTimerRef.current = null;
       }
-      socket.close();
+      activeSocket?.close();
     };
   }, [refreshColumns, runtimeStateStore, sortTerminalSnapshots]);
 

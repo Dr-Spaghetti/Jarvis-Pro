@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { formatTimestamp } from "../app/formatTimestamp";
 import { useConversationsRuntime } from "../app/hooks/useConversationsRuntime";
@@ -151,7 +151,7 @@ export const ConversationsPrimaryView = ({
   const isDeletingSession = false;
   const highlightedRef = useRef<HTMLLIElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (highlightedTurnId && highlightedRef.current) {
       highlightedRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }

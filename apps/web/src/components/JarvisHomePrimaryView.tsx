@@ -1571,6 +1571,12 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
 
   const consoleScrollRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (consoleScrollRef.current) {
+      consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
+    }
+  }, [conversation.length]);
+
   return (
     <section className="nc-hq" aria-label="Jarvis home view">
       <div className="nc-hq-grid" aria-hidden="true" />
@@ -1915,10 +1921,6 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 void submitAsk();
-                setTimeout(() => {
-                  if (consoleScrollRef.current)
-                    consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
-                }, 100);
               }
             }}
           />
@@ -1928,10 +1930,6 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             disabled={asking || ask.trim().length === 0}
             onClick={() => {
               void submitAsk();
-              setTimeout(() => {
-                if (consoleScrollRef.current)
-                  consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
-              }, 100);
             }}
           >
             {asking ? "…" : "SEND"}

@@ -738,6 +738,8 @@ export const WorkflowsPrimaryView = () => {
       const data = (await res.json()) as { improvedSteps?: string; rationale?: string };
       if (data.improvedSteps) {
         setImprovement({ improvedSteps: data.improvedSteps, rationale: data.rationale ?? "" });
+      } else {
+        setRunError("Improvement returned no steps — try again.");
       }
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Improvement failed");

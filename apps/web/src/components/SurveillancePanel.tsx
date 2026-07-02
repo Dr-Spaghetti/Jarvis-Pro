@@ -189,7 +189,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
         setWsStatus("disconnected");
         socketRef.current = null;
         const delay = Math.min(reconnectDelayRef.current, 30000);
-        reconnectDelayRef.current = delay * 2;
+        reconnectDelayRef.current = Math.min(delay * 2, 30000);
         reconnectTimerRef.current = setTimeout(connect, delay);
       };
 

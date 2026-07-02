@@ -382,6 +382,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
+  const [editBodySuffix, setEditBodySuffix] = useState("");
   const [editTags, setEditTags] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [expandingId, setExpandingId] = useState<string | null>(null);
@@ -448,6 +449,8 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
   const startEdit = useCallback((idea: Idea) => {
     setEditingId(idea.id);
     setEditTitle(idea.title);
+    const expansionMatch = idea.body.match(/\n\n## AI Expansion[\s\S]*$/);
+    setEditBodySuffix(expansionMatch ? expansionMatch[0] : "");
     setEditBody(idea.body.replace(/\n\n## AI Expansion[\s\S]*$/, "").trim());
     setEditTags(idea.tags.join(", "));
   }, []);
@@ -461,7 +464,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
         const res = await apiFetch(buildBrainstormIdeaUrl(id), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, body: editBody.trim(), tags: parseTags(editTags) }),
+          body: JSON.stringify({ title, body: (editBody.trim() + editBodySuffix).trim(), tags: parseTags(editTags) }),
         });
         if (!res.ok) throw new Error(`${res.status}`);
         setEditingId(null);

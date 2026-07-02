@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
 import {
@@ -427,10 +427,29 @@ export const AnalyzerPrimaryView = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isLoadingRecord, setIsLoadingRecord] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatErrorRef = useRef<HTMLParagraphElement>(null);
+  const uploadErrorRef = useRef<HTMLParagraphElement>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatting, setIsChatting] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (chatError) chatErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [chatError]);
+
+  useLayoutEffect(() => {
+    if (uploadError) uploadErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [uploadError]);
+
+  useEffect(() => {
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    setChatHistory([]);
+    setChatError(null);
+    setIsChatting(false);
+  }, [selectedId]);
 
   const fetchList = useCallback(async () => {
     try {
@@ -475,6 +494,9 @@ export const AnalyzerPrimaryView = () => {
   const handleChat = useCallback(async () => {
     const msg = chatInput.trim();
     if (!msg || isChatting || !selectedId) return;
+    chatAbortRef.current?.abort();
+    const abort = new AbortController();
+    chatAbortRef.current = abort;
     setIsChatting(true);
     setChatError(null);
     const next: ChatMessage[] = [...chatHistory, { role: "user", content: msg }];
@@ -485,6 +507,7 @@ export const AnalyzerPrimaryView = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg, history: chatHistory }),
+        signal: abort.signal,
       });
       const data = (await res.json()) as { reply?: string; error?: string };
       if (!res.ok || !data.reply) {
@@ -492,7 +515,8 @@ export const AnalyzerPrimaryView = () => {
         return;
       }
       setChatHistory([...next, { role: "assistant", content: data.reply }]);
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
       setChatError("Chat request failed — check Jarvis is running.");
     } finally {
       setIsChatting(false);
@@ -624,7 +648,7 @@ export const AnalyzerPrimaryView = () => {
               onChange={(e) => void handleFileChange(e)}
               aria-label="Upload file for analysis"
             />
-            {uploadError && <p style={s.statusMsg(true)}>⚠ {uploadError}</p>}
+            {uploadError && <p ref={uploadErrorRef} style={s.statusMsg(true)}>⚠ {uploadError}</p>}
           </div>
 
           {/* Result area */}
@@ -670,7 +694,7 @@ export const AnalyzerPrimaryView = () => {
                   )}
                 </div>
               )}
-              {chatError && <p style={s.statusMsg(true)}>⚠ {chatError}</p>}
+              {chatError && <p ref={chatErrorRef} style={s.statusMsg(true)}>⚠ {chatError}</p>}
               <div style={s.chatInputRow}>
                 <input
                   type="text"
