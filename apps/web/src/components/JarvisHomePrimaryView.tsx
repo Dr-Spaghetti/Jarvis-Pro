@@ -786,9 +786,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         currentAudioRef.current = audio;
         return await new Promise<boolean>((resolve) => {
           let settled = false;
+          let timeoutId: ReturnType<typeof setTimeout> | null = null;
           const finish = (ok: boolean) => {
             if (settled) return;
             settled = true;
+            if (timeoutId !== null) clearTimeout(timeoutId);
             URL.revokeObjectURL(objectUrl);
             if (currentAudioRef.current === audio) {
               currentAudioRef.current = null;
@@ -800,6 +802,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           // A hard mute pauses the element; resolve so the loop/await never
           // hangs waiting for an "ended" that won't come.
           audio.addEventListener("pause", () => finish(true), { once: true });
+          // Guard against codec/network stalls that never fire 'ended'.
+          timeoutId = setTimeout(() => finish(true), 30_000);
           audio.play().catch(() => finish(false));
         });
       };
@@ -846,8 +850,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           window.speechSynthesis.cancel();
           await new Promise<void>((resolve) => {
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.addEventListener("end", () => resolve(), { once: true });
-            utterance.addEventListener("error", () => resolve(), { once: true });
+            const timeoutId = setTimeout(resolve, 30_000);
+            const done = () => { clearTimeout(timeoutId); resolve(); };
+            utterance.addEventListener("end", done, { once: true });
+            utterance.addEventListener("error", done, { once: true });
             window.speechSynthesis.speak(utterance);
           });
         } else if (!isMutedRef.current) {
