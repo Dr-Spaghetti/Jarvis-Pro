@@ -1,12 +1,9 @@
 import type { ComponentProps, ReactNode } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
-import type { UseMonitorRuntimeResult } from "../app/hooks/useMonitorRuntime";
 import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
 import { AgentArsenalPanel } from "./AgentArsenalPanel";
-import { CanvasPrimaryView } from "./CanvasPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
-import { DeckPrimaryView } from "./DeckPrimaryView";
 import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
@@ -15,25 +12,7 @@ import { WorkflowsPrimaryView } from "./WorkflowsPrimaryView";
 
 type PrimaryViewRouterProps = {
   activePrimaryNav: PrimaryNavIndex;
-  /** Kept for App.tsx compatibility — no longer rendered */
-  deckPrimaryViewProps?: ComponentProps<typeof DeckPrimaryView>;
-  /** Kept for App.tsx compatibility — no longer rendered */
-  activityPrimaryViewProps?: Record<string, unknown>;
   settingsPrimaryViewProps: ComponentProps<typeof SettingsPrimaryView>;
-  /** Kept for App.tsx compatibility — no longer rendered */
-  canvasPrimaryViewProps?: ComponentProps<typeof CanvasPrimaryView>;
-  /** Kept for App.tsx compatibility — no longer rendered */
-  isMonitorVisible?: boolean;
-  monitorRuntime: Pick<
-    UseMonitorRuntimeResult,
-    | "monitorConfig"
-    | "monitorFeed"
-    | "monitorError"
-    | "isRefreshingMonitorFeed"
-    | "isSavingMonitorConfig"
-    | "refreshMonitorFeed"
-    | "patchMonitorConfig"
-  >;
   conversationsEnabled: boolean;
   onConversationsSidebarContent: (content: ReactNode) => void;
   onConversationsActionPanel: (content: ReactNode) => void;
@@ -42,8 +21,6 @@ type PrimaryViewRouterProps = {
 
 export const PrimaryViewRouter = ({
   activePrimaryNav,
-  deckPrimaryViewProps,
-  activityPrimaryViewProps,
   settingsPrimaryViewProps,
   conversationsEnabled,
   onConversationsSidebarContent,

@@ -11,7 +11,6 @@
   "dependencies": {
     "@octogent/core": "workspace:*",
     "@xterm/addon-fit": "^0.11.0",
-    "d3-force": "^3.0.0",
     "lucide-react": "^1.7.0",
     "marked": "^17.0.4",
     "react": "^19.0.0",
@@ -22,7 +21,6 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
-    "@types/d3-force": "^3.0.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
