@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatTimestamp } from "../app/formatTimestamp";
 import { useConversationsRuntime } from "../app/hooks/useConversationsRuntime";
@@ -76,57 +76,77 @@ export const ConversationsPrimaryView = ({
   );
 
   // Push sidebar content
-  const sidebarContent = (
-    <SidebarConversationsList
-      sessions={sessions}
-      selectedSessionId={selectedSessionId}
-      isLoadingSessions={isLoadingConversationSessions}
-      isSearching={isSearchingConversations}
-      searchQuery={searchQuery}
-      searchHits={conversationsSearchHits}
-      onSelectSession={selectSession}
-      onRefresh={() => {
-        void refreshSessions();
-      }}
-      onClearAll={() => {
-        setIsPendingClearAll(true);
-      }}
-      onSearch={(query) => {
-        void searchConversations(query);
-      }}
-      onClearSearch={clearConversationsSearch}
-      onNavigateToHit={navigateToConversationSearchHit}
-      onPatchMeta={(sessionId, patch) => {
-        void patchConversationMeta(sessionId, patch);
-      }}
-    />
+  const sidebarContent = useMemo(
+    () => (
+      <SidebarConversationsList
+        sessions={sessions}
+        selectedSessionId={selectedSessionId}
+        isLoadingSessions={isLoadingConversationSessions}
+        isSearching={isSearchingConversations}
+        searchQuery={searchQuery}
+        searchHits={conversationsSearchHits}
+        onSelectSession={selectSession}
+        onRefresh={() => {
+          void refreshSessions();
+        }}
+        onClearAll={() => {
+          setIsPendingClearAll(true);
+        }}
+        onSearch={(query) => {
+          void searchConversations(query);
+        }}
+        onClearSearch={clearConversationsSearch}
+        onNavigateToHit={navigateToConversationSearchHit}
+        onPatchMeta={(sessionId, patch) => {
+          void patchConversationMeta(sessionId, patch);
+        }}
+      />
+    ),
+    [
+      sessions,
+      selectedSessionId,
+      isLoadingConversationSessions,
+      isSearchingConversations,
+      searchQuery,
+      conversationsSearchHits,
+      selectSession,
+      refreshSessions,
+      searchConversations,
+      clearConversationsSearch,
+      navigateToConversationSearchHit,
+      patchConversationMeta,
+    ],
   );
 
   useEffect(() => {
     onSidebarContent?.(sidebarContent);
     return () => onSidebarContent?.(null);
-  });
+  }, [onSidebarContent, sidebarContent]);
 
   // Push action panel for clear-all dialog
-  const actionPanelContent = isPendingClearAll ? (
-    <ClearAllConversationsDialog
-      sessionCount={sessions.length}
-      isClearing={isClearingConversations}
-      onCancel={() => {
-        setIsPendingClearAll(false);
-      }}
-      onConfirm={() => {
-        void clearAllSessions().then(() => {
-          setIsPendingClearAll(false);
-        });
-      }}
-    />
-  ) : null;
+  const actionPanelContent = useMemo(
+    () =>
+      isPendingClearAll ? (
+        <ClearAllConversationsDialog
+          sessionCount={sessions.length}
+          isClearing={isClearingConversations}
+          onCancel={() => {
+            setIsPendingClearAll(false);
+          }}
+          onConfirm={() => {
+            void clearAllSessions().then(() => {
+              setIsPendingClearAll(false);
+            });
+          }}
+        />
+      ) : null,
+    [isPendingClearAll, sessions.length, isClearingConversations, clearAllSessions],
+  );
 
   useEffect(() => {
     onActionPanel?.(actionPanelContent);
     return () => onActionPanel?.(null);
-  });
+  }, [onActionPanel, actionPanelContent]);
 
   const isDeletingSession = false;
   const highlightedRef = useRef<HTMLLIElement>(null);
