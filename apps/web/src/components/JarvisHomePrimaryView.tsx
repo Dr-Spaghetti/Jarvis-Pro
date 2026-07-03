@@ -1869,6 +1869,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
               PROCESSING<span className="nc-blink">_</span>
             </div>
           )}
+          {askNote && !asking && (
+            <div style={{ color: "var(--term-red, #ff4444)", fontSize: 11, letterSpacing: ".08em", padding: "6px 0", marginTop: 4, lineHeight: 1.5 }}>
+              ⚠ {askNote}
+            </div>
+          )}
           {answerVia && !asking && (
             <div className="nc-hq-attribution">
               <button
