@@ -552,17 +552,17 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         const data = (await res.json()) as { models?: string[]; claudeModels?: string[] };
         if (Array.isArray(data.models)) setChatModels(data.models);
         if (Array.isArray(data.claudeModels)) setClaudeModels(data.claudeModels);
-        // If the persisted selection is no longer available (e.g. API key removed),
-        // clear it so the dropdown defaults to Auto instead of silently erroring.
+        // If the persisted selection is no longer available, or is an Ollama model
+        // while Claude is configured, reset to Auto so answers work out of the box.
         const allValid = [...(data.claudeModels ?? []), ...(data.models ?? [])];
+        const claudeAvailable = (data.claudeModels ?? []).length > 0;
         setChatModel((prev) => {
-          if (!prev || allValid.includes(prev)) return prev;
-          try {
-            window.localStorage.removeItem("jarvis.chatModel");
-          } catch {
-            /* ignore */
+          const isOllama = prev && !prev.startsWith("claude-");
+          if ((isOllama && claudeAvailable) || (prev && !allValid.includes(prev))) {
+            try { window.localStorage.removeItem("jarvis.chatModel"); } catch { /* ignore */ }
+            return "";
           }
-          return "";
+          return prev;
         });
       } catch {
         /* ignore — picker just shows the default */
