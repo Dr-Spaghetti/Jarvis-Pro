@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type CSSProperties, useCallback, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
 import { buildTerminalsUrl } from "../runtime/runtimeEndpoints";
@@ -16,7 +16,7 @@ export const TerminalPrimaryView = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [provider, setProvider] = useState<"claude-code" | "codex">("claude-code");
-  const [claudeModel, setClaudeModel] = useState(CLAUDE_MODELS[0].value);
+  const [claudeModel, setClaudeModel] = useState(CLAUDE_MODELS[0]!.value);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState("");
 
@@ -75,7 +75,7 @@ export const TerminalPrimaryView = () => {
     });
   }, []);
 
-  const barStyle: React.CSSProperties = {
+  const barStyle: CSSProperties = {
     display: "flex",
     alignItems: "center",
     gap: 8,
@@ -86,7 +86,7 @@ export const TerminalPrimaryView = () => {
     flexWrap: "wrap",
   };
 
-  const btnBase: React.CSSProperties = {
+  const btnBase: CSSProperties = {
     fontFamily: "var(--font-display)",
     fontSize: 10,
     letterSpacing: ".12em",
@@ -99,14 +99,14 @@ export const TerminalPrimaryView = () => {
     borderRadius: 2,
   };
 
-  const btnActive: React.CSSProperties = {
+  const btnActive: CSSProperties = {
     ...btnBase,
     border: "1px solid rgba(57,255,20,0.7)",
     color: "rgba(57,255,20,1)",
     background: "rgba(57,255,20,0.08)",
   };
 
-  const selectStyle: React.CSSProperties = {
+  const selectStyle: CSSProperties = {
     fontFamily: "var(--font-display)",
     fontSize: 10,
     letterSpacing: ".1em",
@@ -254,7 +254,9 @@ export const TerminalPrimaryView = () => {
           <Terminal
             key={activeId}
             terminalId={activeId}
-            terminalLabel={sessions.find((s) => s.id === activeId)?.label}
+            {...(sessions.find((s) => s.id === activeId)?.label
+              ? { terminalLabel: sessions.find((s) => s.id === activeId)!.label }
+              : {})}
             isSelected
           />
         ) : (
