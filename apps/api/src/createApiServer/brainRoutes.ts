@@ -967,7 +967,10 @@ const JARVIS_VOICE_SYSTEM =
   "knowledgeable friend, not a formal assistant. One or two sentences for voice answers; " +
   "never use bullet points or headers. " +
   "Treat any preference, correction, or instruction in the saved memories as a standing rule " +
-  "from Nick (how to address him, format, what to avoid) and follow it exactly.";
+  "from Nick (how to address him, format, what to avoid) and follow it exactly. " +
+  "IMPORTANT: Your responses ARE spoken aloud via ElevenLabs text-to-speech automatically in Nick's browser. " +
+  "You have full voice capabilities. When Nick asks you to 'read it back', 'say it again', or 'read the answer', " +
+  "just answer normally — your reply will be spoken. Never tell him you lack audio capabilities.";
 
 const askViaClaude = async (
   question: string,
@@ -1282,6 +1285,30 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     }
   }
 
+  // Live questions always go to Perplexity first — regardless of which Claude model is selected.
+  // This ensures sports scores, news, historical events with web sources all get real data.
+  if (!isExplicitOllama && isLiveQuestion(question)) {
+    const deep = isDeepResearchRequest(question);
+    const perp = await askViaPerplexity(question, deep);
+    if (perp) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, perp.answer);
+      writeJson(
+        response,
+        200,
+        {
+          available: true,
+          answer: perp.answer,
+          sources,
+          citations: perp.citations,
+          via: deep ? "perplexity-sonar-pro" : "perplexity-sonar",
+        },
+        corsOrigin,
+      );
+      return true;
+    }
+    // Perplexity unavailable — fall through to Claude.
+  }
+
   // Explicit Claude model: use that model directly, no cascade.
   if (model?.startsWith("claude-")) {
     const ans = await askViaClaude(question, claudeContext, history, model);
@@ -1304,36 +1331,11 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     return true;
   }
 
-  // Auto cascade (no explicit model):
-  //   1. Live/current questions → Perplexity Sonar (fast, cited, real data)
-  //   2. General questions    → Claude Haiku (fast, no tool loop)
-  //   3. Fallback             → Ollama (local, free)
-  // Explicit Ollama model: skip cloud providers entirely.
+  // Auto cascade (no explicit model, non-live question):
+  //   1. General questions → Claude Sonnet (capable, no tool loop)
+  //   2. Fallback          → Ollama (local, free)
   if (!model) {
-    // Live questions: Perplexity Sonar gives fast, cited, up-to-date answers.
-    if (isLiveQuestion(question)) {
-      const deep = isDeepResearchRequest(question);
-      const perp = await askViaPerplexity(question, deep);
-      if (perp) {
-        if (vaultDir) appendConversationTurn(vaultDir, question, perp.answer);
-        writeJson(
-          response,
-          200,
-          {
-            available: true,
-            answer: perp.answer,
-            sources,
-            citations: perp.citations,
-            via: deep ? "perplexity-sonar-pro" : "perplexity-sonar",
-          },
-          corsOrigin,
-        );
-        return true;
-      }
-      // Perplexity unavailable — fall through to Claude.
-    }
-
-    // General questions (or Perplexity fallback): Claude Haiku — fast, no tool loop.
+    // General questions: Claude Sonnet — capable, no tool loop.
     const claudeAnswer = await askViaClaude(question, claudeContext, history);
     if (claudeAnswer) {
       if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
