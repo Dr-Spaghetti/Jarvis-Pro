@@ -413,6 +413,7 @@ export const createTerminalRuntime = ({
     tentacleName,
     workspaceMode = "shared",
     agentProvider,
+    bootstrapCommand,
     initialPrompt,
     initialInputDraft,
     baseRef,
@@ -426,6 +427,7 @@ export const createTerminalRuntime = ({
     tentacleName?: string;
     workspaceMode?: TentacleWorkspaceMode;
     agentProvider?: TerminalAgentProvider;
+    bootstrapCommand?: string;
     initialPrompt?: string;
     initialInputDraft?: string;
     baseRef?: string;
@@ -478,6 +480,7 @@ export const createTerminalRuntime = ({
       createdAt: new Date().toISOString(),
       workspaceMode,
       agentProvider: agentProvider ?? DEFAULT_AGENT_PROVIDER,
+      ...(bootstrapCommand ? { bootstrapCommand } : {}),
       lifecycleState: "registered",
       lifecycleUpdatedAt: new Date().toISOString(),
       ...(initialPrompt ? { initialPrompt } : {}),

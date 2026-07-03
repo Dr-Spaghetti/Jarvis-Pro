@@ -15,6 +15,7 @@ export const PRIMARY_NAV_ITEMS = [
   { index: 5, label: "Content Analyzer",icon: "⊞" },
   { index: 6, label: "Ideas",           icon: "◈" },
   { index: 7, label: "Settings",        icon: "⚙" },
+  { index: 8, label: "Terminal",        icon: "⌨" },
 ] as const;
 
 export const GITHUB_COMMIT_SERIES_LENGTH = 30;

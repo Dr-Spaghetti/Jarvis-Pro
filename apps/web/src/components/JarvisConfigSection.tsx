@@ -107,6 +107,8 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
     () => lsGet(LS_KEYS.elevenlabsVoiceId) || ELEVENLABS_PRESET_VOICES[0].id,
   );
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [claudeModelsList, setClaudeModelsList] = useState<string[]>([]);
+  const [ollamaRunning, setOllamaRunning] = useState<boolean | null>(null);
   const [saved, setSaved] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
@@ -114,10 +116,10 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   useEffect(() => {
     void apiFetch(buildBrainModelsUrl())
       .then((r) => r.json())
-      .then((d) => {
-        const raw = d as { models?: string[] } | string[];
-        if (Array.isArray(raw)) setAvailableModels(raw);
-        else setAvailableModels(raw.models ?? []);
+      .then((d: { models?: string[]; claudeModels?: string[]; ollamaRunning?: boolean }) => {
+        setAvailableModels(d.models ?? []);
+        setClaudeModelsList(d.claudeModels ?? []);
+        setOllamaRunning(d.ollamaRunning ?? false);
       })
       .catch(() => {});
   }, []);
@@ -443,6 +445,11 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         <label htmlFor="voice-chat-model" style={labelStyle}>
           Chat / Answer Model
         </label>
+        {ollamaRunning === false && (
+          <span style={{ fontSize: 9, color: "var(--term-red, #ff4444)", letterSpacing: ".1em", fontFamily: "var(--font-display)" }}>
+            OLLAMA OFFLINE — run <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 3px" }}>ollama serve</code> in a terminal to use local models
+          </span>
+        )}
         <select
           id="voice-chat-model"
           style={selectStyle}
@@ -450,11 +457,20 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           onChange={(e) => setChatModel(e.target.value)}
         >
           <option value="">Auto (server default)</option>
-          {availableModels.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
+          {claudeModelsList.length > 0 && (
+            <optgroup label="── Claude (cloud) ──">
+              {claudeModelsList.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </optgroup>
+          )}
+          {availableModels.length > 0 && (
+            <optgroup label="── Ollama (local) ──">
+              {availableModels.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <span
           style={{ fontSize: 9, color: "rgba(57,255,20,0.28)", fontFamily: "var(--font-display)" }}

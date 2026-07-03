@@ -22,6 +22,17 @@ export const listOllamaChatModels = async (signal?: AbortSignal): Promise<string
   }
 };
 
+export const isOllamaRunning = async (): Promise<boolean> => {
+  try {
+    const res = await fetch(`${getOllamaHost()}/api/tags`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
+
 export const chatViaOllama = async (
   prompt: string,
   options: { system?: string; signal?: AbortSignal; model?: string } = {},

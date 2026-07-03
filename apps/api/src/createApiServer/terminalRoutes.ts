@@ -112,6 +112,7 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
       tentacleName?: string;
       workspaceMode: TentacleWorkspaceMode;
       agentProvider?: TerminalAgentProvider;
+      bootstrapCommand?: string;
       nameOrigin?: TerminalNameOrigin;
       initialPrompt?: string;
       initialInputDraft?: string;
@@ -150,6 +151,13 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
       bodyPayload.parentTerminalId.trim().length > 0
     ) {
       createTerminalInput.parentTerminalId = bodyPayload.parentTerminalId.trim();
+    }
+    if (
+      bodyPayload &&
+      typeof bodyPayload.bootstrapCommand === "string" &&
+      bodyPayload.bootstrapCommand.trim().length > 0
+    ) {
+      createTerminalInput.bootstrapCommand = bodyPayload.bootstrapCommand.trim();
     }
     if (
       bodyPayload &&

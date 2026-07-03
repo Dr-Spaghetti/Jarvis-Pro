@@ -552,13 +552,11 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         const data = (await res.json()) as { models?: string[]; claudeModels?: string[] };
         if (Array.isArray(data.models)) setChatModels(data.models);
         if (Array.isArray(data.claudeModels)) setClaudeModels(data.claudeModels);
-        // If the persisted selection is no longer available, or is an Ollama model
-        // while Claude is configured, reset to Auto so answers work out of the box.
+        // Reset to Auto only if the persisted model is no longer in the valid list
+        // (Ollama offline, model removed, etc). Never reset a deliberate selection.
         const allValid = [...(data.claudeModels ?? []), ...(data.models ?? [])];
-        const claudeAvailable = (data.claudeModels ?? []).length > 0;
         setChatModel((prev) => {
-          const isOllama = prev && !prev.startsWith("claude-");
-          if ((isOllama && claudeAvailable) || (prev && !allValid.includes(prev))) {
+          if (prev && !allValid.includes(prev)) {
             try { window.localStorage.removeItem("jarvis.chatModel"); } catch { /* ignore */ }
             return "";
           }

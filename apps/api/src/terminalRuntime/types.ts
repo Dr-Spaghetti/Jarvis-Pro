@@ -134,6 +134,7 @@ export type PersistedTerminal = {
   createdAt: string;
   workspaceMode: TentacleWorkspaceMode;
   agentProvider?: TerminalAgentProvider;
+  bootstrapCommand?: string;
   initialPrompt?: string;
   initialInputDraft?: string;
   lastActiveAt?: string;

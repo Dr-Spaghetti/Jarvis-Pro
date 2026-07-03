@@ -8,6 +8,7 @@ import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
 import { SurveillancePanel } from "./SurveillancePanel";
+import { TerminalPrimaryView } from "./TerminalPrimaryView";
 import { WorkflowsPrimaryView } from "./WorkflowsPrimaryView";
 
 type PrimaryViewRouterProps = {
@@ -69,5 +70,14 @@ export const PrimaryViewRouter = ({
   }
 
   // 7 — Settings
-  return <SettingsPrimaryView {...settingsPrimaryViewProps} />;
+  if (activePrimaryNav === 7) {
+    return <SettingsPrimaryView {...settingsPrimaryViewProps} />;
+  }
+
+  // 8 — Terminal
+  if (activePrimaryNav === 8) {
+    return <TerminalPrimaryView />;
+  }
+
+  return null;
 };

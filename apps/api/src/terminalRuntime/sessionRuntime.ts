@@ -476,7 +476,9 @@ export const createSessionRuntime = ({
     const provider = terminal?.agentProvider ?? DEFAULT_AGENT_PROVIDER;
 
     const bootstrapCommand =
-      TERMINAL_BOOTSTRAP_COMMANDS[provider] ?? TERMINAL_BOOTSTRAP_COMMANDS[DEFAULT_AGENT_PROVIDER];
+      terminal?.bootstrapCommand ??
+      TERMINAL_BOOTSTRAP_COMMANDS[provider] ??
+      TERMINAL_BOOTSTRAP_COMMANDS[DEFAULT_AGENT_PROVIDER];
     appendDebugLog(session, `bootstrap session=${sessionId} command=${bootstrapCommand}`);
     session.pty.write(`${bootstrapCommand}\r`);
 

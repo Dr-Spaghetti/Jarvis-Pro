@@ -11,7 +11,7 @@ import { basename, dirname, join, resolve, sep } from "node:path";
 
 import { agenticAsk } from "./agenticAsk";
 import { classifyBrainQuestion } from "./classifyBrainQuestion";
-import { chatViaOllama, getChatModel, listOllamaChatModels } from "./ollamaChat";
+import { chatViaOllama, getChatModel, isOllamaRunning, listOllamaChatModels } from "./ollamaChat";
 import { cosineSimilarity, embedViaOllama } from "./ollamaEmbed";
 import { orchestrateTask } from "./orchestrateRoutes";
 import type { ApiRouteHandler } from "./routeHelpers";
@@ -1167,9 +1167,9 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
     writeMethodNotAllowed(response, corsOrigin);
     return true;
   }
-  const models = await listOllamaChatModels();
+  const [models, ollamaRunning] = await Promise.all([listOllamaChatModels(), isOllamaRunning()]);
   const claudeModels = getAnthropicApiKey() ? [...CLAUDE_MODEL_IDS] : [];
-  writeJson(response, 200, { models, default: getChatModel(), claudeModels }, corsOrigin);
+  writeJson(response, 200, { models, default: getChatModel(), claudeModels, ollamaRunning }, corsOrigin);
   return true;
 };
 
@@ -1365,7 +1365,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
   const ollamaAnswer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(15000),
     ...(model ? { model } : {}),
   });
   if (!ollamaAnswer) {
