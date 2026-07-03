@@ -1365,7 +1365,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
   const ollamaAnswer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(60000),
     ...(model ? { model } : {}),
   });
   if (!ollamaAnswer) {

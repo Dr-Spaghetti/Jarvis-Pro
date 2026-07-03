@@ -1,5 +1,31 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createApiServer } from "./createApiServer";
+
+// Load .env from monorepo root into process.env (shell exports take priority).
+// This runs before any process.env reads so all API keys are available.
+{
+  const envPath = join(dirname(fileURLToPath(import.meta.url)), "../../../.env");
+  if (existsSync(envPath)) {
+    for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+      const t = line.trim();
+      if (!t || t.startsWith("#")) continue;
+      const eq = t.indexOf("=");
+      if (eq === -1) continue;
+      const key = t.slice(0, eq).trim();
+      if (!key || key.startsWith("OCTOGENT_") || process.env[key] !== undefined) continue;
+      let val = t.slice(eq + 1).trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      process.env[key] = val;
+    }
+  }
+}
 
 const parsePort = (value: string | undefined, fallback: number) => {
   if (!value) {
