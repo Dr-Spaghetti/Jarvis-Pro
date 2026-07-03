@@ -43,20 +43,6 @@ const LS_KEYS = {
 const OPENAI_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
 const OPENAI_TTS_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"] as const;
 
-const DEEPGRAM_VOICES = [
-  { id: "aura-2-thalia-en", name: "Thalia — Warm female (Aura 2)" },
-  { id: "aura-2-luna-en", name: "Luna — Soft female (Aura 2)" },
-  { id: "aura-2-electra-en", name: "Electra — Expressive female (Aura 2)" },
-  { id: "aura-2-selene-en", name: "Selene — Clear female (Aura 2)" },
-  { id: "aura-2-minerva-en", name: "Minerva — Confident female (Aura 2)" },
-  { id: "aura-2-orpheus-en", name: "Orpheus — Professional male (Aura 2)" },
-  { id: "aura-2-odysseus-en", name: "Odysseus — Deep male (Aura 2)" },
-  { id: "aura-2-zeus-en", name: "Zeus — Powerful male (Aura 2)" },
-  { id: "aura-2-hermes-en", name: "Hermes — Casual male (Aura 2)" },
-  { id: "aura-asteria-en", name: "Asteria — Warm female (classic)" },
-  { id: "aura-orion-en", name: "Orion — Deep male (classic)" },
-  { id: "aura-helios-en", name: "Helios — British male (classic)" },
-] as const;
 
 const ELEVENLABS_PRESET_VOICES = [
   { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel — Calm American female" },
@@ -90,14 +76,11 @@ const lsSet = (key: string, val: string) => {
 type VoiceSettingsPanelProps = { voiceConfig: VoiceConfig };
 
 const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
-  const [ttsProvider, setTtsProvider] = useState(() => lsGet(LS_KEYS.ttsProvider));
-  const [deepgramVoice, setDeepgramVoice] = useState(
-    () => lsGet(LS_KEYS.deepgramVoice) || "aura-2-thalia-en",
-  );
+  const [ttsProvider, setTtsProvider] = useState(() => lsGet(LS_KEYS.ttsProvider) || "elevenlabs");
   const [voiceModel, setVoiceModel] = useState(
     () => lsGet(LS_KEYS.voiceModel) || voiceConfig.transcription.defaultModel,
   );
-  const [chatModel, setChatModel] = useState(() => lsGet(LS_KEYS.chatModel));
+  const [chatModel, setChatModel] = useState(() => lsGet(LS_KEYS.chatModel) || "claude-sonnet-4-6");
   const [openaiVoice, setOpenaiVoice] = useState(() => lsGet(LS_KEYS.openaiVoice) || "alloy");
   const [openaiTtsModel, setOpenaiTtsModel] = useState<string>("gpt-4o-mini-tts");
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState(() =>
@@ -124,15 +107,17 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
       .catch(() => {});
   }, []);
 
-  const allProviders = voiceConfig.tts.providers ?? ["openai", "deepgram", "elevenlabs", "piper", "browser"];
+  const SHOWN_PROVIDERS = ["elevenlabs", "openai", "browser"];
+  const allProviders = (voiceConfig.tts.providers ?? ["elevenlabs", "openai", "browser"]).filter(
+    (p) => SHOWN_PROVIDERS.includes(p),
+  );
   const configuredProviders = voiceConfig.tts.configuredProviders ?? [];
   const isProviderConfigured = (p: string) => configuredProviders.includes(p);
   const effectiveProvider =
-    ttsProvider || configuredProviders.find((p) => p !== "browser") || "browser";
+    ttsProvider || configuredProviders.find((p) => p !== "browser") || "elevenlabs";
 
   const save = () => {
     lsSet(LS_KEYS.ttsProvider, ttsProvider);
-    lsSet(LS_KEYS.deepgramVoice, deepgramVoice);
     lsSet(LS_KEYS.voiceModel, voiceModel);
     lsSet(LS_KEYS.chatModel, chatModel);
     lsSet(LS_KEYS.openaiVoice, openaiVoice);
@@ -150,7 +135,6 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         provider: effectiveProvider,
       };
       if (effectiveProvider === "openai") { body.voice = openaiVoice; body.model = openaiTtsModel; }
-      if (effectiveProvider === "deepgram") body.model = deepgramVoice;
       if (effectiveProvider === "elevenlabs") body.voiceId = elevenlabsVoiceId || elevenlabsPreset;
       const res = await apiFetch(buildVoiceSpeakUrl(), {
         method: "POST",
@@ -261,27 +245,6 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         </select>
       </div>
 
-      {/* Deepgram — voice dropdown */}
-      {effectiveProvider === "deepgram" && (
-        <div style={rowStyle}>
-          <label htmlFor="voice-deepgram-model" style={labelStyle}>
-            Deepgram Voice
-          </label>
-          <select
-            id="voice-deepgram-model"
-            style={selectStyle}
-            value={deepgramVoice}
-            onChange={(e) => setDeepgramVoice(e.target.value)}
-          >
-            {DEEPGRAM_VOICES.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {/* OpenAI TTS — voice + model dropdowns */}
       {effectiveProvider === "openai" && (
         <>
@@ -366,16 +329,6 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         </>
       )}
 
-      {/* Piper note */}
-      {effectiveProvider === "piper" && (
-        <p style={{ fontSize: 10, color: "rgba(57,255,20,0.45)", fontFamily: "var(--font-display)", margin: "0 0 14px" }}>
-          Piper voice is configured via{" "}
-          <code style={{ background: "rgba(57,255,20,0.07)", padding: "0 4px" }}>PIPER_BIN</code>{" "}
-          +{" "}
-          <code style={{ background: "rgba(57,255,20,0.07)", padding: "0 4px" }}>PIPER_MODEL</code>{" "}
-          env vars.
-        </p>
-      )}
 
       {/* Preview button */}
       {effectiveProvider !== "browser" && (

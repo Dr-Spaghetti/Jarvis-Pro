@@ -178,15 +178,13 @@ const synthesizeWithPiper = (text: string): Promise<Buffer | null> =>
   });
 
 // All supported TTS providers — always shown in the UI so users know what's available.
-const ALL_TTS_PROVIDERS = ["openai", "deepgram", "elevenlabs", "piper", "browser"] as const;
+const ALL_TTS_PROVIDERS = ["elevenlabs", "openai", "browser"] as const;
 
 // Providers that are actually configured (have the required API keys / binaries).
-// Order: Deepgram first (fast, reliable), then ElevenLabs, Piper, OpenAI, browser.
+// Order: ElevenLabs first (best quality), then OpenAI, browser fallback.
 const configuredTtsProviders = (): string[] => {
   const providers: string[] = [];
-  if (getDeepgramApiKey()) providers.push("deepgram");
   if (getElevenLabsApiKey() && getElevenLabsVoiceId()) providers.push("elevenlabs");
-  if (getPiperConfig()) providers.push("piper");
   if (getOpenAiApiKey()) providers.push("openai");
   providers.push("browser");
   return providers;

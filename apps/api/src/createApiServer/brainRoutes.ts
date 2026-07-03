@@ -996,7 +996,7 @@ const askViaClaude = async (
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: model ?? CLAUDE_VOICE_MODEL,
+        model: model ?? CLAUDE_SONNET_MODEL,
         max_tokens: 512,
         system: JARVIS_VOICE_SYSTEM,
         messages,

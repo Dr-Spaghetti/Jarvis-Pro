@@ -269,9 +269,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [claudeModels, setClaudeModels] = useState<string[]>([]);
   const [chatModel, setChatModel] = useState<string>(() => {
     try {
-      return window.localStorage.getItem("jarvis.chatModel") ?? "";
+      return window.localStorage.getItem("jarvis.chatModel") || "claude-sonnet-4-6";
     } catch {
-      return "";
+      return "claude-sonnet-4-6";
     }
   });
   const chatModelRef = useRef("");
@@ -279,9 +279,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
   const [ttsProvider, setTtsProvider] = useState<string>(() => {
     try {
-      return window.localStorage.getItem("jarvis.ttsProvider") ?? "";
+      return window.localStorage.getItem("jarvis.ttsProvider") || "elevenlabs";
     } catch {
-      return "";
+      return "elevenlabs";
     }
   });
   const [deepgramVoice, setDeepgramVoice] = useState<string>(() => {
