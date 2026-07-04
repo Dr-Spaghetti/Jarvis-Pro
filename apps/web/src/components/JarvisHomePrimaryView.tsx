@@ -18,6 +18,7 @@ import {
   buildBrainSemanticUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
+  buildDeployAgentUrl,
   buildNotificationsUrl,
   buildSkillsRunUrl,
   buildJarvisConversationTurnUrl,
@@ -1058,6 +1059,33 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           });
           setVoiceStatus("Awaiting confirmation");
           await speakJarvis("Create a new agent terminal. Confirm or cancel.");
+          return;
+        }
+
+        if (intent.type === "deploy-agent") {
+          const { archetypeId, archetypeName } = intent;
+          setPendingVoiceIntent({
+            displayLabel: `Deploy agent: ${archetypeName}`,
+            confirmLabel: "CONFIRM DEPLOY",
+            onConfirm: async () => {
+              const res = await apiFetch(buildDeployAgentUrl(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ archetypeId }),
+              });
+              if (!res.ok) {
+                setVoiceError(`Could not deploy ${archetypeName}`);
+                return;
+              }
+              onNavigate(1);
+              setVoiceStatus(`${archetypeName} deployed`);
+              pushNotification(`Agent deployed: ${archetypeName}`);
+              await speakJarvisRef.current?.(`${archetypeName} is ready.`);
+            },
+            expiresAt: Date.now() + 10_000,
+          });
+          setVoiceStatus("Awaiting confirmation");
+          await speakJarvis(`Deploy ${archetypeName}. Confirm or cancel.`);
           return;
         }
 

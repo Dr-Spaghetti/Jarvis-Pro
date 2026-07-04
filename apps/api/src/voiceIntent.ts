@@ -16,6 +16,7 @@ export type JarvisVoiceIntent =
   | { type: "brain-capture"; text: string }
   | { type: "remember"; text: string }
   | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
+  | { type: "deploy-agent"; archetypeId: string; archetypeName: string }
   | { type: "run-skill"; skillName: string }
   | { type: "run-workflow"; workflowName: string }
   | { type: "ask"; question: string }
@@ -147,6 +148,53 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
       commandText,
       intent: { type: "create-terminal", workspaceMode: "shared" },
     };
+  }
+
+  // "deploy [archetype]" — checked before the generic 'agent' navigation match so
+  // "deploy the researcher agent" routes to the deploy-agent intent, not navigate.
+  const ARCHETYPE_KEYWORDS: Record<string, [string, string]> = {
+    developer: ["senior-developer", "Senior Developer"],
+    dev: ["senior-developer", "Senior Developer"],
+    coder: ["senior-developer", "Senior Developer"],
+    programmer: ["senior-developer", "Senior Developer"],
+    ceo: ["ceo-strategist", "CEO / Strategist"],
+    strategist: ["ceo-strategist", "CEO / Strategist"],
+    marketing: ["marketing-director", "Marketing Director"],
+    marketer: ["marketing-director", "Marketing Director"],
+    researcher: ["research-analyst", "Research Analyst"],
+    research: ["research-analyst", "Research Analyst"],
+    analyst: ["research-analyst", "Research Analyst"],
+    product: ["product-manager", "Product Manager"],
+    qa: ["quality-verifier", "Quality Verifier"],
+    quality: ["quality-verifier", "Quality Verifier"],
+    tester: ["quality-verifier", "Quality Verifier"],
+    sales: ["sales-representative", "Sales Representative"],
+    content: ["content-creator", "Content Creator"],
+    writer: ["content-creator", "Content Creator"],
+    data: ["data-analyst", "Data Analyst"],
+    operations: ["operations-manager", "Operations Manager"],
+    ops: ["operations-manager", "Operations Manager"],
+    finance: ["financial-analyst", "Financial Analyst"],
+    financial: ["financial-analyst", "Financial Analyst"],
+    seo: ["seo-specialist", "SEO Specialist"],
+    email: ["email-manager", "Email Manager"],
+    project: ["project-manager", "Project Manager"],
+    assistant: ["personal-assistant", "Personal Assistant"],
+    leads: ["lead-intelligence", "Lead Intelligence"],
+    lead: ["lead-intelligence", "Lead Intelligence"],
+    social: ["social-media-manager", "Social Media Manager"],
+    customer: ["customer-success", "Customer Success"],
+    automation: ["automation-engineer", "Automation Engineer"],
+    automator: ["automation-engineer", "Automation Engineer"],
+  };
+
+  const DEPLOY_VERBS = /\b(deploy|activate|unleash|bring in|call in)\b/;
+  if (DEPLOY_VERBS.test(command)) {
+    for (const [keyword, [archetypeId, archetypeName]] of Object.entries(ARCHETYPE_KEYWORDS)) {
+      if (new RegExp(`\\b${keyword}\\b`).test(command)) {
+        return { transcript, commandText, intent: { type: "deploy-agent", archetypeId, archetypeName } };
+      }
+    }
   }
 
   // Conversational questions go to the Ask-Jarvis brain. Checked BEFORE the
