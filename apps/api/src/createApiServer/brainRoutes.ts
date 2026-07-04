@@ -879,9 +879,18 @@ const LIVE_QUESTION_PATTERNS = [
   /\b(news|headline|weather|forecast|temperature)\b/i,
   /\b(score|scores|won|championship|standings|ranking|playoffs?)\b/i,
   /\b(stock|price|market|crypto|bitcoin)\b/i,
-  /\b(who (is|are|won|leads?|holds?)|what (is|are) (the |a )?current)\b/i,
+  /\b(who (is|are|won|leads?|holds?|were|was|played|scored|started|coached))\b/i,
+  /\b(what (is|are) (the |a )?current)\b/i,
   /\b(election|vote|poll results)\b/i,
   /\b(this season|last night|yesterday)\b/i,
+  // Sports — any question with a game, player, team, or roster context needs web data
+  /\b(player|players|roster|star player|stats|statistics|box score|performance)\b/i,
+  /\b(basketball|football|baseball|soccer|hockey|tennis|golf|lacrosse|volleyball)\b/i,
+  /\b(semifinal|semi-final|quarter.?final|bracket|tournament|game|match|playoff|division)\b/i,
+  /\b(team|coach|season|league|conference|recap|summary|highlight)\b/i,
+  // Historical people / events the vault almost certainly won't have
+  /\b(tell me about|what can you tell|who (were|was) the|give me a summary|summarize)\b/i,
+  /\b(article|articles|newspaper|journal|press coverage|reported)\b/i,
 ];
 
 const isLiveQuestion = (question: string): boolean =>
