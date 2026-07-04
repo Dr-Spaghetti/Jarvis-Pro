@@ -68,6 +68,11 @@ export const buildTerminalEventsSocketUrl = (
   return buildAbsoluteUrl(websocketBase, "/api/terminal-events/ws");
 };
 
+export const buildCreditsStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/credits/status";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/credits/status");
+};
+
 export const buildArsenalUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/arsenal";

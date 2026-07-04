@@ -126,6 +126,7 @@ import {
   handleTerminalSnapshotsRoute,
   handleTerminalsCollectionRoute,
 } from "./terminalRoutes";
+import { handleCreditsStatusRoute } from "./creditsRoutes";
 import { handleTilesRoute } from "./tilesRoutes";
 import {
   handleClaudeUsageRoute,
@@ -251,6 +252,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
     ],
   ],
   ["arsenal", [handleArsenalListRoute, handleArsenalDeployRoute]],
+  ["credits", [handleCreditsStatusRoute]],
   [
     "notifications",
     [handleNotificationsReadRoute, handleNotificationsCollectionRoute],

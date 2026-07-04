@@ -10,6 +10,7 @@ import {
   buildBrainNoteUrl,
   buildBrainRecentUrl,
   buildBrainSemanticUrl,
+  buildCreditsStatusUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
   buildVoiceConfigUrl,
@@ -500,6 +501,18 @@ export const JarvisConfigSection = () => {
   const [answer, setAnswer] = useState<string | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
+  type CreditStatus = { status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error"; note?: string };
+  type CreditsData = { elevenlabs?: CreditStatus; openai?: CreditStatus; anthropic?: CreditStatus; perplexity?: CreditStatus; deepgram?: CreditStatus };
+  const [credits, setCredits] = useState<CreditsData | null>(null);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+
+  const refreshCredits = useCallback(() => {
+    setCreditsLoading(true);
+    void apiFetch(buildCreditsStatusUrl())
+      .then((r) => r.json())
+      .then((d) => { setCredits(d as CreditsData); setCreditsLoading(false); })
+      .catch(() => setCreditsLoading(false));
+  }, []);
 
   useEffect(() => {
     void apiFetch(buildBrainRecentUrl())
@@ -822,6 +835,81 @@ export const JarvisConfigSection = () => {
         ) : (
           <p className="jarvis-empty">Loading voice config…</p>
         )}
+      </details>
+
+      {/* ── Credits & Usage ── */}
+      <details style={{ marginTop: 20 }}>
+        <summary
+          style={{
+            color: "var(--gold)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: ".1em",
+            cursor: "pointer",
+            userSelect: "none",
+            marginBottom: 12,
+          }}
+          onClick={() => { if (!credits && !creditsLoading) refreshCredits(); }}
+        >
+          💰 CREDITS &amp; API STATUS
+        </summary>
+        {!credits && !creditsLoading && (
+          <p className="jarvis-empty" style={{ marginBottom: 8 }}>Click to check live status of all connected services.</p>
+        )}
+        {creditsLoading && <p className="jarvis-empty">Checking all services…</p>}
+        {credits && (() => {
+          const rows: { key: keyof CreditsData; label: string; use: string; link: string }[] = [
+            { key: "anthropic",  label: "Anthropic (Claude)",  use: "AI reasoning",     link: "https://console.anthropic.com/settings/billing" },
+            { key: "perplexity", label: "Perplexity",          use: "Web search",       link: "https://www.perplexity.ai/settings/api" },
+            { key: "elevenlabs", label: "ElevenLabs",          use: "Voice (TTS)",      link: "https://elevenlabs.io/billing" },
+            { key: "openai",     label: "OpenAI",              use: "TTS fallback",     link: "https://platform.openai.com/usage" },
+            { key: "deepgram",   label: "Deepgram",            use: "Transcription",    link: "https://console.deepgram.com" },
+          ];
+          const statusColor = (s?: CreditStatus) => {
+            if (!s || s.status === "not-configured") return "#555";
+            if (s.status === "ok") return "#39ff14";
+            if (s.status === "out-of-credits") return "#ff6b35";
+            if (s.status === "invalid-key") return "rgba(255,80,80,0.9)";
+            return "rgba(255,200,80,0.9)";
+          };
+          const statusLabel = (s?: CreditStatus) => {
+            if (!s || s.status === "not-configured") return "Not configured";
+            if (s.status === "ok") return "✓ Working";
+            if (s.status === "out-of-credits") return "⚠ Out of credits";
+            if (s.status === "invalid-key") return "✗ Invalid key";
+            return `Error${s.note ? `: ${s.note}` : ""}`;
+          };
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {rows.map(({ key, label, use, link }) => {
+                const s = credits[key];
+                const color = statusColor(s);
+                const notConfigured = !s || s.status === "not-configured";
+                return (
+                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, opacity: notConfigured ? 0.45 : 1 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: s?.status === "ok" ? `0 0 6px ${color}` : "none", flexShrink: 0, display: "inline-block" }} />
+                    <span style={{ flex: 1, fontSize: 12, color: "#ccc" }}>
+                      <strong style={{ color: "#eee" }}>{label}</strong>
+                      <span style={{ color: "#888", marginLeft: 6 }}>{use}</span>
+                    </span>
+                    <span style={{ fontSize: 11, color, fontWeight: 600 }}>{statusLabel(s)}</span>
+                    {s && s.status !== "not-configured" && s.status !== "ok" && (
+                      <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "var(--gold)", textDecoration: "underline", marginLeft: 4 }}>Top up →</a>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                onClick={refreshCredits}
+                disabled={creditsLoading}
+                style={{ marginTop: 8, alignSelf: "flex-start", fontSize: 11, padding: "3px 10px", background: "transparent", border: "1px solid var(--gold)", color: "var(--gold)", cursor: "pointer", borderRadius: 3 }}
+              >
+                {creditsLoading ? "Checking…" : "↺ Refresh"}
+              </button>
+            </div>
+          );
+        })()}
       </details>
 
       {/* ── Activity ── */}
