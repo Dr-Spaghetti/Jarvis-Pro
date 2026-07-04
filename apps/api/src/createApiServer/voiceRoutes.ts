@@ -581,30 +581,35 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       writeJson(response, 400, { error: "KOKORO_URL is not configured." }, corsOrigin);
       return true;
     }
-    const upstreamResponse = await fetch(`${kokoroUrl}/v1/audio/speech`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "kokoro",
-        input: text,
-        voice: readString(payload.voice) ?? getKokoroVoice(),
-        response_format: "mp3",
-      }),
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!upstreamResponse.ok) {
-      const errorText = await upstreamResponse.text();
-      writeJson(
-        response,
-        upstreamResponse.status,
-        { error: "Speech synthesis failed.", provider: "kokoro", detail: errorText.slice(0, 500) },
-        corsOrigin,
-      );
-      return true;
+    try {
+      const upstreamResponse = await fetch(`${kokoroUrl}/v1/audio/speech`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "kokoro",
+          input: text,
+          voice: readString(payload.voice) ?? getKokoroVoice(),
+          response_format: "mp3",
+        }),
+        signal: AbortSignal.timeout(90000),
+      });
+      if (!upstreamResponse.ok) {
+        const errorText = await upstreamResponse.text();
+        writeJson(
+          response,
+          upstreamResponse.status,
+          { error: "Speech synthesis failed.", provider: "kokoro", detail: errorText.slice(0, 500) },
+          corsOrigin,
+        );
+        return true;
+      }
+      const audio = Buffer.from(await upstreamResponse.arrayBuffer());
+      response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
+      response.end(audio);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      writeJson(response, 502, { error: "Kokoro TTS failed.", detail: msg }, corsOrigin);
     }
-    const audio = Buffer.from(await upstreamResponse.arrayBuffer());
-    response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
-    response.end(audio);
     return true;
   }
 
