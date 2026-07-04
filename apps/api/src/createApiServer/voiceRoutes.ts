@@ -184,12 +184,14 @@ const synthesizeWithPiper = (text: string): Promise<Buffer | null> =>
   });
 
 // All supported TTS providers — always shown in the UI so users know what's available.
-const ALL_TTS_PROVIDERS = ["elevenlabs", "openai", "kokoro", "browser"] as const;
+const ALL_TTS_PROVIDERS = ["deepgram", "elevenlabs", "openai", "kokoro", "browser"] as const;
 
 // Providers that are actually configured (have the required API keys / binaries).
-// Order: ElevenLabs first (best quality), then OpenAI, Kokoro (self-hosted), browser fallback.
+// Order: Deepgram first (fast, low-latency), ElevenLabs (high quality when credits available),
+// OpenAI, Kokoro (self-hosted, slow on CPU), browser fallback.
 const configuredTtsProviders = (): string[] => {
   const providers: string[] = [];
+  if (getDeepgramApiKey()) providers.push("deepgram");
   if (getElevenLabsApiKey() && getElevenLabsVoiceId()) providers.push("elevenlabs");
   if (getOpenAiApiKey()) providers.push("openai");
   if (getKokoroUrl()) providers.push("kokoro");
@@ -444,6 +446,35 @@ export const handleVoiceTranscribeRoute: ApiRouteHandler = async ({
   return true;
 };
 
+// Synthesize via Deepgram and write the response. Returns true if audio was written,
+// false if Deepgram isn't configured or failed (caller should write their own error).
+const synthesizeDeepgramFallback = async (
+  text: string,
+  response: import("node:http").ServerResponse,
+  corsOrigin: string,
+): Promise<boolean> => {
+  const key = getDeepgramApiKey();
+  if (!key) return false;
+  try {
+    const res = await fetch(
+      `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(getDeepgramModel())}&encoding=mp3`,
+      {
+        method: "POST",
+        headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(20000),
+      },
+    );
+    if (!res.ok) return false;
+    const audio = Buffer.from(await res.arrayBuffer());
+    response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
+    response.end(audio);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
   request,
   response,
@@ -560,6 +591,11 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       }),
     });
     if (!upstreamResponse.ok) {
+      // 402/429 = out of credits — silently fall back to Deepgram
+      if ((upstreamResponse.status === 402 || upstreamResponse.status === 429) &&
+          await synthesizeDeepgramFallback(text, response, corsOrigin)) {
+        return true;
+      }
       const errorText = await upstreamResponse.text();
       writeJson(
         response,
@@ -634,6 +670,11 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
     },
   );
   if (!upstreamResponse.ok) {
+    // 402 = out of credits — silently fall back to Deepgram
+    if (upstreamResponse.status === 402 &&
+        await synthesizeDeepgramFallback(text, response, corsOrigin)) {
+      return true;
+    }
     const errorText = await upstreamResponse.text();
     writeJson(
       response,

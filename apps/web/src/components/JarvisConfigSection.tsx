@@ -77,7 +77,9 @@ const lsSet = (key: string, val: string) => {
 type VoiceSettingsPanelProps = { voiceConfig: VoiceConfig };
 
 const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
-  const [ttsProvider, setTtsProvider] = useState(() => lsGet(LS_KEYS.ttsProvider) || "elevenlabs");
+  const [ttsProvider, setTtsProvider] = useState(
+    () => lsGet(LS_KEYS.ttsProvider) || voiceConfig.tts.recommended || voiceConfig.tts.configuredProviders?.[0] || "deepgram",
+  );
   const [voiceModel, setVoiceModel] = useState(
     () => lsGet(LS_KEYS.voiceModel) || voiceConfig.transcription.defaultModel,
   );
@@ -108,14 +110,30 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
       .catch(() => {});
   }, []);
 
-  const SHOWN_PROVIDERS = ["elevenlabs", "openai", "kokoro", "browser"];
-  const allProviders = (voiceConfig.tts.providers ?? ["elevenlabs", "openai", "kokoro", "browser"]).filter(
+  // Auto-migrate stale provider: if the stored provider isn't in the server's configured list,
+  // silently switch to whatever the server recommends (e.g. elevenlabs→deepgram when out of credits).
+  useEffect(() => {
+    const stored = lsGet(LS_KEYS.ttsProvider);
+    const configured = voiceConfig.tts.configuredProviders ?? [];
+    const recommended = voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
+    if (stored && !configured.includes(stored)) {
+      setTtsProvider(recommended);
+      lsSet(LS_KEYS.ttsProvider, recommended);
+    } else if (!stored) {
+      setTtsProvider(recommended);
+      lsSet(LS_KEYS.ttsProvider, recommended);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const SHOWN_PROVIDERS = ["deepgram", "elevenlabs", "openai", "kokoro", "browser"];
+  const allProviders = (voiceConfig.tts.providers ?? ["deepgram", "elevenlabs", "openai", "kokoro", "browser"]).filter(
     (p) => SHOWN_PROVIDERS.includes(p),
   );
   const configuredProviders = voiceConfig.tts.configuredProviders ?? [];
   const isProviderConfigured = (p: string) => configuredProviders.includes(p);
   const effectiveProvider =
-    ttsProvider || configuredProviders.find((p) => p !== "browser") || "elevenlabs";
+    ttsProvider || configuredProviders.find((p) => p !== "browser") || "deepgram";
 
   const save = () => {
     lsSet(LS_KEYS.ttsProvider, ttsProvider);
