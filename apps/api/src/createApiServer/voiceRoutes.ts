@@ -63,6 +63,12 @@ const getDeepgramApiKey = (): string | null => {
   const value = process.env.DEEPGRAM_API_KEY?.trim();
   return value && value.length > 0 ? value : null;
 };
+
+const getKokoroUrl = (): string | null => {
+  const value = process.env.KOKORO_URL?.trim();
+  return value && value.length > 0 ? value : null;
+};
+const getKokoroVoice = (): string => process.env.KOKORO_VOICE?.trim() || "af_heart";
 const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-thalia-en";
 const getDeepgramSttModel = (): string => process.env.DEEPGRAM_STT_MODEL?.trim() || "nova-2";
 
@@ -178,14 +184,15 @@ const synthesizeWithPiper = (text: string): Promise<Buffer | null> =>
   });
 
 // All supported TTS providers — always shown in the UI so users know what's available.
-const ALL_TTS_PROVIDERS = ["elevenlabs", "openai", "browser"] as const;
+const ALL_TTS_PROVIDERS = ["elevenlabs", "openai", "kokoro", "browser"] as const;
 
 // Providers that are actually configured (have the required API keys / binaries).
-// Order: ElevenLabs first (best quality), then OpenAI, browser fallback.
+// Order: ElevenLabs first (best quality), then OpenAI, Kokoro (self-hosted), browser fallback.
 const configuredTtsProviders = (): string[] => {
   const providers: string[] = [];
   if (getElevenLabsApiKey() && getElevenLabsVoiceId()) providers.push("elevenlabs");
   if (getOpenAiApiKey()) providers.push("openai");
+  if (getKokoroUrl()) providers.push("kokoro");
   providers.push("browser");
   return providers;
 };
@@ -465,7 +472,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
 
   // Resolve provider: explicit request wins, else first available from the list.
   const requested = readString(payload.provider);
-  const known = ["openai", "deepgram", "elevenlabs", "piper"] as const;
+  const known = ["openai", "deepgram", "elevenlabs", "piper", "kokoro"] as const;
   type TtsProvider = (typeof known)[number];
   let provider: TtsProvider | null = (known as readonly string[]).includes(requested ?? "")
     ? (requested as TtsProvider)
@@ -480,7 +487,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       400,
       {
         error:
-          "No server TTS provider configured (set OPENAI_API_KEY, DEEPGRAM_API_KEY, ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID, or PIPER_BIN + PIPER_MODEL).",
+          "No server TTS provider configured (set OPENAI_API_KEY, DEEPGRAM_API_KEY, ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID, PIPER_BIN + PIPER_MODEL, or KOKORO_URL).",
       },
       corsOrigin,
     );
@@ -558,6 +565,39 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
         response,
         upstreamResponse.status,
         { error: "Speech synthesis failed.", provider: "openai", detail: errorText.slice(0, 500) },
+        corsOrigin,
+      );
+      return true;
+    }
+    const audio = Buffer.from(await upstreamResponse.arrayBuffer());
+    response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
+    response.end(audio);
+    return true;
+  }
+
+  if (provider === "kokoro") {
+    const kokoroUrl = getKokoroUrl();
+    if (!kokoroUrl) {
+      writeJson(response, 400, { error: "KOKORO_URL is not configured." }, corsOrigin);
+      return true;
+    }
+    const upstreamResponse = await fetch(`${kokoroUrl}/v1/audio/speech`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "kokoro",
+        input: text,
+        voice: readString(payload.voice) ?? getKokoroVoice(),
+        response_format: "mp3",
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!upstreamResponse.ok) {
+      const errorText = await upstreamResponse.text();
+      writeJson(
+        response,
+        upstreamResponse.status,
+        { error: "Speech synthesis failed.", provider: "kokoro", detail: errorText.slice(0, 500) },
         corsOrigin,
       );
       return true;

@@ -108,8 +108,8 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
       .catch(() => {});
   }, []);
 
-  const SHOWN_PROVIDERS = ["elevenlabs", "openai", "browser"];
-  const allProviders = (voiceConfig.tts.providers ?? ["elevenlabs", "openai", "browser"]).filter(
+  const SHOWN_PROVIDERS = ["elevenlabs", "openai", "kokoro", "browser"];
+  const allProviders = (voiceConfig.tts.providers ?? ["elevenlabs", "openai", "kokoro", "browser"]).filter(
     (p) => SHOWN_PROVIDERS.includes(p),
   );
   const configuredProviders = voiceConfig.tts.configuredProviders ?? [];
@@ -502,7 +502,7 @@ export const JarvisConfigSection = () => {
   const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   type CreditStatus = { status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error"; note?: string };
-  type CreditsData = { elevenlabs?: CreditStatus; openai?: CreditStatus; anthropic?: CreditStatus; perplexity?: CreditStatus; deepgram?: CreditStatus };
+  type CreditsData = { elevenlabs?: CreditStatus; openai?: CreditStatus; anthropic?: CreditStatus; perplexity?: CreditStatus; deepgram?: CreditStatus; kokoro?: CreditStatus };
   const [credits, setCredits] = useState<CreditsData | null>(null);
   const [creditsLoading, setCreditsLoading] = useState(false);
 
@@ -865,6 +865,7 @@ export const JarvisConfigSection = () => {
             { key: "elevenlabs", label: "ElevenLabs",          use: "Voice (TTS)",      link: "https://elevenlabs.io/billing" },
             { key: "openai",     label: "OpenAI",              use: "TTS fallback",     link: "https://platform.openai.com/usage" },
             { key: "deepgram",   label: "Deepgram",            use: "Transcription",    link: "https://console.deepgram.com" },
+            { key: "kokoro",     label: "Kokoro (local TTS)",  use: "Self-hosted TTS",  link: "http://localhost:8880/docs" },
           ];
           const statusColor = (s?: CreditStatus) => {
             if (!s || s.status === "not-configured") return "#555";

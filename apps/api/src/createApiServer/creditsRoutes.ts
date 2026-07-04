@@ -101,6 +101,18 @@ const checkPerplexity = async (): Promise<ServiceStatus> => {
   }
 };
 
+const checkKokoro = async (): Promise<ServiceStatus> => {
+  const url = process.env.KOKORO_URL?.trim();
+  if (!url) return { status: "not-configured" };
+  try {
+    const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) return { status: "ok" };
+    return { status: "error", note: `HTTP ${res.status}` };
+  } catch {
+    return { status: "error", note: "Kokoro not reachable" };
+  }
+};
+
 const checkDeepgram = async (): Promise<ServiceStatus> => {
   const apiKey = process.env.DEEPGRAM_API_KEY?.trim();
   if (!apiKey) return { status: "not-configured" };
@@ -127,14 +139,15 @@ export const handleCreditsStatusRoute: ApiRouteHandler = async (
     return true;
   }
 
-  const [elevenlabs, openai, anthropic, perplexity, deepgram] = await Promise.all([
+  const [elevenlabs, openai, anthropic, perplexity, deepgram, kokoro] = await Promise.all([
     checkElevenLabs(),
     checkOpenAI(),
     checkAnthropic(),
     checkPerplexity(),
     checkDeepgram(),
+    checkKokoro(),
   ]);
 
-  writeJson(response, 200, { elevenlabs, openai, anthropic, perplexity, deepgram }, corsOrigin);
+  writeJson(response, 200, { elevenlabs, openai, anthropic, perplexity, deepgram, kokoro }, corsOrigin);
   return true;
 };
