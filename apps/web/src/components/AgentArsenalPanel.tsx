@@ -49,7 +49,10 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
   const [archetypes, setArchetypes] = useState<AgentArchetypeCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(() => {
+    const saved = localStorage.getItem("arsenal-category-filter");
+    return (saved as CategoryFilter | null) ?? "all";
+  });
   const [deployState, setDeployState] = useState<DeployState | null>(null);
 
   useEffect(() => {
@@ -82,6 +85,11 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
       cancelled = true;
     };
   }, []);
+
+  const handleCategoryFilter = (cat: CategoryFilter) => {
+    setCategoryFilter(cat);
+    localStorage.setItem("arsenal-category-filter", cat);
+  };
 
   const filtered =
     categoryFilter === "all" ? archetypes : archetypes.filter((a) => a.category === categoryFilter);
@@ -156,7 +164,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
             className="arsenal-filter-pill"
             data-active={categoryFilter === cat ? "true" : "false"}
             aria-pressed={categoryFilter === cat}
-            onClick={() => setCategoryFilter(cat)}
+            onClick={() => handleCategoryFilter(cat)}
           >
             {CATEGORY_LABELS[cat]}
           </button>

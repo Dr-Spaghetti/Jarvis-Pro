@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -121,6 +122,12 @@ const readJsonFile = (filePath: string): unknown | null => {
   }
 };
 
+const atomicWriteJson = (filePath: string, data: unknown) => {
+  const tmp = `${filePath}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  renameSync(tmp, filePath);
+};
+
 export const ensureGlobalOctogentDir = () => {
   if (!existsSync(GLOBAL_OCTOGENT_DIR)) {
     mkdirSync(GLOBAL_OCTOGENT_DIR, { recursive: true });
@@ -148,7 +155,7 @@ export const loadProjectsRegistry = (): ProjectsRegistry => {
 
 export const saveProjectsRegistry = (registry: ProjectsRegistry) => {
   ensureGlobalOctogentDir();
-  writeFileSync(PROJECTS_FILE, `${JSON.stringify(registry, null, 2)}\n`, "utf8");
+  atomicWriteJson(PROJECTS_FILE, registry);
 };
 
 export const resolveProjectConfigPath = (workspaceCwd: string) =>
@@ -205,7 +212,7 @@ export const ensureProjectConfig = (
 
   const configPath = resolveProjectConfigPath(workspaceCwd);
   mkdirSync(join(workspaceCwd, ".octogent"), { recursive: true });
-  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  atomicWriteJson(configPath, config);
   return config;
 };
 
