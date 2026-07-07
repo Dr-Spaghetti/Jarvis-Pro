@@ -15,3 +15,6 @@
 
 # Local secrets — never commit
 .env
+
+# Generated knowledge graph output — runtime data, not source
+graphify-out/

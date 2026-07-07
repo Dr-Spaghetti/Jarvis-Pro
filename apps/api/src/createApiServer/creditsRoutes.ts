@@ -27,8 +27,25 @@ const checkElevenLabs = async (): Promise<ServiceStatus> => {
       const usage = limit > 0 ? `${remaining.toLocaleString()} chars left` : undefined;
       return usage !== undefined ? { status: "ok", usage } : { status: "ok" };
     }
-    if (res.status === 401) return { status: "invalid-key" };
+    if (res.status === 401) {
+      // Scoped keys missing user_read return 401 with body:
+      // { detail: { code: "unauthorized", status: "missing_permissions" } }
+      // Key is valid and TTS still works — report ok with a note.
+      const body = (await res.json().catch(() => ({}))) as {
+        detail?: { code?: string; status?: string };
+      };
+      if (
+        body.detail?.code === "unauthorized" &&
+        body.detail?.status === "missing_permissions"
+      ) {
+        return { status: "ok", note: "key lacks user_read — balance unavailable" };
+      }
+      return { status: "invalid-key" };
+    }
     if (res.status === 402) return { status: "out-of-credits" };
+    if (res.status === 403) {
+      return { status: "ok", note: "key lacks user_read — balance unavailable" };
+    }
     return { status: "error", note: `HTTP ${res.status}` };
   } catch {
     return { status: "error", note: "Request failed" };
