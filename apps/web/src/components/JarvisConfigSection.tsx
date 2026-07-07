@@ -428,12 +428,18 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           value={chatModel}
           onChange={(e) => setChatModel(e.target.value)}
         >
-          <option value="">Auto (server default)</option>
+          <option value="">Auto (Claude → Perplexity → Ollama)</option>
           {claudeModelsList.length > 0 && (
             <optgroup label="── Claude (cloud) ──">
-              {claudeModelsList.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              {claudeModelsList.map((m) => {
+                const labels: Record<string, string> = {
+                  "claude-fable-5": "Fable 5 (best)",
+                  "claude-opus-4-8": "Opus 4.8 (powerful)",
+                  "claude-sonnet-4-6": "Sonnet 4.6 (balanced)",
+                  "claude-haiku-4-5-20251001": "Haiku 4.5 (fast)",
+                };
+                return <option key={m} value={m}>{labels[m] ?? m}</option>;
+              })}
             </optgroup>
           )}
           {availableModels.length > 0 && (
