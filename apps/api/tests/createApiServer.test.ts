@@ -837,7 +837,8 @@ describe("createApiServer", () => {
         },
         tts: {
           configured: false,
-          providers: ["browser"],
+          providers: ["deepgram", "elevenlabs", "openai", "kokoro", "browser"],
+          configuredProviders: ["browser"],
           recommended: "browser",
           fallback: "browser-speech-synthesis",
         },

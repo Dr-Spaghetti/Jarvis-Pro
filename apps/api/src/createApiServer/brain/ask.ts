@@ -368,12 +368,14 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       writeJson(response, 200, { available: true, answer: result.answer, sources }, corsOrigin);
       return true;
     }
+    const claudeReason =
+      result && !result.ok && result.status === 0 ? "no-chat-model" : "claude-error";
     writeJson(
       response,
       200,
       {
         available: false,
-        reason: "claude-error",
+        reason: claudeReason,
         hint: result?.hint ?? "Claude API is unavailable. Check ANTHROPIC_API_KEY in .env.",
         sources,
       },
