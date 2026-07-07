@@ -25,7 +25,7 @@ const checkElevenLabs = async (): Promise<ServiceStatus> => {
       const remaining = limit - used;
       if (limit > 0 && remaining <= 0) return { status: "out-of-credits" };
       const usage = limit > 0 ? `${remaining.toLocaleString()} chars left` : undefined;
-      return { status: "ok", usage };
+      return usage !== undefined ? { status: "ok", usage } : { status: "ok" };
     }
     if (res.status === 401) return { status: "invalid-key" };
     if (res.status === 402) return { status: "out-of-credits" };

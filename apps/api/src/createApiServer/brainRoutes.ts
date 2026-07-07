@@ -948,7 +948,12 @@ const askViaPerplexity = async (
 
 const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
 const CLAUDE_SONNET_MODEL = "claude-sonnet-4-6";
-const CLAUDE_MODEL_IDS = [CLAUDE_VOICE_MODEL, CLAUDE_SONNET_MODEL] as const;
+const CLAUDE_MODEL_IDS = [
+  "claude-fable-5",
+  "claude-opus-4-8",
+  CLAUDE_SONNET_MODEL,
+  CLAUDE_VOICE_MODEL,
+] as const;
 
 // Abort a provider call after `ms` so a slow/hung upstream can never freeze the
 // answer — the UI would otherwise sit on "Thinking" forever. Resolves to null on
@@ -981,14 +986,19 @@ const JARVIS_VOICE_SYSTEM =
   "You have full voice capabilities. When Nick asks you to 'read it back', 'say it again', or 'read the answer', " +
   "just answer normally — your reply will be spoken. Never tell him you lack audio capabilities.";
 
+type ClaudeResult =
+  | { ok: true; answer: string }
+  | { ok: false; status: number; hint: string }
+  | null; // null = network timeout / unreachable
+
 const askViaClaude = async (
   question: string,
   context: string,
   history: ConversationTurn[] = [],
   model?: string,
-): Promise<string | null> => {
+): Promise<ClaudeResult> => {
   const apiKey = getAnthropicApiKey();
-  if (!apiKey) return null;
+  if (!apiKey) return { ok: false, status: 0, hint: "ANTHROPIC_API_KEY is not set in .env" };
 
   // Replay recent turns as real conversation so Jarvis has continuity.
   const messages: AnthrMessage[] = [];
@@ -1017,10 +1027,25 @@ const askViaClaude = async (
     10000,
   );
 
-  if (!fetchRes?.ok) return null;
+  if (!fetchRes) return null; // network timeout
+  if (!fetchRes.ok) {
+    const hint =
+      fetchRes.status === 401
+        ? "Invalid or expired ANTHROPIC_API_KEY — check .env"
+        : fetchRes.status === 403
+          ? "API key lacks permission for this model"
+          : fetchRes.status === 429
+            ? "Anthropic rate limit hit — try again in a moment"
+            : fetchRes.status === 404
+              ? `Model "${model ?? CLAUDE_SONNET_MODEL}" not found — check model ID`
+              : `Anthropic API returned HTTP ${fetchRes.status}`;
+    return { ok: false, status: fetchRes.status, hint };
+  }
   const response = (await fetchRes.json().catch(() => null)) as AnthrResponse | null;
   const textBlock = response?.content?.find((b) => b.type === "text");
-  return textBlock?.type === "text" ? stripToolMarkup(textBlock.text) : null;
+  return textBlock?.type === "text"
+    ? { ok: true, answer: stripToolMarkup(textBlock.text) }
+    : { ok: false, status: 200, hint: "Empty response from Claude API" };
 };
 
 // ── Ask Jarvis: local RAG over the brain (free, via Ollama chat) ────────────
@@ -1320,10 +1345,10 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   // Explicit Claude model: use that model directly, no cascade.
   if (model?.startsWith("claude-")) {
-    const ans = await askViaClaude(question, claudeContext, history, model);
-    if (ans) {
-      if (vaultDir) appendConversationTurn(vaultDir, question, ans);
-      writeJson(response, 200, { available: true, answer: ans, sources }, corsOrigin);
+    const result = await askViaClaude(question, claudeContext, history, model);
+    if (result?.ok) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
+      writeJson(response, 200, { available: true, answer: result.answer, sources }, corsOrigin);
       return true;
     }
     writeJson(
@@ -1331,8 +1356,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       200,
       {
         available: false,
-        reason: "no-chat-model",
-        hint: "Claude API is unavailable. Check ANTHROPIC_API_KEY in .env.",
+        reason: "claude-error",
+        hint: result?.hint ?? "Claude API is unavailable. Check ANTHROPIC_API_KEY in .env.",
         sources,
       },
       corsOrigin,
@@ -1345,10 +1370,20 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   //   2. Fallback          → Ollama (local, free)
   if (!model) {
     // General questions: Claude Sonnet — capable, no tool loop.
-    const claudeAnswer = await askViaClaude(question, claudeContext, history);
-    if (claudeAnswer) {
-      if (vaultDir) appendConversationTurn(vaultDir, question, claudeAnswer);
-      writeJson(response, 200, { available: true, answer: claudeAnswer, sources }, corsOrigin);
+    const claudeResult = await askViaClaude(question, claudeContext, history);
+    if (claudeResult?.ok) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
+      writeJson(response, 200, { available: true, answer: claudeResult.answer, sources }, corsOrigin);
+      return true;
+    }
+    // Hard auth/key errors → surface immediately, don't silently fall to Ollama.
+    if (claudeResult && !claudeResult.ok && (claudeResult.status === 401 || claudeResult.status === 403)) {
+      writeJson(
+        response,
+        200,
+        { available: false, reason: "claude-error", hint: claudeResult.hint, sources },
+        corsOrigin,
+      );
       return true;
     }
 
