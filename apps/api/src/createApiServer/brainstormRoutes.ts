@@ -22,13 +22,13 @@ const parseFrontmatter = (content: string): { tags: string[]; created: string; b
   const body = match[2] ?? "";
   const tagsMatch = /^tags:\s*\[([^\]]*)\]/m.exec(fm);
   const tags = tagsMatch
-    ? tagsMatch[1]
+    ? (tagsMatch[1] ?? "")
         .split(",")
         .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
         .filter(Boolean)
     : [];
   const createdMatch = /^created:\s*(.+)$/m.exec(fm);
-  const created = createdMatch ? createdMatch[1].trim() : new Date(0).toISOString();
+  const created = createdMatch ? (createdMatch[1] ?? "").trim() : new Date(0).toISOString();
   return { tags, created, body: body.trim() };
 };
 
@@ -63,7 +63,7 @@ const listIdeas = (vaultDir: string): Idea[] => {
       const content = readFileSync(filePath, "utf8");
       const { tags, created, body } = parseFrontmatter(content);
       const titleMatch = /^#\s+(.+)$/m.exec(body);
-      const title = titleMatch ? titleMatch[1].trim() : id;
+      const title = titleMatch ? (titleMatch[1] ?? "").trim() : id;
       ideas.push({ id, title, body, tags, created });
     } catch {
       // skip unreadable files
@@ -315,7 +315,7 @@ export const handleBrainstormExpandRoute: ApiRouteHandler = async ({
   const existing = readFileSync(filePath, "utf8");
   const { tags, created, body } = parseFrontmatter(existing);
   const titleMatch = /^#\s+(.+)$/m.exec(body);
-  const title = titleMatch ? titleMatch[1].trim() : id;
+  const title = titleMatch ? (titleMatch[1] ?? "").trim() : id;
 
   const elaboration = await callClaudeExpand(`Title: ${title}\n\n${body}`);
   if (!elaboration) {

@@ -108,8 +108,7 @@ export const evaluateAgentAlerts = (
   if (config.agentStuckMinutes !== null) {
     const thresholdMs = config.agentStuckMinutes * 60_000;
     for (const snapshot of snapshots) {
-      const runtimeState = snapshot.agentRuntimeState;
-      if (!runtimeState || !STUCK_STATES.has(runtimeState)) {
+      if (!STUCK_STATES.has(snapshot.state)) {
         continue;
       }
 

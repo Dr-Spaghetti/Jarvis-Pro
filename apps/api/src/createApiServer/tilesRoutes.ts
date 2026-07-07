@@ -103,7 +103,7 @@ const apolloTile = async (): Promise<HomeTile> => {
     title: "Apollo",
     status,
     value: status === "ok" ? "Connected" : null,
-    detail: status === "error" ? "API key set but Apollo did not respond OK." : undefined,
+    ...(status === "error" ? { detail: "API key set but Apollo did not respond OK." } : {}),
   };
 };
 
@@ -127,7 +127,7 @@ const localFalconTile = async (): Promise<HomeTile> => {
     title: "Local Falcon",
     status,
     value: status === "ok" ? "Connected" : null,
-    detail: status === "error" ? "API key set but Local Falcon did not respond OK." : undefined,
+    ...(status === "error" ? { detail: "API key set but Local Falcon did not respond OK." } : {}),
   };
 };
 

@@ -66,8 +66,8 @@ export const mergeConversationMeta = (
   }
   return {
     ...summary,
-    tags: entry.tags.length > 0 ? entry.tags : undefined,
-    pinned: entry.pinned || undefined,
+    ...(entry.tags.length > 0 ? { tags: entry.tags } : {}),
+    ...(entry.pinned ? { pinned: true as const } : {}),
   };
 };
 

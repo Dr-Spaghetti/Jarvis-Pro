@@ -384,8 +384,8 @@ RATIONALE: [one sentence explaining the key improvement]`;
     const improvedMatch = /IMPROVED_STEPS:\s*\n([\s\S]+?)(?:\nRATIONALE:|$)/i.exec(answer);
     const rationaleMatch = /RATIONALE:\s*(.+)/i.exec(answer);
 
-    const improvedSteps = improvedMatch ? improvedMatch[1].trim() : workflow.steps;
-    const rationale = rationaleMatch ? rationaleMatch[1].trim() : "Steps refined based on run history.";
+    const improvedSteps = improvedMatch ? (improvedMatch[1] ?? "").trim() : workflow.steps;
+    const rationale = rationaleMatch ? (rationaleMatch[1] ?? "").trim() : "Steps refined based on run history.";
 
     writeJson(response, 200, { improvedSteps, rationale }, corsOrigin);
   } catch (error) {

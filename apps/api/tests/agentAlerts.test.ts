@@ -33,7 +33,6 @@ const snapshot = (overrides: Partial<TerminalSnapshot> = {}): TerminalSnapshot =
   state: "blocked",
   tentacleId: "alpha",
   createdAt: "2026-06-12T10:00:00.000Z",
-  agentRuntimeState: "blocked",
   agentStateChangedAt: "2026-06-12T10:00:00.000Z",
   ...overrides,
 });
@@ -71,7 +70,7 @@ describe("evaluateAgentAlerts", () => {
   it("ignores agents that are not blocked", () => {
     expect(
       evaluateAgentAlerts(
-        [snapshot({ agentRuntimeState: "live" }), snapshot({ agentRuntimeState: "idle" })],
+        [snapshot({ state: "live" }), snapshot({ state: "idle" })],
         { agentStuckMinutes: 5 },
         NOW,
       ),
@@ -81,7 +80,7 @@ describe("evaluateAgentAlerts", () => {
   it("ignores blocked agents with no state-change timestamp", () => {
     expect(
       evaluateAgentAlerts(
-        [snapshot({ agentStateChangedAt: undefined })],
+        [(() => { const { agentStateChangedAt: _omit, ...s } = snapshot(); return s as TerminalSnapshot; })()],
         { agentStuckMinutes: 5 },
         NOW,
       ),

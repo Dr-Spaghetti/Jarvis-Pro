@@ -593,7 +593,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
     if (!upstreamResponse.ok) {
       // 402/429 = out of credits — silently fall back to Deepgram
       if ((upstreamResponse.status === 402 || upstreamResponse.status === 429) &&
-          await synthesizeDeepgramFallback(text, response, corsOrigin)) {
+          await synthesizeDeepgramFallback(text, response, corsOrigin ?? "")) {
         return true;
       }
       const errorText = await upstreamResponse.text();
@@ -672,7 +672,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
   if (!upstreamResponse.ok) {
     // 402 = out of credits — silently fall back to Deepgram
     if (upstreamResponse.status === 402 &&
-        await synthesizeDeepgramFallback(text, response, corsOrigin)) {
+        await synthesizeDeepgramFallback(text, response, corsOrigin ?? "")) {
       return true;
     }
     const errorText = await upstreamResponse.text();
