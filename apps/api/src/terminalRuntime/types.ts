@@ -44,12 +44,19 @@ export type TerminalActivityMessage = {
   type: "activity";
 };
 
+export type TerminalErrorMessage = {
+  type: "error";
+  code: string;
+  message: string;
+};
+
 export type TerminalServerMessage =
   | TerminalStateMessage
   | TerminalOutputMessage
   | TerminalHistoryMessage
   | TerminalRenameMessage
-  | TerminalActivityMessage;
+  | TerminalActivityMessage
+  | TerminalErrorMessage;
 
 export type DirectSessionListener = (message: TerminalServerMessage) => void;
 

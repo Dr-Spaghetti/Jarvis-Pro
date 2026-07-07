@@ -680,9 +680,11 @@ export const createSessionRuntime = ({
       try {
         session = ensureSession(sessionId, tentacleId);
       } catch (error) {
+        const msg = toErrorMessage(error);
+        sendMessage(websocket, { type: "error", code: "session-start-failed", message: msg });
         sendMessage(websocket, {
           type: "output",
-          data: `\r\n[terminal failed to start: ${toErrorMessage(error)}]\r\n`,
+          data: `\r\n[terminal failed to start: ${msg}]\r\n`,
         });
         websocket.close();
         return;

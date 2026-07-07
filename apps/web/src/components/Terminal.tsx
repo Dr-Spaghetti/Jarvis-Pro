@@ -7,6 +7,7 @@ import { type AgentRuntimeState, AgentStateBadge, isAgentRuntimeState } from "./
 import { TerminalPromptPicker } from "./TerminalPromptPicker";
 import { replayTerminalHistory } from "./terminalReplay";
 import { wheelDeltaToScrollLines } from "./terminalWheel";
+import { useToasts } from "./ui/ToastProvider";
 
 import "xterm/css/xterm.css";
 
@@ -47,12 +48,19 @@ type TerminalActivityMessage = {
   type: "activity";
 };
 
+type TerminalErrorMessage = {
+  type: "error";
+  code: string;
+  message: string;
+};
+
 type TerminalServerMessage =
   | TerminalStateMessage
   | TerminalOutputMessage
   | TerminalHistoryMessage
   | TerminalRenameMessage
-  | TerminalActivityMessage;
+  | TerminalActivityMessage
+  | TerminalErrorMessage;
 
 const PromptInjectIcon = () => (
   <svg
@@ -78,6 +86,7 @@ export const Terminal = ({
   onTerminalRenamed,
   onTerminalActivity,
 }: TerminalProps) => {
+  const { showToast } = useToasts();
   const socketRef = useRef<WebSocket | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [connectionState, setConnectionState] = useState("connecting");
@@ -99,6 +108,8 @@ export const Terminal = ({
   const requestResizeSyncRef = useRef<() => void>(() => {});
   const onTerminalActivityRef = useRef(onTerminalActivity);
   const onTerminalRenamedRef = useRef(onTerminalRenamed);
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
   const rawTitle = terminalLabel && terminalLabel.length > 0 ? terminalLabel : terminalId;
   const terminalTitle = rawTitle.length > 24 ? `${rawTitle.slice(0, 24)}...` : rawTitle;
 
@@ -213,6 +224,11 @@ export const Terminal = ({
 
           if (payload.type === "activity") {
             onTerminalActivityRef.current?.(terminalId);
+            return;
+          }
+
+          if (payload.type === "error" && typeof payload.message === "string") {
+            showToastRef.current(payload.message, "error");
             return;
           }
         } catch {

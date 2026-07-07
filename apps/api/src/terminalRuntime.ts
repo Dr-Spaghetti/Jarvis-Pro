@@ -276,6 +276,7 @@ export const createTerminalRuntime = ({
     terminals,
     sessions,
     writeInput: (terminalId: string, data: string) => sessionRuntime.writeInput(terminalId, data),
+    persistPath: join(stateDir, "state", "channels.json"),
   });
 
   const hookProcessor = createHookProcessor({
