@@ -28,7 +28,7 @@ type JournalEntry = {
 type VoiceConfig = {
   wake: { phrases: string[] };
   transcription: { configured: boolean; defaultModel: string; models: string[] };
-  tts: { configured: boolean; providers?: string[]; configuredProviders?: string[] };
+  tts: { configured: boolean; providers?: string[]; configuredProviders?: string[]; recommended?: string };
   brain?: { provider: string; webSearch: boolean };
 };
 
