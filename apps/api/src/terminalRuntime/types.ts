@@ -96,6 +96,8 @@ export type TerminalSession = {
   isClosed?: boolean;
   hasSeenProcessing?: boolean;
   lastToolName?: string | undefined;
+  /** Called on each PTY output chunk during startup readiness detection. Cleared once prompt is injected. */
+  onReadyOutputChunk?: ((chunk: string) => void) | undefined;
 };
 
 export type TerminalNameOrigin = "generated" | "user" | "prompt";

@@ -246,6 +246,38 @@ export const createSessionRuntime = ({
     session.promptTimers.add(timer);
   };
 
+  // Calls `callback` once the PTY has been quiet for INITIAL_PROMPT_QUIET_MS,
+  // or at INITIAL_PROMPT_DELAY_MS regardless — whichever comes first.
+  const onAgentReady = (
+    session: TerminalSession,
+    sessionId: string,
+    callback: () => void,
+  ): void => {
+    let quietTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const fire = () => {
+      session.onReadyOutputChunk = undefined;
+      if (quietTimer !== undefined) {
+        clearTimeout(quietTimer);
+        quietTimer = undefined;
+      }
+      if (session.isClosed || sessions.get(sessionId) !== session) return;
+      callback();
+    };
+
+    session.onReadyOutputChunk = () => {
+      if (quietTimer !== undefined) clearTimeout(quietTimer);
+      if (session.isClosed || sessions.get(sessionId) !== session) {
+        session.onReadyOutputChunk = undefined;
+        return;
+      }
+      quietTimer = setTimeout(fire, INITIAL_PROMPT_QUIET_MS);
+    };
+
+    // Absolute maximum: fire even if the PTY never goes quiet.
+    schedulePromptTimer(session, sessionId, fire, INITIAL_PROMPT_DELAY_MS);
+  };
+
   const appendScrollback = (session: TerminalSession, chunk: string) => {
     let nextChunk = chunk;
     let nextChunkBytes = Buffer.byteLength(nextChunk, "utf8");
@@ -437,7 +469,8 @@ export const createSessionRuntime = ({
     return true;
   };
 
-  const INITIAL_PROMPT_DELAY_MS = 4_000;
+  const INITIAL_PROMPT_DELAY_MS = 4_000; // max fallback — fires if PTY never goes quiet
+  const INITIAL_PROMPT_QUIET_MS = 600;   // fire after this many ms of PTY silence
   const INITIAL_PROMPT_SUBMIT_DELAY_MS = 150;
   const BRACKETED_PASTE_START = "\x1b[200~";
   const BRACKETED_PASTE_END = "\x1b[201~";
@@ -482,48 +515,39 @@ export const createSessionRuntime = ({
     appendDebugLog(session, `bootstrap session=${sessionId} command=${bootstrapCommand}`);
     session.pty.write(`${bootstrapCommand}\r`);
 
-    // Schedule initial prompt injection after Claude Code has had time to boot.
+    // Inject initial prompt once Claude Code is ready (PTY quiet for INITIAL_PROMPT_QUIET_MS),
+    // with INITIAL_PROMPT_DELAY_MS as the absolute fallback.
     if (session.initialPrompt && !session.isInitialPromptSent) {
-      schedulePromptTimer(
-        session,
-        sessionId,
-        () => {
-          if (session.isInitialPromptSent) {
-            return;
-          }
-          session.isInitialPromptSent = true;
-          appendDebugLog(session, `initial-prompt session=${sessionId}`);
-          const prompt = session.initialPrompt ?? "";
-          session.pty.write(`${BRACKETED_PASTE_START}${prompt}${BRACKETED_PASTE_END}`);
-          schedulePromptTimer(
-            session,
-            sessionId,
-            () => {
-              appendDebugLog(session, `initial-prompt-submit session=${sessionId}`);
-              session.pty.write("\r");
-            },
-            INITIAL_PROMPT_SUBMIT_DELAY_MS,
-          );
-        },
-        INITIAL_PROMPT_DELAY_MS,
-      );
+      onAgentReady(session, sessionId, () => {
+        if (session.isInitialPromptSent) {
+          return;
+        }
+        session.isInitialPromptSent = true;
+        appendDebugLog(session, `initial-prompt session=${sessionId}`);
+        const prompt = session.initialPrompt ?? "";
+        session.pty.write(`${BRACKETED_PASTE_START}${prompt}${BRACKETED_PASTE_END}`);
+        schedulePromptTimer(
+          session,
+          sessionId,
+          () => {
+            appendDebugLog(session, `initial-prompt-submit session=${sessionId}`);
+            session.pty.write("\r");
+          },
+          INITIAL_PROMPT_SUBMIT_DELAY_MS,
+        );
+      });
     }
 
     if (session.initialInputDraft && !session.isInitialInputDraftSent && !session.initialPrompt) {
-      schedulePromptTimer(
-        session,
-        sessionId,
-        () => {
-          if (session.isInitialInputDraftSent) {
-            return;
-          }
-          session.isInitialInputDraftSent = true;
-          appendDebugLog(session, `initial-input-draft session=${sessionId}`);
-          const draft = session.initialInputDraft ?? "";
-          session.pty.write(`${BRACKETED_PASTE_START}${draft}${BRACKETED_PASTE_END}`);
-        },
-        INITIAL_PROMPT_DELAY_MS,
-      );
+      onAgentReady(session, sessionId, () => {
+        if (session.isInitialInputDraftSent) {
+          return;
+        }
+        session.isInitialInputDraftSent = true;
+        appendDebugLog(session, `initial-input-draft session=${sessionId}`);
+        const draft = session.initialInputDraft ?? "";
+        session.pty.write(`${BRACKETED_PASTE_START}${draft}${BRACKETED_PASTE_END}`);
+      });
     }
   };
 
@@ -619,6 +643,7 @@ export const createSessionRuntime = ({
         data: chunk,
       });
       emitStateIfChanged(session, sessionId, nextState);
+      session.onReadyOutputChunk?.(chunk);
     });
 
     const exitDisposable = session.pty.onExit(({ exitCode, signal }) => {
