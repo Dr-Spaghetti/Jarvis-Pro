@@ -519,7 +519,7 @@ export const JarvisConfigSection = () => {
   const [answer, setAnswer] = useState<string | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
-  type CreditStatus = { status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error"; note?: string };
+  type CreditStatus = { status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error"; note?: string; usage?: string };
   type CreditsData = { elevenlabs?: CreditStatus; openai?: CreditStatus; anthropic?: CreditStatus; perplexity?: CreditStatus; deepgram?: CreditStatus; kokoro?: CreditStatus };
   const [credits, setCredits] = useState<CreditsData | null>(null);
   const [creditsLoading, setCreditsLoading] = useState(false);
@@ -894,8 +894,8 @@ export const JarvisConfigSection = () => {
           };
           const statusLabel = (s?: CreditStatus) => {
             if (!s || s.status === "not-configured") return "Not configured";
-            if (s.status === "ok") return "✓ Working";
-            if (s.status === "out-of-credits") return "⚠ Out of credits";
+            if (s.status === "ok") return s.usage ? `✓ ${s.usage}` : "✓ Working";
+            if (s.status === "out-of-credits") return s.usage ? `⚠ ${s.usage}` : "⚠ Out of credits";
             if (s.status === "invalid-key") return "✗ Invalid key";
             return `Error${s.note ? `: ${s.note}` : ""}`;
           };

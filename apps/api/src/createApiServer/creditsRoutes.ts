@@ -1,27 +1,34 @@
 import type { ApiRouteHandler } from "./routeHelpers";
 import { writeJson, writeMethodNotAllowed } from "./routeHelpers";
 
-type ServiceStatus =
-  | { status: "ok" }
-  | { status: "out-of-credits" }
-  | { status: "invalid-key" }
-  | { status: "not-configured" }
-  | { status: "error"; note: string };
+type ServiceStatus = {
+  status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error";
+  note?: string;
+  usage?: string;
+};
 
 const checkElevenLabs = async (): Promise<ServiceStatus> => {
   const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
   const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim();
   if (!apiKey || !voiceId) return { status: "not-configured" };
   try {
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-      method: "POST",
-      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ text: ".", model_id: "eleven_turbo_v2" }),
-      signal: AbortSignal.timeout(10000),
+    const res = await fetch("https://api.elevenlabs.io/v1/user", {
+      headers: { "xi-api-key": apiKey },
+      signal: AbortSignal.timeout(8000),
     });
-    if (res.ok) return { status: "ok" };
-    if (res.status === 402) return { status: "out-of-credits" };
+    if (res.ok) {
+      const data = (await res.json()) as {
+        subscription?: { character_count?: number; character_limit?: number };
+      };
+      const used = data.subscription?.character_count ?? 0;
+      const limit = data.subscription?.character_limit ?? 0;
+      const remaining = limit - used;
+      if (limit > 0 && remaining <= 0) return { status: "out-of-credits" };
+      const usage = limit > 0 ? `${remaining.toLocaleString()} chars left` : undefined;
+      return { status: "ok", usage };
+    }
     if (res.status === 401) return { status: "invalid-key" };
+    if (res.status === 402) return { status: "out-of-credits" };
     return { status: "error", note: `HTTP ${res.status}` };
   } catch {
     return { status: "error", note: "Request failed" };
@@ -121,7 +128,31 @@ const checkDeepgram = async (): Promise<ServiceStatus> => {
       headers: { Authorization: `Token ${apiKey}` },
       signal: AbortSignal.timeout(8000),
     });
-    if (res.ok) return { status: "ok" };
+    if (res.ok) {
+      const data = (await res.json()) as { projects?: { project_id: string }[] };
+      const projectId = data.projects?.[0]?.project_id;
+      if (projectId) {
+        try {
+          const balRes = await fetch(
+            `https://api.deepgram.com/v1/projects/${projectId}/balances`,
+            { headers: { Authorization: `Token ${apiKey}` }, signal: AbortSignal.timeout(5000) },
+          );
+          if (balRes.ok) {
+            const balData = (await balRes.json()) as {
+              balances?: { amount: number; units: string }[];
+            };
+            const balance = balData.balances?.[0];
+            if (balance?.amount !== undefined) {
+              const usage = `$${balance.amount.toFixed(2)} remaining`;
+              return { status: balance.amount > 0 ? "ok" : "out-of-credits", usage };
+            }
+          }
+        } catch {
+          /* balance fetch failed — fall through to plain ok */
+        }
+      }
+      return { status: "ok" };
+    }
     if (res.status === 401) return { status: "invalid-key" };
     if (res.status === 402) return { status: "out-of-credits" };
     return { status: "error", note: `HTTP ${res.status}` };
