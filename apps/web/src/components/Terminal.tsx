@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { FileText, X } from "lucide-react";
-import { appendAuthTokenParam } from "../runtime/apiClient";
+import { getWsAuthProtocols } from "../runtime/apiClient";
 import { buildTerminalSocketUrl } from "../runtime/runtimeEndpoints";
 import { type AgentRuntimeState, AgentStateBadge, isAgentRuntimeState } from "./AgentStateBadge";
 import { TerminalPromptPicker } from "./TerminalPromptPicker";
@@ -147,7 +147,7 @@ export const Terminal = ({
     const pendingOutputChunks: string[] = [];
 
     const connect = () => {
-      const nextSocket = new WebSocket(appendAuthTokenParam(buildTerminalSocketUrl(terminalId)));
+      const nextSocket = new WebSocket(buildTerminalSocketUrl(terminalId), getWsAuthProtocols());
       socket = nextSocket;
       setConnectionState("connecting");
 

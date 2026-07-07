@@ -16,7 +16,10 @@ declare module "ws" {
   type HandleUpgradeCallback = (websocket: WebSocket) => void;
 
   export class WebSocketServer extends EventEmitter {
-    constructor(options: { noServer: true });
+    constructor(options: {
+      noServer: true;
+      handleProtocols?: (protocols: Set<string>, req: IncomingMessage) => string | false;
+    });
     handleUpgrade(
       request: IncomingMessage,
       socket: Duplex,

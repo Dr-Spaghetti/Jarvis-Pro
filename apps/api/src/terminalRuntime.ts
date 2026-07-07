@@ -78,8 +78,14 @@ export const createTerminalRuntime = ({
 }: CreateTerminalRuntimeOptions) => {
   const stateDir = projectStateDir ?? join(workspaceCwd, ".octogent");
   const sessions = new Map<string, TerminalSession>();
-  const websocketServer = new WebSocketServer({ noServer: true });
-  const terminalEventsWebsocketServer = new WebSocketServer({ noServer: true });
+  const echoTokenProtocol = (protocols: Set<string>): string | false => {
+    for (const p of protocols) {
+      if (p.startsWith("token.")) return p;
+    }
+    return false;
+  };
+  const websocketServer = new WebSocketServer({ noServer: true, handleProtocols: echoTokenProtocol });
+  const terminalEventsWebsocketServer = new WebSocketServer({ noServer: true, handleProtocols: echoTokenProtocol });
   const terminalEventClients = new Set<WebSocket>();
   const registryPath = join(stateDir, "state", "tentacles.json");
   const registryState = loadTerminalRegistry(registryPath);

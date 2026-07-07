@@ -86,8 +86,6 @@ export const isAuthTokenMatch = (candidate: string, expected: string): boolean =
   return timingSafeEqual(candidateBuffer, expectedBuffer);
 };
 
-// Browsers cannot attach headers to WebSocket upgrades or <a download> links,
-// so a ?token= query parameter is accepted alongside the Authorization header.
 export const extractRequestAuthToken = (
   request: IncomingMessage,
   requestUrl: URL,
@@ -95,15 +93,22 @@ export const extractRequestAuthToken = (
   const authorization = readHeaderValue(request.headers.authorization);
   if (authorization) {
     const match = /^Bearer\s+(.+)$/i.exec(authorization);
-    if (match?.[1]) {
-      return match[1].trim() || null;
+    if (match?.[1]) return match[1].trim() || null;
+  }
+
+  // WebSocket handshakes cannot carry Authorization headers; the token is
+  // passed as a Sec-WebSocket-Protocol value with prefix "token.".
+  const wsProtocol = readHeaderValue(request.headers["sec-websocket-protocol"]);
+  if (wsProtocol) {
+    for (const proto of wsProtocol.split(",")) {
+      const match = /^token\.(.+)$/.exec(proto.trim());
+      if (match?.[1]) return decodeURIComponent(match[1]);
     }
   }
 
+  // <a href> download links cannot use headers; accept ?token= for those only.
   const queryToken = requestUrl.searchParams.get("token");
-  if (queryToken && queryToken.trim().length > 0) {
-    return queryToken.trim();
-  }
+  if (queryToken && queryToken.trim().length > 0) return queryToken.trim();
 
   return null;
 };

@@ -59,13 +59,18 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
   return response;
 };
 
-// WebSocket handshakes and <a download> links cannot carry an Authorization
-// header — for those the token rides in as a ?token= query parameter.
+// WebSocket handshakes cannot carry Authorization headers; pass the token as a
+// Sec-WebSocket-Protocol value so it stays out of URLs and server logs.
+export const getWsAuthProtocols = (): string[] => {
+  const token = getStoredAuthToken();
+  return token ? [`token.${encodeURIComponent(token)}`] : [];
+};
+
+// <a href> download links cannot carry Authorization headers either.
+// Use this only for download link hrefs — never for WebSocket URLs.
 export const appendAuthTokenParam = (url: string): string => {
   const token = getStoredAuthToken();
-  if (!token) {
-    return url;
-  }
+  if (!token) return url;
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}token=${encodeURIComponent(token)}`;
 };

@@ -35,7 +35,7 @@ import { TelemetryTape } from "./components/TelemetryTape";
 import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader";
-import { apiFetch, appendAuthTokenParam } from "./runtime/apiClient";
+import { apiFetch, getWsAuthProtocols } from "./runtime/apiClient";
 
 import {
   buildNotificationsUrl,
@@ -182,7 +182,7 @@ export const App = () => {
 
     const connect = () => {
       if (destroyed) return;
-      const socket = new WebSocket(appendAuthTokenParam(buildTerminalEventsSocketUrl()));
+      const socket = new WebSocket(buildTerminalEventsSocketUrl(), getWsAuthProtocols());
       activeSocket = socket;
 
       socket.addEventListener("open", () => {

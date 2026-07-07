@@ -35,7 +35,7 @@ export const createUpgradeHandler = ({
     }
 
     // Browsers cannot set an Authorization header during a WebSocket
-    // handshake, so the token rides in as a ?token= query parameter.
+    // handshake; the token is passed as a Sec-WebSocket-Protocol value.
     const requestUrl = new URL(request.url ?? "/", "http://localhost");
     if (!isAuthorizedRequest(authToken, request, requestUrl)) {
       socket.destroy();

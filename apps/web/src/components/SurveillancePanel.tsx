@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { TerminalSnapshot } from "@octogent/core";
-import { apiFetch, appendAuthTokenParam } from "../runtime/apiClient";
+import { apiFetch, getWsAuthProtocols } from "../runtime/apiClient";
 import {
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
@@ -112,7 +112,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
 
     const connect = () => {
       if (destroyed) return;
-      const ws = new WebSocket(appendAuthTokenParam(buildTerminalEventsSocketUrl()));
+      const ws = new WebSocket(buildTerminalEventsSocketUrl(), getWsAuthProtocols());
       socketRef.current = ws;
 
       ws.addEventListener("open", () => {
