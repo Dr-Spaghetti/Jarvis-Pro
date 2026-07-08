@@ -78,6 +78,7 @@ export const useJarvisVoice = ({
   const startWakeListeningRef = useRef<(() => void) | null>(null);
   const startCommandRecordingRef = useRef<(() => void) | null>(null);
   const speakJarvisRef = useRef<((text: string) => Promise<void>) | null>(null);
+  const runVoiceIntentRef = useRef<((transcript: string) => Promise<void>) | null>(null);
   const audioUnlockedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const pendingAudioBlobRef = useRef<Blob | null>(null);
@@ -351,6 +352,18 @@ export const useJarvisVoice = ({
           }
         }
 
+        // Chain detection: "open agents then deploy researcher" → execute each part sequentially
+        const chainParts = transcript
+          .split(/\s+(?:then|and then|after that|followed by)\s+/i)
+          .map((p) => p.trim())
+          .filter(Boolean);
+        if (chainParts.length > 1) {
+          for (const part of chainParts) {
+            await runVoiceIntentRef.current?.(part);
+          }
+          return;
+        }
+
         const intentResponse = await apiFetch(buildVoiceIntentUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -592,6 +605,7 @@ export const useJarvisVoice = ({
       chatModelRef,
     ],
   );
+  runVoiceIntentRef.current = runVoiceIntent;
 
   const transcribeCommandAudio = useCallback(
     async (audio: Blob) => {

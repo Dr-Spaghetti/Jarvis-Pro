@@ -257,6 +257,8 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
   return true;
 };
 
+let claudeUnavailableUntil = 0;
+
 export const handleBrainAskRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
   { runtime },
@@ -385,14 +387,24 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
 
   if (!model) {
-    const claudeResult = await askViaClaude(question, claudeContext, history);
-    if (claudeResult?.ok) {
-      if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
-      writeJson(response, 200, { available: true, answer: claudeResult.answer, sources }, corsOrigin);
-      return true;
+    if (Date.now() >= claudeUnavailableUntil) {
+      const claudeResult = await askViaClaude(question, claudeContext, history);
+      if (claudeResult?.ok) {
+        if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
+        writeJson(response, 200, { available: true, answer: claudeResult.answer, sources }, corsOrigin);
+        return true;
+      }
+      if (claudeResult && !claudeResult.ok) {
+        const s = claudeResult.status;
+        if (s === 401 || s === 403 || s === 402 || s === 429 || s === 529) {
+          claudeUnavailableUntil = Date.now() + 300_000;
+        }
+      }
     }
-    if (claudeResult && !claudeResult.ok && (claudeResult.status === 401 || claudeResult.status === 403)) {
-      writeJson(response, 200, { available: false, reason: "claude-error", hint: claudeResult.hint, sources }, corsOrigin);
+    const perpResult = await askViaPerplexity(question, false);
+    if (perpResult) {
+      if (vaultDir) appendConversationTurn(vaultDir, question, perpResult.answer);
+      writeJson(response, 200, { available: true, answer: perpResult.answer, sources, citations: perpResult.citations, via: "perplexity-sonar" }, corsOrigin);
       return true;
     }
     if (!vaultDir) {

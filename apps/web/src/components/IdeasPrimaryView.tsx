@@ -8,6 +8,7 @@ import {
   buildBrainstormExpandUrl,
   buildBrainstormIdeaUrl,
   buildBrainstormIdeasUrl,
+  buildDeckTentaclesUrl,
   buildWorkflowsUrl,
 } from "../runtime/runtimeEndpoints";
 
@@ -303,12 +304,13 @@ const s = {
     paddingTop: 8,
     borderTop: `1px solid rgba(57,255,20,0.08)`,
   },
-  actionBtn2: (variant: "ask" | "workflow" | "brain" | "analyzer", busy = false) => {
+  actionBtn2: (variant: "ask" | "workflow" | "brain" | "analyzer" | "execute", busy = false) => {
     const color = {
       ask: "rgba(57,255,20,0.85)",
       workflow: "rgba(100,210,210,0.65)",
       brain: "rgba(57,255,20,0.5)",
       analyzer: "rgba(210,210,80,0.65)",
+      execute: "rgba(255,140,0,0.75)",
     }[variant];
     return {
       background: "none",
@@ -398,6 +400,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
   const [brainSaveMsg, setBrainSaveMsg] = useState<Record<string, string>>({});
   const [workflowCreatingId, setWorkflowCreatingId] = useState<string | null>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [agentCreatingId, setAgentCreatingId] = useState<string | null>(null);
 
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -574,6 +577,26 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
       setTimeout(() => setWorkflowError(null), 5000);
     }
   }, [workflowCreatingId, onNavigate]);
+
+  const handleExecuteIdea = useCallback(async (idea: Idea) => {
+    if (agentCreatingId === idea.id) return;
+    setAgentCreatingId(idea.id);
+    try {
+      const res = await apiFetch(buildDeckTentaclesUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: idea.title, description: idea.body || idea.title }),
+      });
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(errData.error ?? `HTTP ${res.status}`);
+      }
+      setAgentCreatingId(null);
+      onNavigate(8);
+    } catch {
+      setAgentCreatingId(null);
+    }
+  }, [agentCreatingId, onNavigate]);
 
   const handleSaveToBrain = useCallback(async (idea: Idea) => {
     if (brainSavingId === idea.id) return;
@@ -833,6 +856,14 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
                             onClick={() => handleOpenInAnalyzer(idea)}
                           >
                             ⊞ → Analyzer
+                          </button>
+                          <button
+                            type="button"
+                            style={s.actionBtn2("execute", agentCreatingId === idea.id)}
+                            disabled={agentCreatingId === idea.id}
+                            onClick={() => void handleExecuteIdea(idea)}
+                          >
+                            {agentCreatingId === idea.id ? "Spawning…" : "▶ Execute"}
                           </button>
                         </div>
 

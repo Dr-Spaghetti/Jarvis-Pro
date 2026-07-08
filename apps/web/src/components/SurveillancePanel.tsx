@@ -3,13 +3,30 @@ import { useEffect, useRef, useState } from "react";
 import type { TerminalSnapshot } from "@octogent/core";
 import { apiFetch, getWsAuthProtocols } from "../runtime/apiClient";
 import {
+  buildChannelMessagesUrl,
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
+  buildTokenTelemetryUrl,
 } from "../runtime/runtimeEndpoints";
 import { AgentAlertsPanel } from "./AgentAlertsPanel";
 
 type AgentCard = TerminalSnapshot & {
   toolName?: string;
+};
+
+type ChannelMessage = {
+  messageId: string;
+  fromTerminalId: string;
+  toTerminalId: string;
+  content: string;
+  timestamp: string;
+  delivered: boolean;
+};
+
+type AgentTokenStat = {
+  tentacleId: string;
+  inputTokens: number;
+  outputTokens: number;
 };
 
 const STATE_LABELS: Record<string, string> = {
@@ -52,9 +69,13 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   const [wsStatus, setWsStatus] = useState<"connected" | "disconnected">("connected");
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"sessions" | "alerts">("sessions");
+  const [channelMessages, setChannelMessages] = useState<ChannelMessage[]>([]);
+  const [agentTokens, setAgentTokens] = useState<AgentTokenStat[]>([]);
+  const [keyboardIndex, setKeyboardIndex] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(1000);
+  const activeRef = useRef<AgentCard[]>([]);
 
   // Tick every second to update duration labels
   useEffect(() => {
@@ -76,6 +97,61 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
     }, 3000);
     return () => clearInterval(interval);
   }, [selectedAgentId]);
+
+  // Poll channel messages every 5s when detail panel is open
+  useEffect(() => {
+    if (!isEnabled || !selectedAgentId) {
+      setChannelMessages([]);
+      return;
+    }
+    const fetchMsgs = () => {
+      void apiFetch(buildChannelMessagesUrl(selectedAgentId), { method: "GET" })
+        .then(async (res) => {
+          if (!res.ok) return;
+          const data = (await res.json()) as ChannelMessage[];
+          if (Array.isArray(data)) setChannelMessages(data.slice(-20));
+        })
+        .catch(() => {});
+    };
+    fetchMsgs();
+    const id = setInterval(fetchMsgs, 5000);
+    return () => clearInterval(id);
+  }, [selectedAgentId, isEnabled]);
+
+  // Fetch token telemetry when detail panel opens
+  useEffect(() => {
+    if (!isEnabled || !selectedAgentId) return;
+    void apiFetch(buildTokenTelemetryUrl(), { method: "GET" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as { sessions?: AgentTokenStat[] };
+        if (Array.isArray(data.sessions)) setAgentTokens(data.sessions);
+      })
+      .catch(() => {});
+  }, [selectedAgentId, isEnabled]);
+
+  // Keyboard navigation: j/k to move, Enter to select, Esc to close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const cur = activeRef.current;
+      if (e.key === "j") {
+        setKeyboardIndex((i) => Math.min(cur.length - 1, i + 1));
+      } else if (e.key === "k") {
+        setKeyboardIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "Enter") {
+        setKeyboardIndex((i) => {
+          const agent = cur[i];
+          if (agent) setSelectedAgentId((prev) => (prev === agent.terminalId ? null : agent.terminalId));
+          return i;
+        });
+      } else if (e.key === "Escape") {
+        setSelectedAgentId(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   // Initial fetch
   useEffect(() => {
@@ -216,8 +292,10 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   }, []);
 
   const active = agents.filter((a) => a.lifecycleState === "running");
+  activeRef.current = active;
   const history = agents.filter((a) => a.lifecycleState !== "running");
   const selectedAgent = selectedAgentId ? (agents.find((a) => a.terminalId === selectedAgentId) ?? null) : null;
+  const agentTelemetry = selectedAgent ? agentTokens.find((t) => t.tentacleId === selectedAgent.terminalId) ?? null : null;
 
   // Screens = active agents first, then empty slots up to MAX_SCREENS (or more if needed)
   const screenCount = Math.max(MAX_SCREENS, active.length);
@@ -295,11 +373,11 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
       <div className="surv-room">
         <div className="surv-room-grid">
           {/* Active agent screens */}
-          {active.map((agent) => (
+          {active.map((agent, idx) => (
             <button
               key={agent.terminalId}
               type="button"
-              className={`surv-screen surv-screen--active${selectedAgentId === agent.terminalId ? " surv-screen--selected" : ""}`}
+              className={`surv-screen surv-screen--active${selectedAgentId === agent.terminalId ? " surv-screen--selected" : ""}${keyboardIndex === idx && !selectedAgentId ? " surv-screen--focused" : ""}`}
               onClick={() => {
                 setSelectedAgentId((prev) => prev === agent.terminalId ? null : agent.terminalId);
                 onSelectAgent?.(agent.terminalId);
@@ -429,8 +507,27 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
               </pre>
             </div>
 
+            {channelMessages.length > 0 && (
+              <div className="surv-detail-channels">
+                <div className="surv-detail-channels-title">SWARM MESSAGES</div>
+                {channelMessages.map((msg) => (
+                  <div key={msg.messageId} className="surv-detail-channel-msg">
+                    <span className="surv-channel-from">{msg.fromTerminalId.slice(0, 8)}</span>
+                    <span className="surv-channel-arrow"> → </span>
+                    <span className="surv-channel-to">{msg.toTerminalId.slice(0, 8)}</span>
+                    <span className="surv-channel-content"> {msg.content}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="surv-detail-footer">
               <span>LIVE OUTPUT · REFRESH 3s</span>
+              {agentTelemetry ? (
+                <span className="surv-detail-tokens">
+                  ↑{agentTelemetry.inputTokens.toLocaleString()} ↓{agentTelemetry.outputTokens.toLocaleString()} tok
+                </span>
+              ) : null}
               <span>{selectedAgent.lifecycleState?.toUpperCase() ?? ""}</span>
             </div>
           </div>
