@@ -44,10 +44,25 @@ export const useJarvisVoice = ({
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
   const [voiceModel, setVoiceModel] = useState<string | null>(null);
   const [ttsProvider, setTtsProvider] = useState<string>(() => {
-    try { return window.localStorage.getItem("jarvis.ttsProvider") || "elevenlabs"; } catch { return "elevenlabs"; }
+    try {
+      const stored = window.localStorage.getItem("jarvis.ttsProvider");
+      if (!stored || stored === "browser") {
+        window.localStorage.setItem("jarvis.ttsProvider", "deepgram");
+        return "deepgram";
+      }
+      return stored;
+    } catch { return "deepgram"; }
   });
   const [deepgramVoice, setDeepgramVoice] = useState<string>(() => {
-    try { return window.localStorage.getItem("jarvis.deepgramVoice") ?? "aura-2-odysseus-en"; } catch { return "aura-2-odysseus-en"; }
+    try {
+      const stored = window.localStorage.getItem("jarvis.deepgramVoice");
+      // Migrate away from old female default to Odysseus (deep male)
+      if (!stored || stored === "aura-2-thalia-en") {
+        window.localStorage.setItem("jarvis.deepgramVoice", "aura-2-odysseus-en");
+        return "aura-2-odysseus-en";
+      }
+      return stored;
+    } catch { return "aura-2-odysseus-en"; }
   });
   const [deepgramVoices, setDeepgramVoices] = useState<
     { id: string; name: string; description: string }[]
@@ -94,7 +109,14 @@ export const useJarvisVoice = ({
         const config = (await res.json()) as VoiceConfig;
         setVoiceConfig(config);
         setVoiceModel(config.transcription.defaultModel);
-        setTtsProvider((prev) => prev || config.tts.recommended || "browser");
+        setTtsProvider((prev) => {
+          if (!prev || prev === "browser") {
+            const best = config.tts.recommended || config.tts.configuredProviders?.find((p) => p !== "browser") || "deepgram";
+            try { window.localStorage.setItem("jarvis.ttsProvider", best); } catch { /* ignore */ }
+            return best;
+          }
+          return prev;
+        });
       } catch {
         setVoiceError("Voice config unavailable");
       }

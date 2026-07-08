@@ -15,6 +15,7 @@ import {
   buildDeckTentaclesUrl,
   buildVoiceConfigUrl,
   buildVoiceSpeakUrl,
+  buildVoiceVoicesUrl,
 } from "../runtime/runtimeEndpoints";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
@@ -77,12 +78,24 @@ const lsSet = (key: string, val: string) => {
 type VoiceSettingsPanelProps = { voiceConfig: VoiceConfig };
 
 const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
-  const [ttsProvider, setTtsProvider] = useState(
-    () => lsGet(LS_KEYS.ttsProvider) || voiceConfig.tts.recommended || voiceConfig.tts.configuredProviders?.[0] || "deepgram",
-  );
+  const [ttsProvider, setTtsProvider] = useState(() => {
+    const stored = lsGet(LS_KEYS.ttsProvider);
+    const configured = voiceConfig.tts.configuredProviders ?? [];
+    const recommended = voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
+    if (!stored || (stored === "browser" && configured.some((p) => p !== "browser")) || !configured.includes(stored)) {
+      lsSet(LS_KEYS.ttsProvider, recommended);
+      return recommended;
+    }
+    return stored;
+  });
   const [voiceModel, setVoiceModel] = useState(
     () => lsGet(LS_KEYS.voiceModel) || voiceConfig.transcription.defaultModel,
   );
+  const [deepgramVoice, setDeepgramVoice] = useState(() => {
+    const stored = lsGet(LS_KEYS.deepgramVoice);
+    return (stored && stored !== "aura-2-thalia-en") ? stored : "aura-2-odysseus-en";
+  });
+  const [deepgramVoiceList, setDeepgramVoiceList] = useState<{ id: string; name: string; description: string }[]>([]);
   const [chatModel, setChatModel] = useState(() => lsGet(LS_KEYS.chatModel) || "claude-sonnet-4-6");
   const [openaiVoice, setOpenaiVoice] = useState(() => lsGet(LS_KEYS.openaiVoice) || "alloy");
   const [openaiTtsModel, setOpenaiTtsModel] = useState<string>("gpt-4o-mini-tts");
@@ -110,13 +123,22 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    void apiFetch(buildVoiceVoicesUrl())
+      .then((r) => r.json())
+      .then((d: { voices?: { id: string; name: string; description: string }[] }) => {
+        if (Array.isArray(d.voices)) setDeepgramVoiceList(d.voices);
+      })
+      .catch(() => {});
+  }, []);
+
   // Auto-migrate stale provider: if the stored provider isn't in the server's configured list,
   // silently switch to whatever the server recommends (e.g. elevenlabs→deepgram when out of credits).
   useEffect(() => {
     const stored = lsGet(LS_KEYS.ttsProvider);
     const configured = voiceConfig.tts.configuredProviders ?? [];
     const recommended = voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
-    if (stored && !configured.includes(stored)) {
+    if ((stored && !configured.includes(stored)) || (stored === "browser" && configured.some((p) => p !== "browser"))) {
       setTtsProvider(recommended);
       lsSet(LS_KEYS.ttsProvider, recommended);
     } else if (!stored) {
@@ -137,6 +159,7 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
 
   const save = () => {
     lsSet(LS_KEYS.ttsProvider, ttsProvider);
+    lsSet(LS_KEYS.deepgramVoice, deepgramVoice);
     lsSet(LS_KEYS.voiceModel, voiceModel);
     lsSet(LS_KEYS.chatModel, chatModel);
     lsSet(LS_KEYS.openaiVoice, openaiVoice);
@@ -153,6 +176,7 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         text: "Jarvis online. Voice systems ready.",
         provider: effectiveProvider,
       };
+      if (effectiveProvider === "deepgram") body.model = deepgramVoice;
       if (effectiveProvider === "openai") { body.voice = openaiVoice; body.model = openaiTtsModel; }
       if (effectiveProvider === "elevenlabs") body.voiceId = elevenlabsVoiceId || elevenlabsPreset;
       const res = await apiFetch(buildVoiceSpeakUrl(), {
@@ -263,6 +287,27 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           ))}
         </select>
       </div>
+
+      {/* Deepgram TTS — voice picker */}
+      {effectiveProvider === "deepgram" && deepgramVoiceList.length > 0 && (
+        <div style={rowStyle}>
+          <label htmlFor="voice-deepgram-voice" style={labelStyle}>
+            Deepgram Voice
+          </label>
+          <select
+            id="voice-deepgram-voice"
+            style={selectStyle}
+            value={deepgramVoice}
+            onChange={(e) => setDeepgramVoice(e.target.value)}
+          >
+            {deepgramVoiceList.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name} — {v.description}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* OpenAI TTS — voice + model dropdowns */}
       {effectiveProvider === "openai" && (
