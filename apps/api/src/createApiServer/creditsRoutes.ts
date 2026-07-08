@@ -34,10 +34,7 @@ const checkElevenLabs = async (): Promise<ServiceStatus> => {
       const body = (await res.json().catch(() => ({}))) as {
         detail?: { code?: string; status?: string };
       };
-      if (
-        body.detail?.code === "unauthorized" &&
-        body.detail?.status === "missing_permissions"
-      ) {
+      if (body.detail?.code === "unauthorized" && body.detail?.status === "missing_permissions") {
         return { status: "ok", note: "key lacks user_read — balance unavailable" };
       }
       return { status: "invalid-key" };
@@ -150,10 +147,10 @@ const checkDeepgram = async (): Promise<ServiceStatus> => {
       const projectId = data.projects?.[0]?.project_id;
       if (projectId) {
         try {
-          const balRes = await fetch(
-            `https://api.deepgram.com/v1/projects/${projectId}/balances`,
-            { headers: { Authorization: `Token ${apiKey}` }, signal: AbortSignal.timeout(5000) },
-          );
+          const balRes = await fetch(`https://api.deepgram.com/v1/projects/${projectId}/balances`, {
+            headers: { Authorization: `Token ${apiKey}` },
+            signal: AbortSignal.timeout(5000),
+          });
           if (balRes.ok) {
             const balData = (await balRes.json()) as {
               balances?: { amount: number; units: string }[];
@@ -178,9 +175,12 @@ const checkDeepgram = async (): Promise<ServiceStatus> => {
   }
 };
 
-export const handleCreditsStatusRoute: ApiRouteHandler = async (
-  { request, response, requestUrl, corsOrigin },
-) => {
+export const handleCreditsStatusRoute: ApiRouteHandler = async ({
+  request,
+  response,
+  requestUrl,
+  corsOrigin,
+}) => {
   if (requestUrl.pathname !== "/api/credits/status") return false;
   if (request.method !== "GET") {
     writeMethodNotAllowed(response, corsOrigin);
@@ -196,6 +196,11 @@ export const handleCreditsStatusRoute: ApiRouteHandler = async (
     checkKokoro(),
   ]);
 
-  writeJson(response, 200, { elevenlabs, openai, anthropic, perplexity, deepgram, kokoro }, corsOrigin);
+  writeJson(
+    response,
+    200,
+    { elevenlabs, openai, anthropic, perplexity, deepgram, kokoro },
+    corsOrigin,
+  );
   return true;
 };

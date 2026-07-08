@@ -38,7 +38,9 @@ const makeFakeProc = (): FakeProc => {
 describe("agenticAsk — output overflow protection", () => {
   beforeEach(() => {
     resetClaudeBinaryCache();
-    vi.mocked(execFileSync).mockReturnValue("claude\n" as unknown as ReturnType<typeof execFileSync>);
+    vi.mocked(execFileSync).mockReturnValue(
+      "claude\n" as unknown as ReturnType<typeof execFileSync>,
+    );
   });
 
   afterEach(() => {

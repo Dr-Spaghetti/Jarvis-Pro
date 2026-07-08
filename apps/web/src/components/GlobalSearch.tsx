@@ -119,6 +119,7 @@ export const GlobalSearch = ({ onClose, onNavigate }: GlobalSearchProps) => {
 
   return (
     <>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop is aria-hidden, keyboard dismiss via ESC on input */}
       <div className="global-search-backdrop" onClick={onClose} aria-hidden="true" />
       <div
         className="global-search-panel"
@@ -143,6 +144,7 @@ export const GlobalSearch = ({ onClose, onNavigate }: GlobalSearchProps) => {
         </div>
 
         {query.trim().length >= 2 ? (
+          // biome-ignore lint/a11y/useFocusableInteractive: keyboard navigation handled by parent input via arrow key handler
           <div className="global-search-results" role="listbox">
             {grouped.length === 0 && !isLoading && (
               <div className="global-search-empty">

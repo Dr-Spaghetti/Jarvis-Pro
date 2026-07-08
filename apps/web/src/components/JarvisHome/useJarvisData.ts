@@ -6,18 +6,13 @@ import {
   buildBrainDigestUrl,
   buildBrainJournalUrl,
   buildBrainMemoryUrl,
-  buildBrainRecentUrl,
   buildBrainModelsUrl,
+  buildBrainRecentUrl,
   buildDeckSkillsUrl,
   buildDeckTentaclesUrl,
   buildWorkflowRunsRecentUrl,
 } from "../../runtime/runtimeEndpoints";
-import type {
-  BrainNote,
-  ConversationTurn,
-  JournalEntry,
-  RecentWorkflowRun,
-} from "./types";
+import type { BrainNote, ConversationTurn, JournalEntry, RecentWorkflowRun } from "./types";
 import { asNotes } from "./utils";
 
 export const useJarvisData = () => {
@@ -120,32 +115,44 @@ export const useJarvisData = () => {
 
     (async () => {
       try {
-        const res = await apiFetch(buildDeckSkillsUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildDeckSkillsUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (res.ok) {
           const data = (await res.json()) as unknown;
           if (Array.isArray(data)) setSkillCount(data.length);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       try {
-        const res = await apiFetch(buildDeckTentaclesUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildDeckTentaclesUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (res.ok) {
           const data = (await res.json()) as unknown;
           if (Array.isArray(data)) setAgentCount(data.length);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       void loadJournal();
       void loadMemory();
       void loadRecentRuns();
 
       try {
-        const res = await apiFetch(buildBrainDigestUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildBrainDigestUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (res.ok) {
           const data = (await res.json()) as { tasks?: { openCount?: unknown } };
           if (typeof data.tasks?.openCount === "number") setOpenTaskCount(data.tasks.openCount);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, [loadRecent, loadConversation, loadMemory, loadJournal, loadRecentRuns]);
 
@@ -153,7 +160,9 @@ export const useJarvisData = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiFetch(buildBrainModelsUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildBrainModelsUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (!res.ok) return;
         const data = (await res.json()) as { models?: string[]; claudeModels?: string[] };
         if (Array.isArray(data.models)) setChatModels(data.models);
@@ -161,12 +170,18 @@ export const useJarvisData = () => {
         const allValid = [...(data.claudeModels ?? []), ...(data.models ?? [])];
         setChatModel((prev) => {
           if (prev && !allValid.includes(prev)) {
-            try { window.localStorage.removeItem("jarvis.chatModel"); } catch { /* ignore */ }
+            try {
+              window.localStorage.removeItem("jarvis.chatModel");
+            } catch {
+              /* ignore */
+            }
             return "";
           }
           return prev;
         });
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, []);
 

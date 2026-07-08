@@ -2,11 +2,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { handleTaskPlanRoute } from "../src/createApiServer/taskPlanRoutes";
 import type {
   RouteHandlerContext,
   RouteHandlerDependencies,
 } from "../src/createApiServer/routeHelpers";
+import { handleTaskPlanRoute } from "../src/createApiServer/taskPlanRoutes";
 
 // ─── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -17,7 +17,11 @@ vi.stubGlobal("fetch", fetchMock);
 
 const DEPS = {} as unknown as RouteHandlerDependencies;
 
-const makeRequest = (method: string, body?: Buffer, headers?: Record<string, string>): IncomingMessage => {
+const makeRequest = (
+  method: string,
+  body?: Buffer,
+  headers?: Record<string, string>,
+): IncomingMessage => {
   const req = {
     method,
     headers: headers ?? {},
@@ -38,8 +42,13 @@ const call = async (
   let status = 0;
   const parts: string[] = [];
   const response = {
-    writeHead(s: number) { status = s; return response; },
-    end(chunk?: string) { if (chunk) parts.push(String(chunk)); },
+    writeHead(s: number) {
+      status = s;
+      return response;
+    },
+    end(chunk?: string) {
+      if (chunk) parts.push(String(chunk));
+    },
   } as unknown as ServerResponse;
   const ctx: RouteHandlerContext = {
     request: makeRequest(method, body, headers),
@@ -52,8 +61,12 @@ const call = async (
   return { handled, status, json };
 };
 
-beforeEach(() => { fetchMock.mockReset(); });
-afterEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  fetchMock.mockReset();
+});
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 // ─── tests ─────────────────────────────────────────────────────────────────────
 
@@ -74,7 +87,9 @@ describe("handleTaskPlanRoute", () => {
     delete process.env.ANTHROPIC_API_KEY;
 
     const body = Buffer.from(JSON.stringify({ goal: "Launch a website" }));
-    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, { "content-type": "application/json" });
+    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, {
+      "content-type": "application/json",
+    });
     expect(handled).toBe(true);
     expect(status).toBe(503);
     expect(json.error).toMatch(/ANTHROPIC_API_KEY/);
@@ -85,7 +100,9 @@ describe("handleTaskPlanRoute", () => {
   it("returns 400 when goal is missing", async () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
     const body = Buffer.from(JSON.stringify({ goal: "" }));
-    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, { "content-type": "application/json" });
+    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, {
+      "content-type": "application/json",
+    });
     expect(handled).toBe(true);
     expect(status).toBe(400);
     expect(json.error).toMatch(/goal/i);
@@ -94,7 +111,9 @@ describe("handleTaskPlanRoute", () => {
   it("returns 400 when goal exceeds 2000 chars", async () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
     const body = Buffer.from(JSON.stringify({ goal: "x".repeat(2001) }));
-    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, { "content-type": "application/json" });
+    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, {
+      "content-type": "application/json",
+    });
     expect(handled).toBe(true);
     expect(status).toBe(400);
     expect(json.error).toMatch(/2000/);
@@ -105,9 +124,21 @@ describe("handleTaskPlanRoute", () => {
 
     const plan = {
       tasks: [
-        { title: "Define target audience", detail: "Identify who will use the product", priority: "high" },
-        { title: "Set up project repository", detail: "Initialize git and CI/CD", priority: "medium" },
-        { title: "Design landing page mockup", detail: "Use Figma for wireframes", priority: "medium" },
+        {
+          title: "Define target audience",
+          detail: "Identify who will use the product",
+          priority: "high",
+        },
+        {
+          title: "Set up project repository",
+          detail: "Initialize git and CI/CD",
+          priority: "medium",
+        },
+        {
+          title: "Design landing page mockup",
+          detail: "Use Figma for wireframes",
+          priority: "medium",
+        },
       ],
     };
 
@@ -119,7 +150,9 @@ describe("handleTaskPlanRoute", () => {
     });
 
     const body = Buffer.from(JSON.stringify({ goal: "Launch a product landing page" }));
-    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, { "content-type": "application/json" });
+    const { handled, status, json } = await call("POST", "/api/tasks/plan", body, {
+      "content-type": "application/json",
+    });
 
     expect(handled).toBe(true);
     expect(status).toBe(200);
@@ -140,7 +173,9 @@ describe("handleTaskPlanRoute", () => {
     });
 
     const body = Buffer.from(JSON.stringify({ goal: "Build something" }));
-    const { handled, status } = await call("POST", "/api/tasks/plan", body, { "content-type": "application/json" });
+    const { handled, status } = await call("POST", "/api/tasks/plan", body, {
+      "content-type": "application/json",
+    });
 
     expect(handled).toBe(true);
     expect(status).toBe(502);

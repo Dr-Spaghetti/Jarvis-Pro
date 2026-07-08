@@ -5,13 +5,13 @@ import { cosineSimilarity, embedViaOllama } from "../ollamaEmbed";
 import type { ApiRouteHandler } from "../routeHelpers";
 import { writeJson, writeMethodNotAllowed } from "../routeHelpers";
 import {
+  type BrainNote,
   buildSnippet,
   deriveTitle,
   listMarkdownFiles,
   resolveVaultDir,
   stripFrontmatter,
   toPosix,
-  type BrainNote,
 } from "./vault";
 
 // Multi-term lexical scoring: match each query word independently and reward
@@ -131,7 +131,12 @@ export const handleBrainSemanticRoute: ApiRouteHandler = async ({
   const q = (requestUrl.searchParams.get("q") ?? "").trim();
   const vaultDir = resolveVaultDir();
   if (!vaultDir || q.length === 0) {
-    writeJson(response, 200, { configured: Boolean(vaultDir), semantic: false, query: q, notes: [] }, corsOrigin);
+    writeJson(
+      response,
+      200,
+      { configured: Boolean(vaultDir), semantic: false, query: q, notes: [] },
+      corsOrigin,
+    );
     return true;
   }
 

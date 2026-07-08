@@ -5,7 +5,12 @@ type Props = {
   isWakeArmed: boolean;
 };
 
-export const JarvisVoiceStatus = ({ isSpeaking, isThinking, isRecordingCommand, isWakeArmed }: Props) => (
+export const JarvisVoiceStatus = ({
+  isSpeaking,
+  isThinking,
+  isRecordingCommand,
+  isWakeArmed,
+}: Props) => (
   <div className="nc-hq-voice-status">
     <div className="nc-hq-voice-label">VOICE_SYNTH</div>
     <div className="nc-hq-voice-indicator">

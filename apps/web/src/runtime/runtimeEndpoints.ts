@@ -593,7 +593,10 @@ export const buildTokenTelemetryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/telemetry/tokens");
 };
 
-export const buildChannelMessagesUrl = (terminalId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+export const buildChannelMessagesUrl = (
+  terminalId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
   const encoded = encodeURIComponent(terminalId);
   if (!runtimeBaseUrl) return `/api/channels/${encoded}/messages`;
   return buildAbsoluteUrl(runtimeBaseUrl, `/api/channels/${encoded}/messages`);

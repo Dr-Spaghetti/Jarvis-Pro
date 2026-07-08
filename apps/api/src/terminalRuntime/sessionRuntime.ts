@@ -470,7 +470,7 @@ export const createSessionRuntime = ({
   };
 
   const INITIAL_PROMPT_DELAY_MS = 4_000; // max fallback — fires if PTY never goes quiet
-  const INITIAL_PROMPT_QUIET_MS = 600;   // fire after this many ms of PTY silence
+  const INITIAL_PROMPT_QUIET_MS = 600; // fire after this many ms of PTY silence
   const INITIAL_PROMPT_SUBMIT_DELAY_MS = 150;
   const BRACKETED_PASTE_START = "\x1b[200~";
   const BRACKETED_PASTE_END = "\x1b[201~";

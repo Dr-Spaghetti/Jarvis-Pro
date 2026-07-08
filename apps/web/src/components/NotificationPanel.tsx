@@ -92,6 +92,7 @@ export const NotificationPanel = ({ onClose, onUnreadChange }: NotificationPanel
   return (
     <>
       {/* backdrop */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop is aria-hidden, keyboard users dismiss via the panel's close button */}
       <div
         style={{
           position: "fixed",
@@ -102,16 +103,13 @@ export const NotificationPanel = ({ onClose, onUnreadChange }: NotificationPanel
         aria-hidden="true"
       />
 
+      {/* biome-ignore lint/a11y/useSemanticElements: NC OS custom styling requires div */}
       <div className="nc-notification-panel" role="dialog" aria-label="Notifications">
         <div className="nc-notification-panel-header">
           <span className="nc-notification-panel-title">NOTIFICATIONS</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {notifications.length > 0 && (
-              <button
-                type="button"
-                className="nc-notification-panel-clear"
-                onClick={clearAll}
-              >
+              <button type="button" className="nc-notification-panel-clear" onClick={clearAll}>
                 CLEAR ALL
               </button>
             )}
@@ -127,9 +125,7 @@ export const NotificationPanel = ({ onClose, onUnreadChange }: NotificationPanel
         </div>
 
         <div className="nc-notification-panel-list">
-          {loading && (
-            <p className="nc-notification-panel-empty">Loading…</p>
-          )}
+          {loading && <p className="nc-notification-panel-empty">Loading…</p>}
           {!loading && notifications.length === 0 && (
             <p className="nc-notification-panel-empty">No notifications</p>
           )}
@@ -148,9 +144,7 @@ export const NotificationPanel = ({ onClose, onUnreadChange }: NotificationPanel
               </span>
               <div className="nc-notification-panel-item-body">
                 <p className="nc-notification-panel-item-title">{n.title}</p>
-                {n.detail && (
-                  <p className="nc-notification-panel-item-detail">{n.detail}</p>
-                )}
+                {n.detail && <p className="nc-notification-panel-item-detail">{n.detail}</p>}
                 <p className="nc-notification-panel-item-ts">{formatTs(n.ts)}</p>
               </div>
             </div>

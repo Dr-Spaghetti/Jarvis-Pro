@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { ApiRouteHandler } from "../routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "../routeHelpers";
 import {
+  type BrainNote,
   buildSnippet,
   deriveTitle,
   listMarkdownFiles,
@@ -11,7 +12,6 @@ import {
   resolveVaultDir,
   stripFrontmatter,
   toPosix,
-  type BrainNote,
 } from "./vault";
 
 export const handleBrainRecentRoute: ApiRouteHandler = async ({
@@ -105,7 +105,12 @@ export const handleBrainCaptureRoute: ApiRouteHandler = async ({
   }
   const vaultDir = resolveVaultDir();
   if (!vaultDir) {
-    writeJson(response, 400, { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." }, corsOrigin);
+    writeJson(
+      response,
+      400,
+      { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." },
+      corsOrigin,
+    );
     return true;
   }
   const body = await readJsonBodyOrWriteError(request, response, corsOrigin);

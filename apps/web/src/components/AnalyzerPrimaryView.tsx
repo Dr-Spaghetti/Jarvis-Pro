@@ -86,7 +86,7 @@ const s = {
   hdrActions: { display: "flex" as const, gap: 8 },
   smallBtn: {
     background: "none",
-    border: `1px solid rgba(57,255,20,0.22)`,
+    border: "1px solid rgba(57,255,20,0.22)",
     color: "rgba(57,255,20,0.5)",
     fontFamily: '"JetBrains Mono", monospace',
     fontSize: 8,
@@ -146,7 +146,7 @@ const s = {
   },
   uploadZone: {
     margin: "12px 14px",
-    border: `1px dashed rgba(57,255,20,0.3)`,
+    border: "1px dashed rgba(57,255,20,0.3)",
     padding: "24px 16px",
     display: "flex" as const,
     flexDirection: "column" as const,
@@ -157,7 +157,7 @@ const s = {
   uploadText: { fontSize: 10, color: "rgba(57,255,20,0.4)", textAlign: "center" as const },
   uploadBtn: {
     background: "rgba(57,255,20,0.08)",
-    border: `1px solid rgba(57,255,20,0.35)`,
+    border: "1px solid rgba(57,255,20,0.35)",
     color: GREEN,
     fontFamily: '"JetBrains Mono", monospace',
     fontSize: 9,
@@ -208,7 +208,7 @@ const s = {
   timelineEntry: {
     background: "#050705",
     border: `1px solid ${BORDER_DIM}`,
-    borderLeft: `2px solid rgba(57,255,20,0.2)`,
+    borderLeft: "2px solid rgba(57,255,20,0.2)",
     padding: "6px 10px",
     marginBottom: 6,
   },
@@ -284,7 +284,7 @@ const s = {
   chatInput: {
     flex: 1,
     background: "#050705",
-    border: `1px solid rgba(57,255,20,0.22)`,
+    border: "1px solid rgba(57,255,20,0.22)",
     color: "#d0e8d0",
     fontFamily: '"JetBrains Mono", monospace',
     fontSize: 10,
@@ -293,7 +293,7 @@ const s = {
   },
   chatSendBtn: (disabled: boolean) => ({
     background: "rgba(57,255,20,0.08)",
-    border: `1px solid rgba(57,255,20,0.3)`,
+    border: "1px solid rgba(57,255,20,0.3)",
     color: GREEN,
     fontFamily: '"JetBrains Mono", monospace',
     fontSize: 8,
@@ -316,8 +316,15 @@ const fmtTime = (sec: number) => {
 
 const fmtDate = (iso: string) => {
   try {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  } catch { return ""; }
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
 };
 
 const isVideoResult = (r: ImageBreakdown | VideoAnalysisResult): r is VideoAnalysisResult =>
@@ -370,6 +377,7 @@ const VideoResult = ({ result }: { result: VideoAnalysisResult }) => (
       <div style={s.section}>
         <p style={s.sectionTitle}>Timeline — {result.timeline.length} segments</p>
         {result.timeline.map((entry, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: no stable key available
           <div key={i} style={s.timelineEntry}>
             <p style={s.timelineTime}>
               {fmtTime(entry.time_start)} → {fmtTime(entry.time_end)}
@@ -385,6 +393,7 @@ const VideoResult = ({ result }: { result: VideoAnalysisResult }) => (
           <div style={s.section}>
             <p style={s.sectionTitle}>Scenes — {result.scenes.length} detected</p>
             {result.scenes.map((scene, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: no stable key available
               <div key={i} style={s.timelineEntry}>
                 <p style={s.timelineTime}>
                   {fmtTime(scene.start)} → {fmtTime(scene.end)}
@@ -398,6 +407,7 @@ const VideoResult = ({ result }: { result: VideoAnalysisResult }) => (
           <div style={s.section}>
             <p style={s.sectionTitle}>Transcript — {result.transcript.length} utterances</p>
             {result.transcript.map((seg, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: no stable key available
               <div key={i} style={s.timelineEntry}>
                 <p style={s.timelineTime}>
                   {fmtTime(seg.start)} → {fmtTime(seg.end)}
@@ -440,9 +450,11 @@ export const AnalyzerPrimaryView = () => {
   }, [chatError]);
 
   useLayoutEffect(() => {
-    if (uploadError) uploadErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (uploadError)
+      uploadErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [uploadError]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   useEffect(() => {
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
@@ -549,7 +561,12 @@ export const AnalyzerPrimaryView = () => {
           },
           body: file,
         });
-        const data = (await res.json()) as { id?: string; error?: string; meta?: AnalysisMeta; result?: ImageBreakdown | VideoAnalysisResult };
+        const data = (await res.json()) as {
+          id?: string;
+          error?: string;
+          meta?: AnalysisMeta;
+          result?: ImageBreakdown | VideoAnalysisResult;
+        };
         if (!res.ok || !data.id) {
           setUploadError(data.error ?? `Analysis failed (${res.status}).`);
           return;
@@ -574,8 +591,14 @@ export const AnalyzerPrimaryView = () => {
         }).then((r) => {
           if (!r.ok) return;
           const ts = new Date().toISOString();
-          try { window.localStorage.setItem("jarvis.lastJournalEntry", ts); } catch { /* ignore */ }
-          window.dispatchEvent(new StorageEvent("storage", { key: "jarvis.lastJournalEntry", newValue: ts }));
+          try {
+            window.localStorage.setItem("jarvis.lastJournalEntry", ts);
+          } catch {
+            /* ignore */
+          }
+          window.dispatchEvent(
+            new StorageEvent("storage", { key: "jarvis.lastJournalEntry", newValue: ts }),
+          );
         });
       } catch {
         setUploadError("Upload failed — check that Jarvis is running and try again.");
@@ -609,7 +632,12 @@ export const AnalyzerPrimaryView = () => {
                 <button
                   key={a.id}
                   type="button"
-                  style={{ ...s.sidebarItem(a.id === selectedId), width: "100%", textAlign: "left" as const, border: "none" }}
+                  style={{
+                    ...s.sidebarItem(a.id === selectedId),
+                    width: "100%",
+                    textAlign: "left" as const,
+                    border: "none",
+                  }}
                   onClick={() => handleSelect(a.id)}
                 >
                   <p style={s.sidebarItemLabel}>{a.filename}</p>
@@ -648,7 +676,11 @@ export const AnalyzerPrimaryView = () => {
               onChange={(e) => void handleFileChange(e)}
               aria-label="Upload file for analysis"
             />
-            {uploadError && <p ref={uploadErrorRef} style={s.statusMsg(true)}>⚠ {uploadError}</p>}
+            {uploadError && (
+              <p ref={uploadErrorRef} style={s.statusMsg(true)}>
+                ⚠ {uploadError}
+              </p>
+            )}
           </div>
 
           {/* Result area */}
@@ -685,16 +717,19 @@ export const AnalyzerPrimaryView = () => {
               {chatHistory.length > 0 && (
                 <div style={s.chatHistory} aria-label="Chat history">
                   {chatHistory.map((msg, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: no stable key available
                     <div key={i} style={s.chatBubble(msg.role)}>
                       {msg.content}
                     </div>
                   ))}
-                  {isChatting && (
-                    <div style={s.chatBubble("assistant")}>…</div>
-                  )}
+                  {isChatting && <div style={s.chatBubble("assistant")}>…</div>}
                 </div>
               )}
-              {chatError && <p ref={chatErrorRef} style={s.statusMsg(true)}>⚠ {chatError}</p>}
+              {chatError && (
+                <p ref={chatErrorRef} style={s.statusMsg(true)}>
+                  ⚠ {chatError}
+                </p>
+              )}
               <div style={s.chatInputRow}>
                 <input
                   type="text"

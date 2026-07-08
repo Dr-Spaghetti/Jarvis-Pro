@@ -18,7 +18,8 @@ export const JarvisActivityFeed = ({ recentRuns }: Props) => {
             </span>
             <span className="nc-hq-activity-name">{run.workflowName}</span>
             <span className="nc-hq-activity-meta">
-              {run.steps.length} step{run.steps.length !== 1 ? "s" : ""} · {formatTimeAgo(run.startedAt)}
+              {run.steps.length} step{run.steps.length !== 1 ? "s" : ""} ·{" "}
+              {formatTimeAgo(run.startedAt)}
             </span>
           </div>
         ))}

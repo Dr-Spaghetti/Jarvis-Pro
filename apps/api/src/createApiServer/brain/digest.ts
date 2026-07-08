@@ -6,13 +6,13 @@ import { writeJson, writeMethodNotAllowed } from "../routeHelpers";
 import { JOURNAL_PATH, type JournalEntry, parseJournalLine } from "./journal";
 import { MEMORY_PATH } from "./memory";
 import {
+  type BrainNote,
   buildSnippet,
   deriveTitle,
   listMarkdownFiles,
   resolveVaultDir,
   stripFrontmatter,
   toPosix,
-  type BrainNote,
 } from "./vault";
 
 export const localDateStamp = (): string => {

@@ -86,7 +86,12 @@ export const handleBrainJournalRoute: ApiRouteHandler = async ({
 
   if (request.method === "POST") {
     if (!vaultDir) {
-      writeJson(response, 400, { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." }, corsOrigin);
+      writeJson(
+        response,
+        400,
+        { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." },
+        corsOrigin,
+      );
       return true;
     }
     const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
@@ -100,7 +105,8 @@ export const handleBrainJournalRoute: ApiRouteHandler = async ({
     const entry: JournalEntry = {
       ts: new Date().toISOString(),
       status: isJournalStatus(payload.status) ? payload.status : "ok",
-      skill: typeof payload.skill === "string" && payload.skill.trim() ? oneLine(payload.skill) : null,
+      skill:
+        typeof payload.skill === "string" && payload.skill.trim() ? oneLine(payload.skill) : null,
       action,
       detail:
         typeof payload.detail === "string" && payload.detail.trim()
@@ -108,7 +114,12 @@ export const handleBrainJournalRoute: ApiRouteHandler = async ({
           : null,
     };
     try {
-      const path = ensureAndAppend(vaultDir, JOURNAL_PATH, JOURNAL_HEADER, formatJournalLine(entry));
+      const path = ensureAndAppend(
+        vaultDir,
+        JOURNAL_PATH,
+        JOURNAL_HEADER,
+        formatJournalLine(entry),
+      );
       writeJson(response, 201, { ok: true, path, entry }, corsOrigin);
     } catch (error) {
       writeJson(

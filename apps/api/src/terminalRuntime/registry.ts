@@ -271,7 +271,8 @@ const parseV3Terminals = (
     if (typeof entry.parentTerminalId === "string")
       terminal.parentTerminalId = entry.parentTerminalId;
     if (isTerminalAgentProvider(entry.agentProvider)) terminal.agentProvider = entry.agentProvider;
-    if (typeof entry.bootstrapCommand === "string") terminal.bootstrapCommand = entry.bootstrapCommand;
+    if (typeof entry.bootstrapCommand === "string")
+      terminal.bootstrapCommand = entry.bootstrapCommand;
     if (typeof entry.initialPrompt === "string") terminal.initialPrompt = entry.initialPrompt;
     if (typeof entry.initialInputDraft === "string") {
       terminal.initialInputDraft = entry.initialInputDraft;

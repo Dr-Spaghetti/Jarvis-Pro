@@ -1,8 +1,15 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
-import { spawn } from "node:child_process";
 
 import type { IncomingMessage } from "node:http";
 import type { ApiRouteHandler } from "./routeHelpers";
@@ -238,7 +245,11 @@ const analyzeImageWithClaude = async (
             content: [
               {
                 type: "image",
-                source: { type: "base64", media_type: mimeType, data: imageData.toString("base64") },
+                source: {
+                  type: "base64",
+                  media_type: mimeType,
+                  data: imageData.toString("base64"),
+                },
               },
               { type: "text", text: IMAGE_ANALYSIS_PROMPT },
             ],
@@ -352,10 +363,7 @@ const analyzeVideoWithGemini = async (
       body: JSON.stringify({
         contents: [
           {
-            parts: [
-              { fileData: { mimeType, fileUri } },
-              { text: VIDEO_ANALYSIS_PROMPT },
-            ],
+            parts: [{ fileData: { mimeType, fileUri } }, { text: VIDEO_ANALYSIS_PROMPT }],
           },
         ],
         generationConfig: { temperature: 0, maxOutputTokens: 4096 },
@@ -397,15 +405,24 @@ const checkFfmpeg = (): Promise<boolean> =>
   });
 
 const extractAudioFromVideo = (videoData: Buffer, inputExt: string): Promise<Buffer | null> =>
+  // biome-ignore lint/suspicious/noAsyncPromiseExecutor: ffmpeg spawn pattern requires async executor
   new Promise(async (resolve) => {
     const tmpIn = join(tmpdir(), `analyzer-in-${Date.now()}${inputExt}`);
     const tmpOut = join(tmpdir(), `analyzer-out-${Date.now()}.wav`);
     try {
       await writeFile(tmpIn, videoData);
       const proc = spawn("ffmpeg", [
-        "-i", tmpIn,
-        "-vn", "-ar", "16000", "-ac", "1",
-        "-f", "wav", "-y", tmpOut,
+        "-i",
+        tmpIn,
+        "-vn",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        "-f",
+        "wav",
+        "-y",
+        tmpOut,
       ]);
       proc.on("close", (code) => {
         try {
@@ -415,8 +432,16 @@ const extractAudioFromVideo = (videoData: Buffer, inputExt: string): Promise<Buf
             resolve(null);
           }
         } finally {
-          try { unlinkSync(tmpIn); } catch { /* ignore */ }
-          try { unlinkSync(tmpOut); } catch { /* ignore */ }
+          try {
+            unlinkSync(tmpIn);
+          } catch {
+            /* ignore */
+          }
+          try {
+            unlinkSync(tmpOut);
+          } catch {
+            /* ignore */
+          }
         }
       });
       proc.on("error", () => resolve(null));
@@ -425,9 +450,7 @@ const extractAudioFromVideo = (videoData: Buffer, inputExt: string): Promise<Buf
     }
   });
 
-const transcribeWithDeepgram = async (
-  audioData: Buffer,
-): Promise<TranscriptSegment[] | null> => {
+const transcribeWithDeepgram = async (audioData: Buffer): Promise<TranscriptSegment[] | null> => {
   const key = process.env.DEEPGRAM_API_KEY?.trim();
   if (!key) return null;
 
@@ -473,14 +496,17 @@ const transcribeWithDeepgram = async (
 
 // ─── merge visual scenes + transcript into timeline ────────────────────────────
 
-const mergeTimeline = (
-  scenes: VideoScene[],
-  transcript: TranscriptSegment[],
-): TimelineEntry[] => {
+const mergeTimeline = (scenes: VideoScene[], transcript: TranscriptSegment[]): TimelineEntry[] => {
   // Build a unified set of time boundaries
   const boundaries = new Set<number>();
-  for (const s of scenes) { boundaries.add(s.start); boundaries.add(s.end); }
-  for (const t of transcript) { boundaries.add(t.start); boundaries.add(t.end); }
+  for (const s of scenes) {
+    boundaries.add(s.start);
+    boundaries.add(s.end);
+  }
+  for (const t of transcript) {
+    boundaries.add(t.start);
+    boundaries.add(t.end);
+  }
   const sorted = Array.from(boundaries).sort((a, b) => a - b);
 
   const entries: TimelineEntry[] = [];
@@ -537,8 +563,9 @@ export const handleAnalyzerImageRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const filename = request.headers["x-filename"] as string | undefined ?? "image";
-  const mimeType = (request.headers["content-type"] ?? "image/jpeg").split(";")[0]?.trim() ?? "image/jpeg";
+  const filename = (request.headers["x-filename"] as string | undefined) ?? "image";
+  const mimeType =
+    (request.headers["content-type"] ?? "image/jpeg").split(";")[0]?.trim() ?? "image/jpeg";
 
   const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
@@ -609,12 +636,18 @@ export const handleAnalyzerVideoRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const filename = request.headers["x-filename"] as string | undefined ?? "video";
-  const mimeType = (request.headers["content-type"] ?? "video/mp4").split(";")[0]?.trim() ?? "video/mp4";
+  const filename = (request.headers["x-filename"] as string | undefined) ?? "video";
+  const mimeType =
+    (request.headers["content-type"] ?? "video/mp4").split(";")[0]?.trim() ?? "video/mp4";
 
   const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
   if (!ALLOWED_VIDEO_TYPES.includes(mimeType)) {
-    writeJson(response, 400, { error: `Unsupported video type: ${mimeType}. Supported: mp4, mov, webm, avi.` }, corsOrigin);
+    writeJson(
+      response,
+      400,
+      { error: `Unsupported video type: ${mimeType}. Supported: mp4, mov, webm, avi.` },
+      corsOrigin,
+    );
     return true;
   }
 
@@ -636,8 +669,7 @@ export const handleAnalyzerVideoRoute: ApiRouteHandler = async ({
       response,
       503,
       {
-        error:
-          "GEMINI_API_KEY is required for video analysis. Add it to .env and restart Jarvis.",
+        error: "GEMINI_API_KEY is required for video analysis. Add it to .env and restart Jarvis.",
         ffmpeg_available: ffmpegAvailable,
         ffmpeg_install: !ffmpegAvailable
           ? "ffmpeg not found. Install: https://ffmpeg.org/download.html (add to PATH, restart Jarvis)"
@@ -662,7 +694,9 @@ export const handleAnalyzerVideoRoute: ApiRouteHandler = async ({
     fetch(
       `https://generativelanguage.googleapis.com/v1beta/${uploadResult.name}?key=${geminiKey}`,
       { method: "DELETE" },
-    ).catch(() => { /* ignore */ });
+    ).catch(() => {
+      /* ignore */
+    });
   }
 
   // Audio extraction + Deepgram transcript
@@ -802,7 +836,12 @@ export const handleAnalyzerChatRoute: ApiRouteHandler = async ({
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!anthropicKey) {
-    writeJson(response, 503, { error: "ANTHROPIC_API_KEY is required for Analysis Chat." }, corsOrigin);
+    writeJson(
+      response,
+      503,
+      { error: "ANTHROPIC_API_KEY is required for Analysis Chat." },
+      corsOrigin,
+    );
     return true;
   }
 
@@ -814,9 +853,9 @@ export const handleAnalyzerChatRoute: ApiRouteHandler = async ({
 
   const bodyResult = await readJsonBodyOrWriteError(request, response, corsOrigin);
   if (!bodyResult.ok) return true;
-  const bodyPayload = (typeof bodyResult.payload === "object" && bodyResult.payload !== null
-    ? bodyResult.payload
-    : {}) as Record<string, unknown>;
+  const bodyPayload = (
+    typeof bodyResult.payload === "object" && bodyResult.payload !== null ? bodyResult.payload : {}
+  ) as Record<string, unknown>;
 
   const message = typeof bodyPayload.message === "string" ? bodyPayload.message.trim() : "";
   if (!message) {
@@ -827,8 +866,7 @@ export const handleAnalyzerChatRoute: ApiRouteHandler = async ({
   const rawHistory = Array.isArray(bodyPayload.history) ? (bodyPayload.history as unknown[]) : [];
   const history: ChatMessage[] = rawHistory
     .filter(
-      (h): h is Record<string, unknown> =>
-        typeof h === "object" && h !== null && !Array.isArray(h),
+      (h): h is Record<string, unknown> => typeof h === "object" && h !== null && !Array.isArray(h),
     )
     .filter((h) => (h.role === "user" || h.role === "assistant") && typeof h.content === "string")
     .map((h) => ({ role: h.role as "user" | "assistant", content: String(h.content) }));

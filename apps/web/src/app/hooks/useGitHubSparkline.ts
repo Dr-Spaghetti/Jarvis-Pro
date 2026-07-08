@@ -1,9 +1,6 @@
 import { useMemo } from "react";
 
-import {
-  GITHUB_SPARKLINE_HEIGHT,
-  GITHUB_SPARKLINE_WIDTH,
-} from "../constants";
+import { GITHUB_SPARKLINE_HEIGHT, GITHUB_SPARKLINE_WIDTH } from "../constants";
 import {
   buildGitHubCommitSeries,
   buildGitHubCommitSparkPoints,
@@ -17,7 +14,8 @@ export const useGitHubSparkline = (githubRepoSummary: GitHubRepoSummarySnapshot 
     [githubRepoSummary],
   );
   const sparklineSeries = useMemo(
-    () => buildGitHubCommitSparkPoints(commitSeries, GITHUB_SPARKLINE_WIDTH, GITHUB_SPARKLINE_HEIGHT),
+    () =>
+      buildGitHubCommitSparkPoints(commitSeries, GITHUB_SPARKLINE_WIDTH, GITHUB_SPARKLINE_HEIGHT),
     [commitSeries],
   );
   return useMemo(() => buildGitHubSparkPolylinePoints(sparklineSeries), [sparklineSeries]);

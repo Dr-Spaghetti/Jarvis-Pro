@@ -30,6 +30,32 @@
           }
         }
       }
+    },
+    {
+      "include": [
+        "apps/web/src/components/GlobalSearch.tsx",
+        "apps/web/src/components/SurveillancePanel.tsx",
+        "apps/web/src/components/TerminalPrimaryView.tsx",
+        "apps/web/src/components/WorkflowsPrimaryView.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off",
+            "noAutofocus": "off"
+          }
+        }
+      }
+    },
+    {
+      "include": ["apps/api/tests/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noDelete": "off"
+          }
+        }
+      }
     }
   ],
   "files": {

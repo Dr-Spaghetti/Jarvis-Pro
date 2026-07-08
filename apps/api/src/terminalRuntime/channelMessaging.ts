@@ -35,10 +35,7 @@ export const createChannelMessaging = (deps: {
   // Load persisted queues on startup, discarding messages beyond TTL.
   if (persistPath && existsSync(persistPath)) {
     try {
-      const raw = JSON.parse(readFileSync(persistPath, "utf8")) as Record<
-        string,
-        ChannelMessage[]
-      >;
+      const raw = JSON.parse(readFileSync(persistPath, "utf8")) as Record<string, ChannelMessage[]>;
       const cutoff = Date.now() - CHANNEL_MESSAGE_TTL_MS;
       let loaded = 0;
       for (const [terminalId, messages] of Object.entries(raw)) {

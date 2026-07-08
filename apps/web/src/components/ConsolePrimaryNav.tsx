@@ -77,7 +77,9 @@ export const ConsolePrimaryNav = ({
           aria-label={`Notifications${unreadNotificationCount > 0 ? ` (${unreadNotificationCount} unread)` : ""}`}
           title="Notifications"
         >
-          <span className="console-primary-nav-bell-icon" aria-hidden="true">◉</span>
+          <span className="console-primary-nav-bell-icon" aria-hidden="true">
+            ◉
+          </span>
           <span className="console-primary-nav-bell-label">NOTIFICATIONS</span>
           {unreadNotificationCount > 0 && (
             <span className="console-primary-nav-bell-badge" aria-hidden="true">

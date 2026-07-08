@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import type { ConversationTurn } from "./types";
 
@@ -35,6 +35,7 @@ export const JarvisConversationConsole = ({
 }: Props) => {
   const consoleScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   useEffect(() => {
     if (consoleScrollRef.current) {
       consoleScrollRef.current.scrollTop = consoleScrollRef.current.scrollHeight;
@@ -48,8 +49,18 @@ export const JarvisConversationConsole = ({
           <span className="nc-hq-console-hdr-dot" aria-hidden="true" />
           DIRECT_LINK · JARVIS
         </span>
-        <span className="nc-hq-console-hdr-right" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 9, letterSpacing: ".18em", color: "var(--text-secondary)", textTransform: "uppercase" }}>
+        <span
+          className="nc-hq-console-hdr-right"
+          style={{ display: "flex", alignItems: "center", gap: 10 }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              letterSpacing: ".18em",
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+            }}
+          >
             CTX · {conversation.length * 2} TURNS
           </span>
           {conversation.length > 0 && (
@@ -76,7 +87,14 @@ export const JarvisConversationConsole = ({
 
       <div className="nc-hq-console-msgs" ref={consoleScrollRef}>
         {conversation.length === 0 && (
-          <div style={{ color: "var(--text-secondary)", fontSize: 11, letterSpacing: ".08em", padding: "8px 0" }}>
+          <div
+            style={{
+              color: "var(--text-secondary)",
+              fontSize: 11,
+              letterSpacing: ".08em",
+              padding: "8px 0",
+            }}
+          >
             AWAITING DIRECTIVE<span className="nc-blink">_</span>
           </div>
         )}
@@ -98,7 +116,16 @@ export const JarvisConversationConsole = ({
           </div>
         )}
         {askNote && !asking && (
-          <div style={{ color: "var(--term-red, #ff4444)", fontSize: 11, letterSpacing: ".08em", padding: "6px 0", marginTop: 4, lineHeight: 1.5 }}>
+          <div
+            style={{
+              color: "var(--term-red, #ff4444)",
+              fontSize: 11,
+              letterSpacing: ".08em",
+              padding: "6px 0",
+              marginTop: 4,
+              lineHeight: 1.5,
+            }}
+          >
             ⚠ {askNote}
           </div>
         )}
@@ -110,17 +137,26 @@ export const JarvisConversationConsole = ({
               onClick={() => setSourcesExpanded(!sourcesExpanded)}
             >
               via {answerVia}
-              {answerSources.length > 0 && ` · ${answerSources.length} note${answerSources.length !== 1 ? "s" : ""}`}
+              {answerSources.length > 0 &&
+                ` · ${answerSources.length} note${answerSources.length !== 1 ? "s" : ""}`}
               {answerCitations.length > 0 && " · web"}
               <span className="nc-hq-attribution-arrow">{sourcesExpanded ? "▴" : "▾"}</span>
             </button>
             {sourcesExpanded && (answerSources.length > 0 || answerCitations.length > 0) && (
               <div className="nc-hq-attribution-detail">
                 {answerSources.map((s) => (
-                  <div key={s.path} className="nc-hq-attribution-item">◆ {s.title}</div>
+                  <div key={s.path} className="nc-hq-attribution-item">
+                    ◆ {s.title}
+                  </div>
                 ))}
                 {answerCitations.map((c) => (
-                  <a key={c.url} className="nc-hq-attribution-cite" href={c.url} target="_blank" rel="noreferrer">
+                  <a
+                    key={c.url}
+                    className="nc-hq-attribution-cite"
+                    href={c.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     ◆ {c.title || c.url}
                   </a>
                 ))}
@@ -131,7 +167,9 @@ export const JarvisConversationConsole = ({
       </div>
 
       <div className="nc-hq-console-input">
-        <span className="nc-hq-prompt" aria-hidden="true">&gt;</span>
+        <span className="nc-hq-prompt" aria-hidden="true">
+          &gt;
+        </span>
         <input
           className="nc-hq-input"
           type="text"
@@ -139,7 +177,9 @@ export const JarvisConversationConsole = ({
           value={ask}
           aria-label="Send a message to Jarvis"
           onChange={(e) => setAsk(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") submitAsk(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submitAsk();
+          }}
         />
         <button
           type="button"

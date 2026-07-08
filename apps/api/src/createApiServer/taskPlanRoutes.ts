@@ -28,15 +28,20 @@ export const handleTaskPlanRoute: ApiRouteHandler = async ({
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!anthropicKey) {
-    writeJson(response, 503, { error: "ANTHROPIC_API_KEY is required for Task Planning." }, corsOrigin);
+    writeJson(
+      response,
+      503,
+      { error: "ANTHROPIC_API_KEY is required for Task Planning." },
+      corsOrigin,
+    );
     return true;
   }
 
   const bodyResult = await readJsonBodyOrWriteError(request, response, corsOrigin);
   if (!bodyResult.ok) return true;
-  const body = (typeof bodyResult.payload === "object" && bodyResult.payload !== null
-    ? bodyResult.payload
-    : {}) as Record<string, unknown>;
+  const body = (
+    typeof bodyResult.payload === "object" && bodyResult.payload !== null ? bodyResult.payload : {}
+  ) as Record<string, unknown>;
 
   const goal = typeof body.goal === "string" ? body.goal.trim() : "";
   if (!goal) {
@@ -98,12 +103,22 @@ export const handleTaskPlanRoute: ApiRouteHandler = async ({
           .filter((t) => t.title.length > 0);
       }
     } catch {
-      writeJson(response, 502, { error: "Claude returned an unparseable plan. Try rephrasing the goal." }, corsOrigin);
+      writeJson(
+        response,
+        502,
+        { error: "Claude returned an unparseable plan. Try rephrasing the goal." },
+        corsOrigin,
+      );
       return true;
     }
 
     if (tasks.length === 0) {
-      writeJson(response, 502, { error: "No tasks generated. Try a more specific goal." }, corsOrigin);
+      writeJson(
+        response,
+        502,
+        { error: "No tasks generated. Try a more specific goal." },
+        corsOrigin,
+      );
       return true;
     }
 

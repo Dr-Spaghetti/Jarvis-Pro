@@ -63,7 +63,7 @@ const ENV_KEYS = [
 ] as const;
 
 type EnvKey = (typeof ENV_KEYS)[number];
-let savedEnv: Partial<Record<EnvKey, string | undefined>> = {};
+const savedEnv: Partial<Record<EnvKey, string | undefined>> = {};
 
 beforeEach(() => {
   for (const key of ENV_KEYS) {

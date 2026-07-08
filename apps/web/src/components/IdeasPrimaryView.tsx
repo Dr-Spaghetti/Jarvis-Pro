@@ -302,7 +302,7 @@ const s = {
     marginTop: 6,
     flexWrap: "wrap" as const,
     paddingTop: 8,
-    borderTop: `1px solid rgba(57,255,20,0.08)`,
+    borderTop: "1px solid rgba(57,255,20,0.08)",
   },
   actionBtn2: (variant: "ask" | "workflow" | "brain" | "analyzer" | "execute", busy = false) => {
     const color = {
@@ -368,7 +368,9 @@ const parseTags = (raw: string): string[] =>
     .map((t) => t.trim())
     .filter(Boolean);
 
-export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNavIndex) => void }) => {
+export const IdeasPrimaryView = ({
+  onNavigate,
+}: { onNavigate: (index: PrimaryNavIndex) => void }) => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -458,6 +460,7 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
     setEditTags(idea.tags.join(", "));
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   const handleUpdate = useCallback(
     async (id: string) => {
       const title = editTitle.trim();
@@ -467,7 +470,11 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
         const res = await apiFetch(buildBrainstormIdeaUrl(id), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, body: (editBody.trim() + editBodySuffix).trim(), tags: parseTags(editTags) }),
+          body: JSON.stringify({
+            title,
+            body: (editBody.trim() + editBodySuffix).trim(),
+            tags: parseTags(editTags),
+          }),
         });
         if (!res.ok) throw new Error(`${res.status}`);
         setEditingId(null);
@@ -518,111 +525,144 @@ export const IdeasPrimaryView = ({ onNavigate }: { onNavigate: (index: PrimaryNa
     [fetchIdeas],
   );
 
-  const handleAskJarvis = useCallback(async (idea: Idea) => {
-    if (askingIdeaId === idea.id) return;
-    setAskingIdeaId(idea.id);
-    try {
-      const question = idea.body
-        ? `Regarding this idea: "${idea.title}"\n\n${idea.body}\n\nWhat are the most important next steps and considerations?`
-        : `What are the most important next steps and considerations for this idea: "${idea.title}"?`;
-      const res = await apiFetch(buildBrainAskUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-      });
-      if (!res.ok) {
-        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: "Ask failed — check that a brain model is configured." }));
-        return;
+  const handleAskJarvis = useCallback(
+    async (idea: Idea) => {
+      if (askingIdeaId === idea.id) return;
+      setAskingIdeaId(idea.id);
+      try {
+        const question = idea.body
+          ? `Regarding this idea: "${idea.title}"\n\n${idea.body}\n\nWhat are the most important next steps and considerations?`
+          : `What are the most important next steps and considerations for this idea: "${idea.title}"?`;
+        const res = await apiFetch(buildBrainAskUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question }),
+        });
+        if (!res.ok) {
+          setIdeaAnswers((prev) => ({
+            ...prev,
+            [idea.id]: "Ask failed — check that a brain model is configured.",
+          }));
+          return;
+        }
+        const data = (await res.json()) as { answer?: string; available?: boolean; hint?: string };
+        if (data.available && typeof data.answer === "string") {
+          setIdeaAnswers((prev) => ({ ...prev, [idea.id]: data.answer as string }));
+        } else {
+          setIdeaAnswers((prev) => ({
+            ...prev,
+            [idea.id]: data.hint ?? "No answer model available.",
+          }));
+        }
+      } catch {
+        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: "Error reaching Jarvis." }));
+      } finally {
+        setAskingIdeaId(null);
       }
-      const data = (await res.json()) as { answer?: string; available?: boolean; hint?: string };
-      if (data.available && typeof data.answer === "string") {
-        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: data.answer as string }));
-      } else {
-        setIdeaAnswers((prev) => ({ ...prev, [idea.id]: data.hint ?? "No answer model available." }));
+    },
+    [askingIdeaId],
+  );
+
+  const handleCreateWorkflow = useCallback(
+    async (idea: Idea) => {
+      if (workflowCreatingId === idea.id) return;
+      setWorkflowCreatingId(idea.id);
+      try {
+        const res = await apiFetch(buildWorkflowsUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: idea.title,
+            description: idea.body || "",
+            steps: [
+              `Research and validate: ${idea.title}`,
+              "Identify the key risks and obstacles",
+              "Outline 3–5 concrete next steps",
+            ].join("\n"),
+          }),
+        });
+        if (!res.ok) {
+          const errData = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errData.error ?? `HTTP ${res.status}`);
+        }
+        setWorkflowCreatingId(null);
+        onNavigate(3);
+      } catch (e) {
+        setWorkflowCreatingId(null);
+        const msg = e instanceof Error ? e.message : "Failed to create workflow";
+        setWorkflowError(msg);
+        setTimeout(() => setWorkflowError(null), 5000);
       }
-    } catch {
-      setIdeaAnswers((prev) => ({ ...prev, [idea.id]: "Error reaching Jarvis." }));
-    } finally {
-      setAskingIdeaId(null);
-    }
-  }, [askingIdeaId]);
+    },
+    [workflowCreatingId, onNavigate],
+  );
 
-  const handleCreateWorkflow = useCallback(async (idea: Idea) => {
-    if (workflowCreatingId === idea.id) return;
-    setWorkflowCreatingId(idea.id);
-    try {
-      const res = await apiFetch(buildWorkflowsUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: idea.title,
-          description: idea.body || "",
-          steps: [
-            `Research and validate: ${idea.title}`,
-            "Identify the key risks and obstacles",
-            "Outline 3–5 concrete next steps",
-          ].join("\n"),
-        }),
-      });
-      if (!res.ok) {
-        const errData = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(errData.error ?? `HTTP ${res.status}`);
+  const handleExecuteIdea = useCallback(
+    async (idea: Idea) => {
+      if (agentCreatingId === idea.id) return;
+      setAgentCreatingId(idea.id);
+      try {
+        const res = await apiFetch(buildDeckTentaclesUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: idea.title, description: idea.body || idea.title }),
+        });
+        if (!res.ok) {
+          const errData = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errData.error ?? `HTTP ${res.status}`);
+        }
+        setAgentCreatingId(null);
+        onNavigate(8);
+      } catch {
+        setAgentCreatingId(null);
       }
-      setWorkflowCreatingId(null);
-      onNavigate(3);
-    } catch (e) {
-      setWorkflowCreatingId(null);
-      const msg = e instanceof Error ? e.message : "Failed to create workflow";
-      setWorkflowError(msg);
-      setTimeout(() => setWorkflowError(null), 5000);
-    }
-  }, [workflowCreatingId, onNavigate]);
+    },
+    [agentCreatingId, onNavigate],
+  );
 
-  const handleExecuteIdea = useCallback(async (idea: Idea) => {
-    if (agentCreatingId === idea.id) return;
-    setAgentCreatingId(idea.id);
-    try {
-      const res = await apiFetch(buildDeckTentaclesUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: idea.title, description: idea.body || idea.title }),
-      });
-      if (!res.ok) {
-        const errData = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(errData.error ?? `HTTP ${res.status}`);
+  const handleSaveToBrain = useCallback(
+    async (idea: Idea) => {
+      if (brainSavingId === idea.id) return;
+      setBrainSavingId(idea.id);
+      const text = idea.body ? `${idea.title}\n\n${idea.body}` : idea.title;
+      try {
+        const res = await apiFetch(buildBrainCaptureUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const msg = res.ok ? "✓ Saved to brain inbox" : "⚠ Save failed";
+        setBrainSaveMsg((prev) => ({ ...prev, [idea.id]: msg }));
+      } catch {
+        setBrainSaveMsg((prev) => ({ ...prev, [idea.id]: "⚠ Error" }));
+      } finally {
+        setBrainSavingId(null);
+        setTimeout(
+          () =>
+            setBrainSaveMsg((prev) => {
+              const n = { ...prev };
+              delete n[idea.id];
+              return n;
+            }),
+          2500,
+        );
       }
-      setAgentCreatingId(null);
-      onNavigate(8);
-    } catch {
-      setAgentCreatingId(null);
-    }
-  }, [agentCreatingId, onNavigate]);
+    },
+    [brainSavingId],
+  );
 
-  const handleSaveToBrain = useCallback(async (idea: Idea) => {
-    if (brainSavingId === idea.id) return;
-    setBrainSavingId(idea.id);
-    const text = idea.body ? `${idea.title}\n\n${idea.body}` : idea.title;
-    try {
-      const res = await apiFetch(buildBrainCaptureUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const msg = res.ok ? "✓ Saved to brain inbox" : "⚠ Save failed";
-      setBrainSaveMsg((prev) => ({ ...prev, [idea.id]: msg }));
-    } catch {
-      setBrainSaveMsg((prev) => ({ ...prev, [idea.id]: "⚠ Error" }));
-    } finally {
-      setBrainSavingId(null);
-      setTimeout(() => setBrainSaveMsg((prev) => { const n = { ...prev }; delete n[idea.id]; return n; }), 2500);
-    }
-  }, [brainSavingId]);
-
-  const handleOpenInAnalyzer = useCallback((idea: Idea) => {
-    const text = idea.body ? `${idea.title}\n\n${idea.body}` : idea.title;
-    try { void navigator.clipboard.writeText(text); } catch { /* ignore */ }
-    onNavigate(5);
-  }, [onNavigate]);
+  const handleOpenInAnalyzer = useCallback(
+    (idea: Idea) => {
+      const text = idea.body ? `${idea.title}\n\n${idea.body}` : idea.title;
+      try {
+        void navigator.clipboard.writeText(text);
+      } catch {
+        /* ignore */
+      }
+      onNavigate(5);
+    },
+    [onNavigate],
+  );
 
   const allTags = Array.from(new Set(ideas.flatMap((i) => i.tags))).sort();
   const filtered = activeTag ? ideas.filter((i) => i.tags.includes(activeTag)) : ideas;

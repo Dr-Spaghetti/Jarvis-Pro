@@ -80,7 +80,12 @@ describe("evaluateAgentAlerts", () => {
   it("ignores blocked agents with no state-change timestamp", () => {
     expect(
       evaluateAgentAlerts(
-        [(() => { const { agentStateChangedAt: _omit, ...s } = snapshot(); return s as TerminalSnapshot; })()],
+        [
+          (() => {
+            const { agentStateChangedAt: _omit, ...s } = snapshot();
+            return s as TerminalSnapshot;
+          })(),
+        ],
         { agentStuckMinutes: 5 },
         NOW,
       ),

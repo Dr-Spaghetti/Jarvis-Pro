@@ -466,9 +466,7 @@ export const App = () => {
                   }}
                   actionPanel={sidebarActionPanel}
                   bodyContent={
-                    activePrimaryNav === 4
-                      ? (conversationsSidebarContent ?? undefined)
-                      : undefined
+                    activePrimaryNav === 4 ? (conversationsSidebarContent ?? undefined) : undefined
                   }
                 />
               )}

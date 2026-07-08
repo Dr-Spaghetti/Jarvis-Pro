@@ -84,8 +84,14 @@ export const createTerminalRuntime = ({
     }
     return false;
   };
-  const websocketServer = new WebSocketServer({ noServer: true, handleProtocols: echoTokenProtocol });
-  const terminalEventsWebsocketServer = new WebSocketServer({ noServer: true, handleProtocols: echoTokenProtocol });
+  const websocketServer = new WebSocketServer({
+    noServer: true,
+    handleProtocols: echoTokenProtocol,
+  });
+  const terminalEventsWebsocketServer = new WebSocketServer({
+    noServer: true,
+    handleProtocols: echoTokenProtocol,
+  });
   const terminalEventClients = new Set<WebSocket>();
   const registryPath = join(stateDir, "state", "tentacles.json");
   const registryState = loadTerminalRegistry(registryPath);

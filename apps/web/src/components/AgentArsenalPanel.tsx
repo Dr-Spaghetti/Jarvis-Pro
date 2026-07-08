@@ -4,13 +4,13 @@ import type { DeckTentacleSummary, WorkspaceSetupSnapshot } from "@octogent/core
 import { apiFetch } from "../runtime/apiClient";
 import {
   buildArsenalUrl,
-  buildDeployAgentUrl,
-  buildDeckTentaclesUrl,
   buildDeckTentaclePinnedUrl,
+  buildDeckTentaclesUrl,
+  buildDeployAgentUrl,
   buildWorkspaceSetupUrl,
 } from "../runtime/runtimeEndpoints";
-import { useToasts } from "./ui/ToastProvider";
 import { WorkspaceSetupCard } from "./WorkspaceSetupCard";
+import { useToasts } from "./ui/ToastProvider";
 
 type AgentArchetypeCard = {
   id: string;
@@ -125,9 +125,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
       });
       if (!res.ok) return;
       const updated = (await res.json()) as DeckTentacleSummary;
-      setTentacles((prev) =>
-        prev.map((t) => (t.tentacleId === updated.tentacleId ? updated : t)),
-      );
+      setTentacles((prev) => prev.map((t) => (t.tentacleId === updated.tentacleId ? updated : t)));
     } catch {
       // pin toggle failed silently
     }
@@ -234,9 +232,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
 
   return (
     <section className="arsenal-panel" aria-label="Agent Arsenal">
-      {setup?.shouldShowSetupCard && (
-        <WorkspaceSetupCard setup={setup} onSetupChange={setSetup} />
-      )}
+      {setup?.shouldShowSetupCard && <WorkspaceSetupCard setup={setup} onSetupChange={setSetup} />}
       {recentAgentsSection}
 
       <nav className="arsenal-filter-bar" aria-label="Filter agents by category">

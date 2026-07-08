@@ -101,10 +101,7 @@ export const getSpeechRecognitionConstructor = (): SpeechRecognitionConstructor 
   return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition ?? null;
 };
 
-export const extractCommandAfterWake = (
-  transcript: string,
-  phrases: string[],
-): string | null => {
+export const extractCommandAfterWake = (transcript: string, phrases: string[]): string | null => {
   const normalized = normalizeVoiceText(transcript);
   for (const phrase of phrases) {
     const index = normalized.indexOf(phrase);

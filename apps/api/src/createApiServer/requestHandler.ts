@@ -15,6 +15,13 @@ import {
   handleAgentAlertsRoute,
   handleMonitorExportRoute,
 } from "./alertRoutes";
+import {
+  handleAnalyzerChatRoute,
+  handleAnalyzerImageRoute,
+  handleAnalyzerItemRoute,
+  handleAnalyzerListRoute,
+  handleAnalyzerVideoRoute,
+} from "./analyzerRoutes";
 import { handleArsenalDeployRoute, handleArsenalListRoute } from "./arsenalRoutes";
 import { handleAuthStatusRoute, handleAuthVerifyRoute } from "./authRoutes";
 import {
@@ -36,13 +43,6 @@ import {
   handleBrainstormIdeaItemRoute,
   handleBrainstormIdeasRoute,
 } from "./brainstormRoutes";
-import {
-  handleAnalyzerChatRoute,
-  handleAnalyzerImageRoute,
-  handleAnalyzerItemRoute,
-  handleAnalyzerListRoute,
-  handleAnalyzerVideoRoute,
-} from "./analyzerRoutes";
 import { handleBriefConfigRoute } from "./briefRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
@@ -52,19 +52,7 @@ import {
   handleConversationSearchRoute,
   handleConversationsCollectionRoute,
 } from "./conversationRoutes";
-import { handleJarvisConversationTurnRoute } from "./jarvisConversationRoute";
-import {
-  handleNotificationsCollectionRoute,
-  handleNotificationsReadRoute,
-} from "./notificationRoutes";
-import {
-  handleWorkflowImproveRoute,
-  handleWorkflowItemRoute,
-  handleWorkflowRunHistoryRoute,
-  handleWorkflowRunRoute,
-  handleWorkflowRunsRecentRoute,
-  handleWorkflowsCollectionRoute,
-} from "./workflowRoutes";
+import { handleCreditsStatusRoute } from "./creditsRoutes";
 import {
   handleDeckSkillsRoute,
   handleDeckTentacleItemRoute,
@@ -86,6 +74,7 @@ import {
   handleGmailCallbackRoute,
   handleGmailStatusRoute,
 } from "./gmailRoutes";
+import { handleJarvisConversationTurnRoute } from "./jarvisConversationRoute";
 import {
   handleChannelMessagesRoute,
   handleHookRoute,
@@ -100,6 +89,10 @@ import {
   handleMonitorFeedRoute,
   handleMonitorRefreshRoute,
 } from "./monitorRoutes";
+import {
+  handleNotificationsCollectionRoute,
+  handleNotificationsReadRoute,
+} from "./notificationRoutes";
 import { handleOrchestrateRoute } from "./orchestrateRoutes";
 import type {
   ApiRouteHandler,
@@ -108,6 +101,7 @@ import type {
   TerminalRuntime,
 } from "./routeHelpers";
 import { writeJson, writeNoContent } from "./routeHelpers";
+import { handleSearchRoute } from "./searchRoutes";
 import {
   getRequestCorsOrigin,
   isAllowedHostHeader,
@@ -115,7 +109,6 @@ import {
   isAuthorizedRequest,
   readHeaderValue,
 } from "./security";
-import { handleSearchRoute } from "./searchRoutes";
 import { handleSkillsRunRoute } from "./skillsRoutes";
 import { handleTaskPlanRoute } from "./taskPlanRoutes";
 import { handleTokenTelemetryRoute } from "./telemetryRoutes";
@@ -126,7 +119,6 @@ import {
   handleTerminalSnapshotsRoute,
   handleTerminalsCollectionRoute,
 } from "./terminalRoutes";
-import { handleCreditsStatusRoute } from "./creditsRoutes";
 import { handleTilesRoute } from "./tilesRoutes";
 import {
   handleClaudeUsageRoute,
@@ -142,6 +134,14 @@ import {
   handleVoiceTranscribeRoute,
   handleVoiceVoicesRoute,
 } from "./voiceRoutes";
+import {
+  handleWorkflowImproveRoute,
+  handleWorkflowItemRoute,
+  handleWorkflowRunHistoryRoute,
+  handleWorkflowRunRoute,
+  handleWorkflowRunsRecentRoute,
+  handleWorkflowsCollectionRoute,
+} from "./workflowRoutes";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -253,10 +253,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ],
   ["arsenal", [handleArsenalListRoute, handleArsenalDeployRoute]],
   ["credits", [handleCreditsStatusRoute]],
-  [
-    "notifications",
-    [handleNotificationsReadRoute, handleNotificationsCollectionRoute],
-  ],
+  ["notifications", [handleNotificationsReadRoute, handleNotificationsCollectionRoute]],
   ["search", [handleSearchRoute]],
   ["skills", [handleSkillsRunRoute]],
   ["tasks", [handleTaskPlanRoute]],

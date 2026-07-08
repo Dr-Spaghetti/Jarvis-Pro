@@ -15,8 +15,21 @@ import {
   buildVoiceTranscribeUrl,
   buildVoiceVoicesUrl,
 } from "../../runtime/runtimeEndpoints";
-import type { JarvisIntentResolution, PendingVoiceIntent, SpeechRecognitionLike, VoiceConfig } from "./types";
-import { pushNotification, getSpeechRecognitionConstructor, extractCommandAfterWake, hasWakePhrase, normalizeVoiceText, stripMarkdownForSpeech, voiceNavTargets } from "./utils";
+import type {
+  JarvisIntentResolution,
+  PendingVoiceIntent,
+  SpeechRecognitionLike,
+  VoiceConfig,
+} from "./types";
+import {
+  extractCommandAfterWake,
+  getSpeechRecognitionConstructor,
+  hasWakePhrase,
+  normalizeVoiceText,
+  pushNotification,
+  stripMarkdownForSpeech,
+  voiceNavTargets,
+} from "./utils";
 
 type UseJarvisVoiceOptions = {
   onNavigate: (index: PrimaryNavIndex) => void;
@@ -51,7 +64,9 @@ export const useJarvisVoice = ({
         return "deepgram";
       }
       return stored;
-    } catch { return "deepgram"; }
+    } catch {
+      return "deepgram";
+    }
   });
   const [deepgramVoice, setDeepgramVoice] = useState<string>(() => {
     try {
@@ -62,7 +77,9 @@ export const useJarvisVoice = ({
         return "aura-2-odysseus-en";
       }
       return stored;
-    } catch { return "aura-2-odysseus-en"; }
+    } catch {
+      return "aura-2-odysseus-en";
+    }
   });
   const [deepgramVoices, setDeepgramVoices] = useState<
     { id: string; name: string; description: string }[]
@@ -98,21 +115,36 @@ export const useJarvisVoice = ({
   const audioContextRef = useRef<AudioContext | null>(null);
   const pendingAudioBlobRef = useRef<Blob | null>(null);
 
-  const voicePhase = deriveVoicePhase({ isMuted, isSpeaking, isThinking, isRecordingCommand, isWakeArmed });
+  const voicePhase = deriveVoicePhase({
+    isMuted,
+    isSpeaking,
+    isThinking,
+    isRecordingCommand,
+    isWakeArmed,
+  });
 
   // Load voice config.
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiFetch(buildVoiceConfigUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildVoiceConfigUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (!res.ok) return;
         const config = (await res.json()) as VoiceConfig;
         setVoiceConfig(config);
         setVoiceModel(config.transcription.defaultModel);
         setTtsProvider((prev) => {
           if (!prev || prev === "browser") {
-            const best = config.tts.recommended || config.tts.configuredProviders?.find((p) => p !== "browser") || "deepgram";
-            try { window.localStorage.setItem("jarvis.ttsProvider", best); } catch { /* ignore */ }
+            const best =
+              config.tts.recommended ||
+              config.tts.configuredProviders?.find((p) => p !== "browser") ||
+              "deepgram";
+            try {
+              window.localStorage.setItem("jarvis.ttsProvider", best);
+            } catch {
+              /* ignore */
+            }
             return best;
           }
           return prev;
@@ -127,11 +159,17 @@ export const useJarvisVoice = ({
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiFetch(buildVoiceVoicesUrl(), { headers: { Accept: "application/json" } });
+        const res = await apiFetch(buildVoiceVoicesUrl(), {
+          headers: { Accept: "application/json" },
+        });
         if (!res.ok) return;
-        const data = (await res.json()) as { voices?: { id: string; name: string; description: string }[] };
+        const data = (await res.json()) as {
+          voices?: { id: string; name: string; description: string }[];
+        };
         setDeepgramVoices(data.voices ?? []);
-      } catch { /* voices are optional */ }
+      } catch {
+        /* voices are optional */
+      }
     })();
   }, []);
 
@@ -147,10 +185,18 @@ export const useJarvisVoice = ({
   }, []);
 
   // Keep ref mirrors in sync.
-  useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
-  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
-  useEffect(() => { isRecordingCommandRef.current = isRecordingCommand; }, [isRecordingCommand]);
-  useEffect(() => { pendingVoiceIntentRef.current = pendingVoiceIntent; }, [pendingVoiceIntent]);
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+  useEffect(() => {
+    isRecordingCommandRef.current = isRecordingCommand;
+  }, [isRecordingCommand]);
+  useEffect(() => {
+    pendingVoiceIntentRef.current = pendingVoiceIntent;
+  }, [pendingVoiceIntent]);
 
   // 10-second auto-expire countdown for pending intents.
   useEffect(() => {
@@ -200,7 +246,9 @@ export const useJarvisVoice = ({
         audioContextRef.current = ctx;
         void ctx.resume?.();
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }, []);
 
   const playPending = useCallback(async () => {
@@ -283,7 +331,9 @@ export const useJarvisVoice = ({
               setVoiceError("Tap 🔊 Replay to hear the answer.");
               return;
             }
-          } catch { /* try next */ }
+          } catch {
+            /* try next */
+          }
         }
 
         if (!isMutedRef.current && "speechSynthesis" in window) {
@@ -293,14 +343,21 @@ export const useJarvisVoice = ({
             // Pick a deep English male voice when available
             const voices = window.speechSynthesis.getVoices();
             const maleVoice =
-              voices.find((v) => v.lang.startsWith("en") && /david|mark|daniel|alex|google uk english male/i.test(v.name)) ||
+              voices.find(
+                (v) =>
+                  v.lang.startsWith("en") &&
+                  /david|mark|daniel|alex|google uk english male/i.test(v.name),
+              ) ||
               voices.find((v) => v.lang.startsWith("en") && /male/i.test(v.name)) ||
               voices.find((v) => v.lang.startsWith("en"));
             if (maleVoice) utterance.voice = maleVoice;
             utterance.pitch = 0.7;
             utterance.rate = 0.9;
             const timeoutId = setTimeout(resolve, 30_000);
-            const done = () => { clearTimeout(timeoutId); resolve(); };
+            const done = () => {
+              clearTimeout(timeoutId);
+              resolve();
+            };
             utterance.addEventListener("end", done, { once: true });
             utterance.addEventListener("error", done, { once: true });
             window.speechSynthesis.speak(utterance);
@@ -315,7 +372,9 @@ export const useJarvisVoice = ({
     [ttsProvider, voiceConfig, deepgramVoice],
   );
 
-  useEffect(() => { speakJarvisRef.current = speakJarvis; }, [speakJarvis]);
+  useEffect(() => {
+    speakJarvisRef.current = speakJarvis;
+  }, [speakJarvis]);
 
   const stopAllVoiceActivity = useCallback(() => {
     recognitionRef.current?.stop();
@@ -433,7 +492,10 @@ export const useJarvisVoice = ({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text: captureText }),
               });
-              if (!response.ok) { setVoiceError("Capture failed"); return; }
+              if (!response.ok) {
+                setVoiceError("Capture failed");
+                return;
+              }
               void loadRecent();
               setVoiceStatus("Captured");
               pushNotification("Captured to brain", captureText);
@@ -487,7 +549,10 @@ export const useJarvisVoice = ({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ workspaceMode: terminalMode, tentacleId: "octoboss" }),
               });
-              if (!response.ok) { setVoiceError("Unable to create agent"); return; }
+              if (!response.ok) {
+                setVoiceError("Unable to create agent");
+                return;
+              }
               onNavigate(1);
               setVoiceStatus("Agent created");
               pushNotification("Agent terminal created", `${terminalMode} mode`);
@@ -511,7 +576,10 @@ export const useJarvisVoice = ({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ archetypeId }),
               });
-              if (!res.ok) { setVoiceError(`Could not deploy ${archetypeName}`); return; }
+              if (!res.ok) {
+                setVoiceError(`Could not deploy ${archetypeName}`);
+                return;
+              }
               onNavigate(1);
               setVoiceStatus(`${archetypeName} deployed`);
               pushNotification(`Agent deployed: ${archetypeName}`);
@@ -589,7 +657,10 @@ export const useJarvisVoice = ({
               ),
             }),
           ]);
-          if (!res.ok) { setVoiceError("Ask failed"); return; }
+          if (!res.ok) {
+            setVoiceError("Ask failed");
+            return;
+          }
           const data = (await res.json()) as {
             available?: boolean;
             answer?: string;
@@ -599,7 +670,11 @@ export const useJarvisVoice = ({
           };
           if (data.available && typeof data.answer === "string") {
             const cleanAnswer = stripMarkdownForSpeech(data.answer);
-            onVoiceAnswer(cleanAnswer, Array.isArray(data.sources) ? data.sources : [], typeof data.via === "string" ? data.via : null);
+            onVoiceAnswer(
+              cleanAnswer,
+              Array.isArray(data.sources) ? data.sources : [],
+              typeof data.via === "string" ? data.via : null,
+            );
             setVoiceStatus("Answered");
             void loadConversation();
             await speakJarvis(cleanAnswer);
@@ -780,7 +855,9 @@ export const useJarvisVoice = ({
       mediaStreamRef.current = null;
       const audio = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
       if (audio.size === 0) {
-        setVoiceError("No audio captured — check your microphone in Windows Settings → Sound → Input.");
+        setVoiceError(
+          "No audio captured — check your microphone in Windows Settings → Sound → Input.",
+        );
         setVoiceStatus("Voice idle");
         setIsThinking(false);
         maybeContinueLoop();
@@ -808,7 +885,10 @@ export const useJarvisVoice = ({
         if (!isRecordingCommandRef.current) return;
         analyser.getByteTimeDomainData(silenceBuf);
         let sumSq = 0;
-        for (const sample of silenceBuf) { const s = (sample - 128) / 128; sumSq += s * s; }
+        for (const sample of silenceBuf) {
+          const s = (sample - 128) / 128;
+          sumSq += s * s;
+        }
         const rms = Math.sqrt(sumSq / silenceBuf.length);
         if (rms > RMS_THRESHOLD) {
           heardSpeech = true;
@@ -827,11 +907,21 @@ export const useJarvisVoice = ({
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
-    } catch { /* Web Audio unavailable — hard-cap timer handles stopping */ }
-  }, [maybeContinueLoop, runVoiceIntent, stopCommandRecording, transcribeCommandAudio, voiceConfig]);
+    } catch {
+      /* Web Audio unavailable — hard-cap timer handles stopping */
+    }
+  }, [
+    maybeContinueLoop,
+    runVoiceIntent,
+    stopCommandRecording,
+    transcribeCommandAudio,
+    voiceConfig,
+  ]);
 
   useEffect(() => {
-    startCommandRecordingRef.current = () => { void startCommandRecording(); };
+    startCommandRecordingRef.current = () => {
+      void startCommandRecording();
+    };
   }, [startCommandRecording]);
 
   // Tab visibility: pause when hidden, re-arm when shown.
@@ -844,7 +934,13 @@ export const useJarvisVoice = ({
         }
         return;
       }
-      if (shouldResumeWakeLoop({ handsFreeOn: isListeningRef.current, isMuted: isMutedRef.current, isVisible: true })) {
+      if (
+        shouldResumeWakeLoop({
+          handsFreeOn: isListeningRef.current,
+          isMuted: isMutedRef.current,
+          isVisible: true,
+        })
+      ) {
         startWakeListeningRef.current?.();
       }
     };
@@ -905,14 +1001,19 @@ export const useJarvisVoice = ({
     };
     recognition.onend = () => {
       setIsWakeArmed(false);
-      if (isListeningRef.current && !isMutedRef.current && !isRecordingCommandRef.current && document.visibilityState === "visible") {
+      if (
+        isListeningRef.current &&
+        !isMutedRef.current &&
+        !isRecordingCommandRef.current &&
+        document.visibilityState === "visible"
+      ) {
         window.setTimeout(() => startWakeListeningRef.current?.(), 250);
       }
     };
     recognitionRef.current = recognition;
     recognition.start();
     setIsWakeArmed(true);
-    setVoiceStatus('Listening for “Jarvis”…');
+    setVoiceStatus("Listening for “Jarvis”…");
   }, [maybeContinueLoop, runVoiceIntent, startCommandRecording, voiceConfig]);
 
   const startListening = useCallback(() => {
@@ -926,22 +1027,27 @@ export const useJarvisVoice = ({
 
   const togglePushToTalk = useCallback(() => {
     unlockAudio();
-    if (isMutedRef.current) { setIsMuted(false); isMutedRef.current = false; }
-    if (isRecordingCommandRef.current) { stopCommandRecording(); return; }
+    if (isMutedRef.current) {
+      setIsMuted(false);
+      isMutedRef.current = false;
+    }
+    if (isRecordingCommandRef.current) {
+      stopCommandRecording();
+      return;
+    }
     void startCommandRecording();
   }, [startCommandRecording, stopCommandRecording, unlockAudio]);
 
-  useEffect(() => { startWakeListeningRef.current = startWakeListening; }, [startWakeListening]);
+  useEffect(() => {
+    startWakeListeningRef.current = startWakeListening;
+  }, [startWakeListening]);
 
   // Stable ref-backed callback so submitAsk doesn't need to close over voice state directly.
-  const autoSpeakIfListening = useCallback(
-    (text: string) => {
-      if (isListeningRef.current && !isMutedRef.current) {
-        void speakJarvisRef.current?.(text);
-      }
-    },
-    [],
-  );
+  const autoSpeakIfListening = useCallback((text: string) => {
+    if (isListeningRef.current && !isMutedRef.current) {
+      void speakJarvisRef.current?.(text);
+    }
+  }, []);
 
   return {
     voiceConfig,

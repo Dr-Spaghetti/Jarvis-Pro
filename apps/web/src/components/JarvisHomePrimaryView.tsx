@@ -19,7 +19,15 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   const [visMode, setVisMode] = useState<"core" | "radar" | "signal">("core");
 
   const data = useJarvisData();
-  const { chatModel, conversation, setConversation, loadConversation, loadMemory, loadRecent, recentRuns } = data;
+  const {
+    chatModel,
+    conversation,
+    setConversation,
+    loadConversation,
+    loadMemory,
+    loadRecent,
+    recentRuns,
+  } = data;
 
   // chatModelRef: bridges chatModel (React state) into the voice hook's async callbacks.
   const chatModelRef = useRef(chatModel);
@@ -80,9 +88,12 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           pendingVoiceIntent={voice.pendingVoiceIntent}
           intentCountdown={voice.intentCountdown}
           onConfirm={() => {
-            const p = voice.pendingVoiceIntent!;
+            const p = voice.pendingVoiceIntent;
             voice.setPendingVoiceIntent(null);
-            void voice.speakJarvis("Confirmed.").then(() => p.onConfirm()).catch(() => p.onConfirm());
+            void voice
+              .speakJarvis("Confirmed.")
+              .then(() => p.onConfirm())
+              .catch(() => p.onConfirm());
           }}
           onCancel={() => {
             voice.setPendingVoiceIntent(null);

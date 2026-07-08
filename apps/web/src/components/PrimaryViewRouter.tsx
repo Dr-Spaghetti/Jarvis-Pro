@@ -1,8 +1,8 @@
 import type { ComponentProps, ReactNode } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
-import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
 import { AgentArsenalPanel } from "./AgentArsenalPanel";
+import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
 import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";

@@ -1,16 +1,9 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 
-import { withCors } from "./security";
 import type { ApiRouteHandler } from "./routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
+import { withCors } from "./security";
 
 type Workflow = {
   id: string;
@@ -108,7 +101,11 @@ const saveRun = (runsDir: string, run: WorkflowRun): void => {
   const all = loadRuns(runsDir, run.workflowId);
   if (all.length > MAX_RUNS_PER_WORKFLOW) {
     for (const old of all.slice(MAX_RUNS_PER_WORKFLOW)) {
-      try { rmSync(join(runsDir, `${old.id}.json`)); } catch { /* ignore */ }
+      try {
+        rmSync(join(runsDir, `${old.id}.json`));
+      } catch {
+        /* ignore */
+      }
     }
   }
 };
@@ -335,7 +332,12 @@ export const handleWorkflowImproveRoute: ApiRouteHandler = async (
   const recentRuns = loadRuns(runsDir, id).slice(0, 5);
 
   if (recentRuns.length === 0) {
-    writeJson(response, 400, { error: "Run the workflow at least once before improving." }, corsOrigin);
+    writeJson(
+      response,
+      400,
+      { error: "Run the workflow at least once before improving." },
+      corsOrigin,
+    );
     return true;
   }
 
@@ -385,7 +387,9 @@ RATIONALE: [one sentence explaining the key improvement]`;
     const rationaleMatch = /RATIONALE:\s*(.+)/i.exec(answer);
 
     const improvedSteps = improvedMatch ? (improvedMatch[1] ?? "").trim() : workflow.steps;
-    const rationale = rationaleMatch ? (rationaleMatch[1] ?? "").trim() : "Steps refined based on run history.";
+    const rationale = rationaleMatch
+      ? (rationaleMatch[1] ?? "").trim()
+      : "Steps refined based on run history.";
 
     writeJson(response, 200, { improvedSteps, rationale }, corsOrigin);
   } catch (error) {

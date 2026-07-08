@@ -1,10 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { apiFetch } from "../../runtime/apiClient";
-import {
-  buildBrainAskUrl,
-  buildJarvisConversationTurnUrl,
-} from "../../runtime/runtimeEndpoints";
+import { buildBrainAskUrl, buildJarvisConversationTurnUrl } from "../../runtime/runtimeEndpoints";
 import { stripMarkdownForSpeech } from "./utils";
 
 type UseJarvisAskOptions = {
@@ -13,7 +10,11 @@ type UseJarvisAskOptions = {
   loadConversation: () => Promise<void>;
 };
 
-export const useJarvisAsk = ({ chatModel, autoSpeakIfListening, loadConversation }: UseJarvisAskOptions) => {
+export const useJarvisAsk = ({
+  chatModel,
+  autoSpeakIfListening,
+  loadConversation,
+}: UseJarvisAskOptions) => {
   const [ask, setAsk] = useState("");
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
@@ -51,7 +52,10 @@ export const useJarvisAsk = ({ chatModel, autoSpeakIfListening, loadConversation
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(chatModel ? { question, model: chatModel } : { question }),
       });
-      if (!res.ok) { setAskNote("Ask failed"); return; }
+      if (!res.ok) {
+        setAskNote("Ask failed");
+        return;
+      }
       const data = (await res.json()) as {
         available?: boolean;
         answer?: string;
@@ -81,12 +85,20 @@ export const useJarvisAsk = ({ chatModel, autoSpeakIfListening, loadConversation
         }).then((r) => {
           if (!r.ok) return;
           const ts = new Date().toISOString();
-          try { window.localStorage.setItem("jarvis.lastTurnAt", ts); } catch { /* ignore */ }
-          window.dispatchEvent(new StorageEvent("storage", { key: "jarvis.lastTurnAt", newValue: ts }));
+          try {
+            window.localStorage.setItem("jarvis.lastTurnAt", ts);
+          } catch {
+            /* ignore */
+          }
+          window.dispatchEvent(
+            new StorageEvent("storage", { key: "jarvis.lastTurnAt", newValue: ts }),
+          );
         });
         autoSpeakIfListening(cleanAnswer);
       } else {
-        setAskNote(data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b");
+        setAskNote(
+          data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
+        );
       }
     } catch {
       setAskNote("Ask failed");
@@ -98,7 +110,11 @@ export const useJarvisAsk = ({ chatModel, autoSpeakIfListening, loadConversation
   // Used by the NEW CHAT button in the console.
   const startNewChat = useCallback((clearConversation: () => void) => {
     const newId = `jarvis-${Date.now()}`;
-    try { window.localStorage.setItem("jarvis.sessionId", newId); } catch { /* ignore */ }
+    try {
+      window.localStorage.setItem("jarvis.sessionId", newId);
+    } catch {
+      /* ignore */
+    }
     setJarvisSessionId(newId);
     clearConversation();
     setAnswer(null);

@@ -49,7 +49,11 @@ describe("Terminal", () => {
   it("renders idle badge and updates it from websocket state events", async () => {
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
 
-    render(<ToastProvider><Terminal terminalId="tentacle-a" /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <Terminal terminalId="tentacle-a" />
+      </ToastProvider>,
+    );
 
     expect(screen.getByText("IDLE")).toBeInTheDocument();
 
@@ -81,7 +85,11 @@ describe("Terminal", () => {
   it("renders terminal with the provided terminal label", async () => {
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
 
-    render(<ToastProvider><Terminal terminalId="tentacle-a-agent-1" terminalLabel="tentacle-a-agent-1" /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <Terminal terminalId="tentacle-a-agent-1" terminalLabel="tentacle-a-agent-1" />
+      </ToastProvider>,
+    );
 
     expect(screen.getByText("tentacle-a-agent-1")).toBeInTheDocument();
   });

@@ -7,15 +7,15 @@ export const MIN_SIDEBAR_WIDTH = 240;
 export const MAX_SIDEBAR_WIDTH = 520;
 
 export const PRIMARY_NAV_ITEMS = [
-  { index: 9, label: "Jarvis HQ",       icon: "◆" },
-  { index: 1, label: "Agent Arsenal",   icon: "⬡" },
-  { index: 2, label: "Surveillance",    icon: "◉" },
-  { index: 3, label: "Workflows",       icon: "⟐" },
-  { index: 4, label: "Recent Convos",   icon: "≋" },
-  { index: 5, label: "Content Analyzer",icon: "⊞" },
-  { index: 6, label: "Ideas",           icon: "◈" },
-  { index: 7, label: "Settings",        icon: "⚙" },
-  { index: 8, label: "Terminal",        icon: "⌨" },
+  { index: 9, label: "Jarvis HQ", icon: "◆" },
+  { index: 1, label: "Agent Arsenal", icon: "⬡" },
+  { index: 2, label: "Surveillance", icon: "◉" },
+  { index: 3, label: "Workflows", icon: "⟐" },
+  { index: 4, label: "Recent Convos", icon: "≋" },
+  { index: 5, label: "Content Analyzer", icon: "⊞" },
+  { index: 6, label: "Ideas", icon: "◈" },
+  { index: 7, label: "Settings", icon: "⚙" },
+  { index: 8, label: "Terminal", icon: "⌨" },
 ] as const;
 
 export const GITHUB_COMMIT_SERIES_LENGTH = 30;

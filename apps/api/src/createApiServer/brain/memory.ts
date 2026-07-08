@@ -74,7 +74,12 @@ export const handleBrainRememberRoute: ApiRouteHandler = async ({
   }
   const vaultDir = resolveVaultDir();
   if (!vaultDir) {
-    writeJson(response, 400, { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." }, corsOrigin);
+    writeJson(
+      response,
+      400,
+      { error: "No vault configured (set OBSIDIAN_VAULT_PATH)." },
+      corsOrigin,
+    );
     return true;
   }
   const body = await readJsonBodyOrWriteError(request, response, corsOrigin);

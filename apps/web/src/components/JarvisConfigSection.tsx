@@ -29,7 +29,12 @@ type JournalEntry = {
 type VoiceConfig = {
   wake: { phrases: string[] };
   transcription: { configured: boolean; defaultModel: string; models: string[] };
-  tts: { configured: boolean; providers?: string[]; configuredProviders?: string[]; recommended?: string };
+  tts: {
+    configured: boolean;
+    providers?: string[];
+    configuredProviders?: string[];
+    recommended?: string;
+  };
   brain?: { provider: string; webSearch: boolean };
 };
 
@@ -44,7 +49,6 @@ const LS_KEYS = {
 
 const OPENAI_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
 const OPENAI_TTS_MODELS = ["gpt-4o-mini-tts", "tts-1", "tts-1-hd"] as const;
-
 
 const ELEVENLABS_PRESET_VOICES = [
   { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel — Calm American female" },
@@ -81,8 +85,13 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   const [ttsProvider, setTtsProvider] = useState(() => {
     const stored = lsGet(LS_KEYS.ttsProvider);
     const configured = voiceConfig.tts.configuredProviders ?? [];
-    const recommended = voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
-    if (!stored || (stored === "browser" && configured.some((p) => p !== "browser")) || !configured.includes(stored)) {
+    const recommended =
+      voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
+    if (
+      !stored ||
+      (stored === "browser" && configured.some((p) => p !== "browser")) ||
+      !configured.includes(stored)
+    ) {
       lsSet(LS_KEYS.ttsProvider, recommended);
       return recommended;
     }
@@ -93,9 +102,11 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   );
   const [deepgramVoice, setDeepgramVoice] = useState(() => {
     const stored = lsGet(LS_KEYS.deepgramVoice);
-    return (stored && stored !== "aura-2-thalia-en") ? stored : "aura-2-odysseus-en";
+    return stored && stored !== "aura-2-thalia-en" ? stored : "aura-2-odysseus-en";
   });
-  const [deepgramVoiceList, setDeepgramVoiceList] = useState<{ id: string; name: string; description: string }[]>([]);
+  const [deepgramVoiceList, setDeepgramVoiceList] = useState<
+    { id: string; name: string; description: string }[]
+  >([]);
   const [chatModel, setChatModel] = useState(() => lsGet(LS_KEYS.chatModel) || "claude-sonnet-4-6");
   const [openaiVoice, setOpenaiVoice] = useState(() => lsGet(LS_KEYS.openaiVoice) || "alloy");
   const [openaiTtsModel, setOpenaiTtsModel] = useState<string>("gpt-4o-mini-tts");
@@ -134,24 +145,29 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
 
   // Auto-migrate stale provider: if the stored provider isn't in the server's configured list,
   // silently switch to whatever the server recommends (e.g. elevenlabs→deepgram when out of credits).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot migration on mount
   useEffect(() => {
     const stored = lsGet(LS_KEYS.ttsProvider);
     const configured = voiceConfig.tts.configuredProviders ?? [];
-    const recommended = voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
-    if ((stored && !configured.includes(stored)) || (stored === "browser" && configured.some((p) => p !== "browser"))) {
+    const recommended =
+      voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
+    if (
+      (stored && !configured.includes(stored)) ||
+      (stored === "browser" && configured.some((p) => p !== "browser"))
+    ) {
       setTtsProvider(recommended);
       lsSet(LS_KEYS.ttsProvider, recommended);
     } else if (!stored) {
       setTtsProvider(recommended);
       lsSet(LS_KEYS.ttsProvider, recommended);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const SHOWN_PROVIDERS = ["deepgram", "elevenlabs", "openai", "kokoro", "browser"];
-  const allProviders = (voiceConfig.tts.providers ?? ["deepgram", "elevenlabs", "openai", "kokoro", "browser"]).filter(
-    (p) => SHOWN_PROVIDERS.includes(p),
-  );
+  const allProviders = (
+    voiceConfig.tts.providers ?? ["deepgram", "elevenlabs", "openai", "kokoro", "browser"]
+  ).filter((p) => SHOWN_PROVIDERS.includes(p));
   const configuredProviders = voiceConfig.tts.configuredProviders ?? [];
   const isProviderConfigured = (p: string) => configuredProviders.includes(p);
   const effectiveProvider =
@@ -177,7 +193,10 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         provider: effectiveProvider,
       };
       if (effectiveProvider === "deepgram") body.model = deepgramVoice;
-      if (effectiveProvider === "openai") { body.voice = openaiVoice; body.model = openaiTtsModel; }
+      if (effectiveProvider === "openai") {
+        body.voice = openaiVoice;
+        body.model = openaiTtsModel;
+      }
       if (effectiveProvider === "elevenlabs") body.voiceId = elevenlabsVoiceId || elevenlabsPreset;
       const res = await apiFetch(buildVoiceSpeakUrl(), {
         method: "POST",
@@ -256,7 +275,9 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           }}
         >
           {statusDot(voiceConfig.tts.configured)}TTS:{" "}
-          {voiceConfig.tts.configured ? configuredProviders.filter((p) => p !== "browser").join(", ") : "browser fallback"}
+          {voiceConfig.tts.configured
+            ? configuredProviders.filter((p) => p !== "browser").join(", ")
+            : "browser fallback"}
         </span>
         <span
           style={{ fontSize: 10, fontFamily: "var(--font-display)", color: "rgba(57,255,20,0.5)" }}
@@ -385,7 +406,11 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
               onChange={(e) => setElevenlabsVoiceId(e.target.value)}
             />
             <span
-              style={{ fontSize: 9, color: "rgba(57,255,20,0.28)", fontFamily: "var(--font-display)" }}
+              style={{
+                fontSize: 9,
+                color: "rgba(57,255,20,0.28)",
+                fontFamily: "var(--font-display)",
+              }}
             >
               Leave blank to use the preset above
             </span>
@@ -393,21 +418,29 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
         </>
       )}
 
-
       {/* Preview button */}
       {effectiveProvider !== "browser" && (
         <div style={{ marginBottom: 14 }}>
           <button
             type="button"
             className="jarvis-btn"
-            onClick={() => { void previewVoice(); }}
+            onClick={() => {
+              void previewVoice();
+            }}
             disabled={previewLoading}
             style={{ fontSize: 10, padding: "4px 12px" }}
           >
             {previewLoading ? "▶ playing…" : "▶ Preview voice"}
           </button>
           {previewError && (
-            <span style={{ fontSize: 10, color: "rgba(255,80,80,0.8)", fontFamily: "var(--font-display)", marginLeft: 10 }}>
+            <span
+              style={{
+                fontSize: 10,
+                color: "rgba(255,80,80,0.8)",
+                fontFamily: "var(--font-display)",
+                marginLeft: 10,
+              }}
+            >
               {previewError}
             </span>
           )}
@@ -463,8 +496,19 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
           Chat / Answer Model
         </label>
         {ollamaRunning === false && (
-          <span style={{ fontSize: 9, color: "var(--term-red, #ff4444)", letterSpacing: ".1em", fontFamily: "var(--font-display)" }}>
-            OLLAMA OFFLINE — run <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 3px" }}>ollama serve</code> in a terminal to use local models
+          <span
+            style={{
+              fontSize: 9,
+              color: "var(--term-red, #ff4444)",
+              letterSpacing: ".1em",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            OLLAMA OFFLINE — run{" "}
+            <code style={{ background: "rgba(255,80,80,0.08)", padding: "0 3px" }}>
+              ollama serve
+            </code>{" "}
+            in a terminal to use local models
           </span>
         )}
         <select
@@ -483,14 +527,20 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
                   "claude-sonnet-4-6": "Sonnet 4.6 (balanced)",
                   "claude-haiku-4-5-20251001": "Haiku 4.5 (fast)",
                 };
-                return <option key={m} value={m}>{labels[m] ?? m}</option>;
+                return (
+                  <option key={m} value={m}>
+                    {labels[m] ?? m}
+                  </option>
+                );
               })}
             </optgroup>
           )}
           {availableModels.length > 0 && (
             <optgroup label="── Ollama (local) ──">
               {availableModels.map((m) => (
-                <option key={m} value={m}>{m}</option>
+                <option key={m} value={m}>
+                  {m}
+                </option>
               ))}
             </optgroup>
           )}
@@ -570,8 +620,19 @@ export const JarvisConfigSection = () => {
   const [answer, setAnswer] = useState<string | null>(null);
   const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
-  type CreditStatus = { status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error"; note?: string; usage?: string };
-  type CreditsData = { elevenlabs?: CreditStatus; openai?: CreditStatus; anthropic?: CreditStatus; perplexity?: CreditStatus; deepgram?: CreditStatus; kokoro?: CreditStatus };
+  type CreditStatus = {
+    status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error";
+    note?: string;
+    usage?: string;
+  };
+  type CreditsData = {
+    elevenlabs?: CreditStatus;
+    openai?: CreditStatus;
+    anthropic?: CreditStatus;
+    perplexity?: CreditStatus;
+    deepgram?: CreditStatus;
+    kokoro?: CreditStatus;
+  };
   const [credits, setCredits] = useState<CreditsData | null>(null);
   const [creditsLoading, setCreditsLoading] = useState(false);
 
@@ -579,7 +640,10 @@ export const JarvisConfigSection = () => {
     setCreditsLoading(true);
     void apiFetch(buildCreditsStatusUrl())
       .then((r) => r.json())
-      .then((d) => { setCredits(d as CreditsData); setCreditsLoading(false); })
+      .then((d) => {
+        setCredits(d as CreditsData);
+        setCreditsLoading(false);
+      })
       .catch(() => setCreditsLoading(false));
   }, []);
 
@@ -692,7 +756,12 @@ export const JarvisConfigSection = () => {
       <div style={{ position: "relative", height: 220, overflow: "hidden", marginBottom: 20 }}>
         <div
           className="nc-core"
-          style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
           aria-hidden="true"
         >
           <div className="nc-core-ring" />
@@ -919,67 +988,149 @@ export const JarvisConfigSection = () => {
             userSelect: "none",
             marginBottom: 12,
           }}
-          onClick={() => { if (!credits && !creditsLoading) refreshCredits(); }}
+          onClick={() => {
+            if (!credits && !creditsLoading) refreshCredits();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              if (!credits && !creditsLoading) refreshCredits();
+            }
+          }}
         >
           💰 CREDITS &amp; API STATUS
         </summary>
         {!credits && !creditsLoading && (
-          <p className="jarvis-empty" style={{ marginBottom: 8 }}>Click to check live status of all connected services.</p>
+          <p className="jarvis-empty" style={{ marginBottom: 8 }}>
+            Click to check live status of all connected services.
+          </p>
         )}
         {creditsLoading && <p className="jarvis-empty">Checking all services…</p>}
-        {credits && (() => {
-          const rows: { key: keyof CreditsData; label: string; use: string; link: string }[] = [
-            { key: "anthropic",  label: "Anthropic (Claude)",  use: "AI reasoning",     link: "https://console.anthropic.com/settings/billing" },
-            { key: "perplexity", label: "Perplexity",          use: "Web search",       link: "https://www.perplexity.ai/settings/api" },
-            { key: "elevenlabs", label: "ElevenLabs",          use: "Voice (TTS)",      link: "https://elevenlabs.io/billing" },
-            { key: "openai",     label: "OpenAI",              use: "TTS fallback",     link: "https://platform.openai.com/usage" },
-            { key: "deepgram",   label: "Deepgram",            use: "Transcription",    link: "https://console.deepgram.com" },
-            { key: "kokoro",     label: "Kokoro (local TTS)",  use: "Self-hosted TTS",  link: "http://localhost:8880/docs" },
-          ];
-          const statusColor = (s?: CreditStatus) => {
-            if (!s || s.status === "not-configured") return "#555";
-            if (s.status === "ok") return "#39ff14";
-            if (s.status === "out-of-credits") return "#ff6b35";
-            if (s.status === "invalid-key") return "rgba(255,80,80,0.9)";
-            return "rgba(255,200,80,0.9)";
-          };
-          const statusLabel = (s?: CreditStatus) => {
-            if (!s || s.status === "not-configured") return "Not configured";
-            if (s.status === "ok") return s.usage ? `✓ ${s.usage}` : "✓ Working";
-            if (s.status === "out-of-credits") return s.usage ? `⚠ ${s.usage}` : "⚠ Out of credits";
-            if (s.status === "invalid-key") return "✗ Invalid key";
-            return `Error${s.note ? `: ${s.note}` : ""}`;
-          };
-          return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {rows.map(({ key, label, use, link }) => {
-                const s = credits[key];
-                const color = statusColor(s);
-                const notConfigured = !s || s.status === "not-configured";
-                return (
-                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, opacity: notConfigured ? 0.45 : 1 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: s?.status === "ok" ? `0 0 6px ${color}` : "none", flexShrink: 0, display: "inline-block" }} />
-                    <span style={{ flex: 1, fontSize: 12, color: "#ccc" }}>
-                      <strong style={{ color: "#eee" }}>{label}</strong>
-                      <span style={{ color: "#888", marginLeft: 6 }}>{use}</span>
-                    </span>
-                    <span style={{ fontSize: 11, color, fontWeight: 600 }}>{statusLabel(s)}</span>
-                    {s && s.status !== "not-configured" && s.status !== "ok" && (
-                      <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "var(--gold)", textDecoration: "underline", marginLeft: 4 }}>Top up →</a>
-                    )}
-                  </div>
-                );
-              })}
-              <button
-                onClick={refreshCredits}
-                disabled={creditsLoading}
-                style={{ marginTop: 8, alignSelf: "flex-start", fontSize: 11, padding: "3px 10px", background: "transparent", border: "1px solid var(--gold)", color: "var(--gold)", cursor: "pointer", borderRadius: 3 }}
-              >
-                {creditsLoading ? "Checking…" : "↺ Refresh"}
-              </button>
-            </div>
-          );
-        })()}
+        {credits &&
+          (() => {
+            const rows: { key: keyof CreditsData; label: string; use: string; link: string }[] = [
+              {
+                key: "anthropic",
+                label: "Anthropic (Claude)",
+                use: "AI reasoning",
+                link: "https://console.anthropic.com/settings/billing",
+              },
+              {
+                key: "perplexity",
+                label: "Perplexity",
+                use: "Web search",
+                link: "https://www.perplexity.ai/settings/api",
+              },
+              {
+                key: "elevenlabs",
+                label: "ElevenLabs",
+                use: "Voice (TTS)",
+                link: "https://elevenlabs.io/billing",
+              },
+              {
+                key: "openai",
+                label: "OpenAI",
+                use: "TTS fallback",
+                link: "https://platform.openai.com/usage",
+              },
+              {
+                key: "deepgram",
+                label: "Deepgram",
+                use: "Transcription",
+                link: "https://console.deepgram.com",
+              },
+              {
+                key: "kokoro",
+                label: "Kokoro (local TTS)",
+                use: "Self-hosted TTS",
+                link: "http://localhost:8880/docs",
+              },
+            ];
+            const statusColor = (s?: CreditStatus) => {
+              if (!s || s.status === "not-configured") return "#555";
+              if (s.status === "ok") return "#39ff14";
+              if (s.status === "out-of-credits") return "#ff6b35";
+              if (s.status === "invalid-key") return "rgba(255,80,80,0.9)";
+              return "rgba(255,200,80,0.9)";
+            };
+            const statusLabel = (s?: CreditStatus) => {
+              if (!s || s.status === "not-configured") return "Not configured";
+              if (s.status === "ok") return s.usage ? `✓ ${s.usage}` : "✓ Working";
+              if (s.status === "out-of-credits")
+                return s.usage ? `⚠ ${s.usage}` : "⚠ Out of credits";
+              if (s.status === "invalid-key") return "✗ Invalid key";
+              return `Error${s.note ? `: ${s.note}` : ""}`;
+            };
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {rows.map(({ key, label, use, link }) => {
+                  const s = credits[key];
+                  const color = statusColor(s);
+                  const notConfigured = !s || s.status === "not-configured";
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        opacity: notConfigured ? 0.45 : 1,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: color,
+                          boxShadow: s?.status === "ok" ? `0 0 6px ${color}` : "none",
+                          flexShrink: 0,
+                          display: "inline-block",
+                        }}
+                      />
+                      <span style={{ flex: 1, fontSize: 12, color: "#ccc" }}>
+                        <strong style={{ color: "#eee" }}>{label}</strong>
+                        <span style={{ color: "#888", marginLeft: 6 }}>{use}</span>
+                      </span>
+                      <span style={{ fontSize: 11, color, fontWeight: 600 }}>{statusLabel(s)}</span>
+                      {s && s.status !== "not-configured" && s.status !== "ok" && (
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            fontSize: 10,
+                            color: "var(--gold)",
+                            textDecoration: "underline",
+                            marginLeft: 4,
+                          }}
+                        >
+                          Top up →
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={refreshCredits}
+                  disabled={creditsLoading}
+                  style={{
+                    marginTop: 8,
+                    alignSelf: "flex-start",
+                    fontSize: 11,
+                    padding: "3px 10px",
+                    background: "transparent",
+                    border: "1px solid var(--gold)",
+                    color: "var(--gold)",
+                    cursor: "pointer",
+                    borderRadius: 3,
+                  }}
+                >
+                  {creditsLoading ? "Checking…" : "↺ Refresh"}
+                </button>
+              </div>
+            );
+          })()}
       </details>
 
       {/* ── Activity ── */}

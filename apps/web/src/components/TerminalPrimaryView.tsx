@@ -7,16 +7,16 @@ import { Terminal } from "./Terminal";
 type Session = { id: string; label: string };
 
 const CLAUDE_MODELS = [
-  { value: "claude-opus-4-8",   label: "Opus 4.8  — reasoning" },
+  { value: "claude-opus-4-8", label: "Opus 4.8  — reasoning" },
   { value: "claude-sonnet-4-6", label: "Sonnet 4.6 — balanced" },
-  { value: "claude-haiku-4-5-20251001",  label: "Haiku 4.5 — fast / cheap" },
+  { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5 — fast / cheap" },
 ];
 
 export const TerminalPrimaryView = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [provider, setProvider] = useState<"claude-code" | "codex">("claude-code");
-  const [claudeModel, setClaudeModel] = useState(CLAUDE_MODELS[0]!.value);
+  const [claudeModel, setClaudeModel] = useState(CLAUDE_MODELS[0]?.value ?? "claude-sonnet-4-6");
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState("");
 
@@ -154,7 +154,9 @@ export const TerminalPrimaryView = () => {
             aria-label="Claude model"
           >
             {CLAUDE_MODELS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
         )}
@@ -170,7 +172,9 @@ export const TerminalPrimaryView = () => {
             background: launching ? "rgba(57,255,20,0.06)" : "transparent",
           }}
           disabled={launching}
-          onClick={() => { void launch(); }}
+          onClick={() => {
+            void launch();
+          }}
         >
           {launching ? "Launching…" : "+ New Session"}
         </button>
@@ -208,19 +212,18 @@ export const TerminalPrimaryView = () => {
                 letterSpacing: ".1em",
                 cursor: "pointer",
                 borderRadius: 2,
-                background:
-                  s.id === activeId ? "rgba(57,255,20,0.1)" : "transparent",
-                color:
-                  s.id === activeId
-                    ? "rgba(57,255,20,1)"
-                    : "rgba(57,255,20,0.4)",
+                background: s.id === activeId ? "rgba(57,255,20,0.1)" : "transparent",
+                color: s.id === activeId ? "rgba(57,255,20,1)" : "rgba(57,255,20,0.4)",
                 border:
-                  s.id === activeId
-                    ? "1px solid rgba(57,255,20,0.35)"
-                    : "1px solid transparent",
+                  s.id === activeId ? "1px solid rgba(57,255,20,0.35)" : "1px solid transparent",
                 whiteSpace: "nowrap",
               }}
               onClick={() => setActiveId(s.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") setActiveId(s.id);
+              }}
+              role="button"
+              tabIndex={0}
             >
               {s.label}
               <button
@@ -255,7 +258,7 @@ export const TerminalPrimaryView = () => {
             key={activeId}
             terminalId={activeId}
             {...(sessions.find((s) => s.id === activeId)?.label
-              ? { terminalLabel: sessions.find((s) => s.id === activeId)!.label }
+              ? { terminalLabel: sessions.find((s) => s.id === activeId)?.label ?? "" }
               : {})}
             isSelected
           />

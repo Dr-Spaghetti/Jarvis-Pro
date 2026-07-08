@@ -37,7 +37,11 @@ export const readConversationTurns = (vaultDir: string, limit: number): Conversa
   }
 };
 
-export const appendConversationTurn = (vaultDir: string, question: string, answer: string): void => {
+export const appendConversationTurn = (
+  vaultDir: string,
+  question: string,
+  answer: string,
+): void => {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");

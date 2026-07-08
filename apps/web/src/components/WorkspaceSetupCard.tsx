@@ -71,9 +71,7 @@ export const WorkspaceSetupCard = ({ setup, onSetupChange }: WorkspaceSetupCardP
   return (
     <section className="workspace-setup-card" aria-label="Workspace setup">
       <h2 className="workspace-setup-title">Workspace Setup</h2>
-      <p className="workspace-setup-desc">
-        Complete these steps before creating your first agent.
-      </p>
+      <p className="workspace-setup-desc">Complete these steps before creating your first agent.</p>
       <div className="workspace-setup-steps">
         {setup.steps.map((step) => (
           <SetupStep key={step.id} step={step} onAction={handleStepAction} />

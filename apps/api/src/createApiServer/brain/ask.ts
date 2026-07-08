@@ -7,10 +7,14 @@ import { cosineSimilarity, embedViaOllama } from "../ollamaEmbed";
 import { orchestrateTask } from "../orchestrateRoutes";
 import type { ApiRouteHandler } from "../routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "../routeHelpers";
-import { appendConversationTurn, readConversationTurns, type ConversationTurn } from "./conversation";
+import {
+  type ConversationTurn,
+  appendConversationTurn,
+  readConversationTurns,
+} from "./conversation";
 import { readMemoryFacts } from "./memory";
 import { lexicalSearchNotes, loadSemanticIndex } from "./search";
-import { asRecord, oneLine, resolveVaultDir, stripFrontmatter, deriveTitle } from "./vault";
+import { asRecord, deriveTitle, oneLine, resolveVaultDir, stripFrontmatter } from "./vault";
 
 // ── AI provider helpers ──────────────────────────────────────────────────────
 
@@ -61,7 +65,11 @@ const isDeepResearchRequest = (question: string): boolean =>
 type PerplexityCitation = { title: string; url: string };
 type PerplexityResult = { answer: string; citations: PerplexityCitation[] };
 
-const fetchWithTimeout = async (url: string, init: RequestInit, ms: number): Promise<Response | null> => {
+const fetchWithTimeout = async (
+  url: string,
+  init: RequestInit,
+  ms: number,
+): Promise<Response | null> => {
   try {
     return await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
   } catch {
@@ -69,7 +77,10 @@ const fetchWithTimeout = async (url: string, init: RequestInit, ms: number): Pro
   }
 };
 
-const askViaPerplexity = async (question: string, deep: boolean): Promise<PerplexityResult | null> => {
+const askViaPerplexity = async (
+  question: string,
+  deep: boolean,
+): Promise<PerplexityResult | null> => {
   const apiKey = getPerplexityApiKey();
   if (!apiKey) return null;
   const model = deep ? "sonar-pro" : "sonar";
@@ -81,7 +92,11 @@ const askViaPerplexity = async (question: string, deep: boolean): Promise<Perple
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: "You are Jarvis, a sharp personal AI. Answer concisely in 1-3 sentences. Never use bullet points or headers unless asked." },
+          {
+            role: "system",
+            content:
+              "You are Jarvis, a sharp personal AI. Answer concisely in 1-3 sentences. Never use bullet points or headers unless asked.",
+          },
           { role: "user", content: question },
         ],
         max_tokens: 512,
@@ -214,7 +229,11 @@ const retrieveContext = async (
   for (const rel of paths) {
     try {
       const content = readFileSync(join(vaultDir, rel), "utf8");
-      out.push({ rel, title: deriveTitle(content, rel), body: stripFrontmatter(content).slice(0, 1200) });
+      out.push({
+        rel,
+        title: deriveTitle(content, rel),
+        body: stripFrontmatter(content).slice(0, 1200),
+      });
     } catch {
       // skip
     }
@@ -253,7 +272,12 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
   }
   const [models, ollamaRunning] = await Promise.all([listOllamaChatModels(), isOllamaRunning()]);
   const claudeModels = getAnthropicApiKey() ? [...CLAUDE_MODEL_IDS] : [];
-  writeJson(response, 200, { models, default: getChatModel(), claudeModels, ollamaRunning }, corsOrigin);
+  writeJson(
+    response,
+    200,
+    { models, default: getChatModel(), claudeModels, ollamaRunning },
+    corsOrigin,
+  );
   return true;
 };
 
@@ -302,9 +326,19 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       const result = await orchestrateTask(question, runtime);
       if (result.ok) {
         if (vaultDir) appendConversationTurn(vaultDir, question, result.summary);
-        writeJson(response, 200, { available: true, answer: result.summary, sources, via: "orchestrate" }, corsOrigin);
+        writeJson(
+          response,
+          200,
+          { available: true, answer: result.summary, sources, via: "orchestrate" },
+          corsOrigin,
+        );
       } else {
-        writeJson(response, 200, { available: false, reason: "orchestrate-failed", hint: result.error, sources }, corsOrigin);
+        writeJson(
+          response,
+          200,
+          { available: false, reason: "orchestrate-failed", hint: result.error, sources },
+          corsOrigin,
+        );
       }
       return true;
     }
@@ -313,10 +347,20 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       const result = await agenticAsk(question, claudeContext, classification.connectors);
       if (result.ok) {
         if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
-        writeJson(response, 200, { available: true, answer: result.answer, sources, via: result.via }, corsOrigin);
+        writeJson(
+          response,
+          200,
+          { available: true, answer: result.answer, sources, via: result.via },
+          corsOrigin,
+        );
         return true;
       }
-      writeJson(response, 200, { available: false, reason: "agentic-failed", hint: result.hint, sources }, corsOrigin);
+      writeJson(
+        response,
+        200,
+        { available: false, reason: "agentic-failed", hint: result.hint, sources },
+        corsOrigin,
+      );
       return true;
     }
   }
@@ -391,7 +435,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       const claudeResult = await askViaClaude(question, claudeContext, history);
       if (claudeResult?.ok) {
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
-        writeJson(response, 200, { available: true, answer: claudeResult.answer, sources }, corsOrigin);
+        writeJson(
+          response,
+          200,
+          { available: true, answer: claudeResult.answer, sources },
+          corsOrigin,
+        );
         return true;
       }
       if (claudeResult && !claudeResult.ok) {
@@ -404,7 +453,18 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     const perpResult = await askViaPerplexity(question, false);
     if (perpResult) {
       if (vaultDir) appendConversationTurn(vaultDir, question, perpResult.answer);
-      writeJson(response, 200, { available: true, answer: perpResult.answer, sources, citations: perpResult.citations, via: "perplexity-sonar" }, corsOrigin);
+      writeJson(
+        response,
+        200,
+        {
+          available: true,
+          answer: perpResult.answer,
+          sources,
+          citations: perpResult.citations,
+          via: "perplexity-sonar",
+        },
+        corsOrigin,
+      );
       return true;
     }
     if (!vaultDir) {

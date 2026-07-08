@@ -10,8 +10,7 @@ const TRANSCRIPTS_SUBDIR = join("state", "transcripts");
 const TENTACLE_ID = "jarvis-hq";
 
 const transcriptFilename = (sessionId: string) => `${encodeURIComponent(sessionId)}.jsonl`;
-const turnsFilename = (sessionId: string) =>
-  `${encodeURIComponent(sessionId)}.claude-turns.json`;
+const turnsFilename = (sessionId: string) => `${encodeURIComponent(sessionId)}.claude-turns.json`;
 
 export const handleJarvisConversationTurnRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
@@ -34,8 +33,7 @@ export const handleJarvisConversationTurnRoute: ApiRouteHandler = async (
   const sessionId = typeof payload.sessionId === "string" ? payload.sessionId.trim() : "";
   const question = typeof payload.question === "string" ? payload.question.trim() : "";
   const answer = typeof payload.answer === "string" ? payload.answer.trim() : "";
-  const askedAt =
-    typeof payload.askedAt === "string" ? payload.askedAt : new Date().toISOString();
+  const askedAt = typeof payload.askedAt === "string" ? payload.askedAt : new Date().toISOString();
   const answeredAt =
     typeof payload.answeredAt === "string" ? payload.answeredAt : new Date().toISOString();
 
@@ -151,11 +149,7 @@ export const handleJarvisConversationTurnRoute: ApiRouteHandler = async (
   ];
 
   try {
-    writeFileSync(
-      turnsPath,
-      JSON.stringify([...existingTurns, ...newTurns], null, 2),
-      "utf8",
-    );
+    writeFileSync(turnsPath, JSON.stringify([...existingTurns, ...newTurns], null, 2), "utf8");
   } catch (error) {
     writeJson(
       response,

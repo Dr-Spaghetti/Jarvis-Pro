@@ -69,7 +69,8 @@ const getKokoroUrl = (): string | null => {
   return value && value.length > 0 ? value : null;
 };
 const getKokoroVoice = (): string => process.env.KOKORO_VOICE?.trim() || "af_heart";
-const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-odysseus-en";
+const getDeepgramModel = (): string =>
+  process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-odysseus-en";
 const getDeepgramSttModel = (): string => process.env.DEEPGRAM_STT_MODEL?.trim() || "nova-2";
 
 type DeepgramVoiceEntry = { id: string; name: string; description: string };
@@ -93,7 +94,11 @@ const DEEPGRAM_VOICE_CATALOG: DeepgramVoiceEntry[] = [
     description: "Confident female — assertive",
   },
   { id: "aura-2-orpheus-en", name: "Orpheus (Aura 2)", description: "Professional male — smooth" },
-  { id: "aura-2-odysseus-en", name: "Odysseus (Aura 2)", description: "Deep male — authoritative (default)" },
+  {
+    id: "aura-2-odysseus-en",
+    name: "Odysseus (Aura 2)",
+    description: "Deep male — authoritative (default)",
+  },
   { id: "aura-2-zeus-en", name: "Zeus (Aura 2)", description: "Powerful male — commanding" },
   { id: "aura-2-hermes-en", name: "Hermes (Aura 2)", description: "Casual male — friendly" },
   { id: "aura-asteria-en", name: "Asteria", description: "Warm female — Aura classic" },
@@ -465,9 +470,9 @@ const synthesizeDeepgramFallback = async (
         signal: AbortSignal.timeout(20000),
       },
     );
-    if (!res.ok) return false;
+    if (!res.ok || !res.body) return false;
     response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
-    const reader = res.body!.getReader();
+    const reader = res.body.getReader();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -475,7 +480,7 @@ const synthesizeDeepgramFallback = async (
         response.write(value);
       }
     } finally {
-      res.body!.cancel().catch(() => {});
+      res.body.cancel().catch(() => {});
       response.end();
     }
     return true;
@@ -562,8 +567,12 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       );
       return true;
     }
+    if (!upstreamResponse.body) {
+      writeJson(response, 502, { error: "Empty response from Deepgram." }, corsOrigin);
+      return true;
+    }
     response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
-    const reader = upstreamResponse.body!.getReader();
+    const reader = upstreamResponse.body.getReader();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -609,8 +618,10 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
     });
     if (!upstreamResponse.ok) {
       // 402/429 = out of credits — silently fall back to Deepgram
-      if ((upstreamResponse.status === 402 || upstreamResponse.status === 429) &&
-          await synthesizeDeepgramFallback(text, response, corsOrigin ?? "")) {
+      if (
+        (upstreamResponse.status === 402 || upstreamResponse.status === 429) &&
+        (await synthesizeDeepgramFallback(text, response, corsOrigin ?? ""))
+      ) {
         return true;
       }
       const errorText = await upstreamResponse.text();
@@ -651,7 +662,11 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
         writeJson(
           response,
           upstreamResponse.status,
-          { error: "Speech synthesis failed.", provider: "kokoro", detail: errorText.slice(0, 500) },
+          {
+            error: "Speech synthesis failed.",
+            provider: "kokoro",
+            detail: errorText.slice(0, 500),
+          },
           corsOrigin,
         );
         return true;
@@ -688,8 +703,10 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
   );
   if (!upstreamResponse.ok) {
     // 402 = out of credits — silently fall back to Deepgram
-    if (upstreamResponse.status === 402 &&
-        await synthesizeDeepgramFallback(text, response, corsOrigin ?? "")) {
+    if (
+      upstreamResponse.status === 402 &&
+      (await synthesizeDeepgramFallback(text, response, corsOrigin ?? ""))
+    ) {
       return true;
     }
     const errorText = await upstreamResponse.text();

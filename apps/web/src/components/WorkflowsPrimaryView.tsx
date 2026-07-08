@@ -334,10 +334,7 @@ const nc = {
     display: "flex" as const,
     flexDirection: "column" as const,
     gap: 4,
-    background:
-      status === "running"
-        ? "rgba(57,255,20,0.04)"
-        : "transparent",
+    background: status === "running" ? "rgba(57,255,20,0.04)" : "transparent",
   }),
   liveStepRow: {
     display: "flex" as const,
@@ -425,8 +422,7 @@ const nc = {
     letterSpacing: "0.12em",
     textTransform: "uppercase" as const,
     padding: "2px 6px",
-    background:
-      status === "ok" ? "rgba(57,255,20,0.08)" : "rgba(255,80,80,0.08)",
+    background: status === "ok" ? "rgba(57,255,20,0.08)" : "rgba(255,80,80,0.08)",
     border: `1px solid ${status === "ok" ? "rgba(57,255,20,0.22)" : "rgba(255,80,80,0.22)"}`,
     color: status === "ok" ? "#39ff14" : "rgba(255,80,80,0.8)",
     flexShrink: 0,
@@ -620,9 +616,14 @@ export const WorkflowsPrimaryView = () => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   // AI improvement
   const [isImproving, setIsImproving] = useState(false);
-  const [improvement, setImprovement] = useState<{ improvedSteps: string; rationale: string } | null>(null);
+  const [improvement, setImprovement] = useState<{
+    improvedSteps: string;
+    rationale: string;
+  } | null>(null);
   // Live step progress during a run
-  const [liveSteps, setLiveSteps] = useState<Array<{ step: string; status: StepStatus; answer?: string; durationMs?: number }>>([]);
+  const [liveSteps, setLiveSteps] = useState<
+    Array<{ step: string; status: StepStatus; answer?: string; durationMs?: number }>
+  >([]);
   // Run history for the selected workflow
   const [runHistory, setRunHistory] = useState<WorkflowRun[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
@@ -804,17 +805,19 @@ export const WorkflowsPrimaryView = () => {
             };
 
             if (event.type === "step-start" && typeof event.stepIndex === "number") {
+              const stepIndex = event.stepIndex;
               setLiveSteps((prev) => {
                 const next = [...prev];
-                if (next[event.stepIndex!]) {
-                  next[event.stepIndex!] = { ...next[event.stepIndex!]!, status: "running" };
+                if (next[stepIndex]) {
+                  next[stepIndex] = { ...next[stepIndex], status: "running" };
                 }
                 return next;
               });
             } else if (event.type === "step-done" && typeof event.stepIndex === "number") {
+              const stepIndex = event.stepIndex;
               setLiveSteps((prev) => {
                 const next = [...prev];
-                const idx = event.stepIndex!;
+                const idx = stepIndex;
                 const cur = next[idx];
                 if (cur) {
                   const updated: typeof cur = {
@@ -994,30 +997,34 @@ export const WorkflowsPrimaryView = () => {
                   )}
 
                   {/* Per-step avg duration strip (requires ≥2 runs) */}
-                  {!isEditing && runHistory.length >= 2 && (() => {
-                    const stepCount = active.steps.split("\n").filter(Boolean).length;
-                    if (stepCount === 0) return null;
-                    const stats = Array.from({ length: stepCount }, (_, i) => {
-                      const durations = runHistory
-                        .map((r) => r.steps[i]?.durationMs)
-                        .filter((d): d is number => typeof d === "number");
-                      const avg = durations.length > 0
-                        ? durations.reduce((a, b) => a + b, 0) / durations.length
-                        : null;
-                      return { i, avg };
-                    });
-                    return (
-                      <div style={nc.stepStats}>
-                        {stats.map(({ i, avg }) => (
-                          avg !== null && (
-                            <span key={i} style={nc.stepStat}>
-                              step {i + 1} avg {(avg / 1000).toFixed(1)}s
-                            </span>
-                          )
-                        ))}
-                      </div>
-                    );
-                  })()}
+                  {!isEditing &&
+                    runHistory.length >= 2 &&
+                    (() => {
+                      const stepCount = active.steps.split("\n").filter(Boolean).length;
+                      if (stepCount === 0) return null;
+                      const stats = Array.from({ length: stepCount }, (_, i) => {
+                        const durations = runHistory
+                          .map((r) => r.steps[i]?.durationMs)
+                          .filter((d): d is number => typeof d === "number");
+                        const avg =
+                          durations.length > 0
+                            ? durations.reduce((a, b) => a + b, 0) / durations.length
+                            : null;
+                        return { i, avg };
+                      });
+                      return (
+                        <div style={nc.stepStats}>
+                          {stats.map(
+                            ({ i, avg }) =>
+                              avg !== null && (
+                                <span key={i} style={nc.stepStat}>
+                                  step {i + 1} avg {(avg / 1000).toFixed(1)}s
+                                </span>
+                              ),
+                          )}
+                        </div>
+                      );
+                    })()}
 
                   <div style={nc.detailActions}>
                     {isEditing ? (
@@ -1033,7 +1040,10 @@ export const WorkflowsPrimaryView = () => {
                         <button
                           type="button"
                           style={nc.cancelBtn}
-                          onClick={() => { setIsEditing(false); setImprovement(null); }}
+                          onClick={() => {
+                            setIsEditing(false);
+                            setImprovement(null);
+                          }}
                         >
                           Cancel
                         </button>
@@ -1051,7 +1061,11 @@ export const WorkflowsPrimaryView = () => {
                         <button
                           type="button"
                           style={nc.editBtn}
-                          onClick={() => { setIsEditing(true); setEditDraft(active.steps); setImprovement(null); }}
+                          onClick={() => {
+                            setIsEditing(true);
+                            setEditDraft(active.steps);
+                            setImprovement(null);
+                          }}
                         >
                           Edit
                         </button>
@@ -1115,27 +1129,22 @@ export const WorkflowsPrimaryView = () => {
                   {/* Live step progress */}
                   {liveSteps.length > 0 && (
                     <div style={nc.liveStepsBox}>
-                      <div style={nc.liveStepsHdr}>
-                        {isRunning ? "⟳ Running…" : "Run complete"}
-                      </div>
+                      <div style={nc.liveStepsHdr}>{isRunning ? "⟳ Running…" : "Run complete"}</div>
                       {liveSteps.map((s, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: no stable key available
                         <div key={`live-${i}`}>
                           {i > 0 && s.status !== "pending" && (
                             <div style={nc.liveStepConnector}>↓ context passed to step {i + 1}</div>
                           )}
                           <div style={nc.liveStep(s.status)}>
                             <div style={nc.liveStepRow}>
-                              <span style={nc.liveStepIcon(s.status)}>
-                                {STEP_ICON[s.status]}
-                              </span>
+                              <span style={nc.liveStepIcon(s.status)}>{STEP_ICON[s.status]}</span>
                               <span style={nc.liveStepText(s.status)}>{s.step}</span>
                             </div>
                             {s.answer != null && (
                               <p
                                 style={
-                                  s.status === "error"
-                                    ? nc.liveStepAnswerError
-                                    : nc.liveStepAnswer
+                                  s.status === "error" ? nc.liveStepAnswerError : nc.liveStepAnswer
                                 }
                               >
                                 {s.answer}
@@ -1164,9 +1173,13 @@ export const WorkflowsPrimaryView = () => {
                             <div
                               key={run.id}
                               style={nc.historyItem(isExpanded)}
-                              onClick={() =>
-                                setExpandedRunId(isExpanded ? null : run.id)
-                              }
+                              onClick={() => setExpandedRunId(isExpanded ? null : run.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ")
+                                  setExpandedRunId(isExpanded ? null : run.id);
+                              }}
+                              role="button"
+                              tabIndex={0}
                             >
                               <div style={nc.historyItemHdr}>
                                 <span style={nc.historyBadge(run.status)}>

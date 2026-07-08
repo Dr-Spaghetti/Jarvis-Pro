@@ -45,17 +45,38 @@ export const JarvisVisualizer = ({ visMode, setVisMode }: Props) => (
           <div
             className="nc-radar-blip"
             aria-hidden="true"
-            style={{ left: "64%", top: "38%", width: 9, height: 9, background: "var(--gold)", boxShadow: "0 0 14px var(--gold)" }}
+            style={{
+              left: "64%",
+              top: "38%",
+              width: 9,
+              height: 9,
+              background: "var(--gold)",
+              boxShadow: "0 0 14px var(--gold)",
+            }}
           />
           <div
             className="nc-radar-blip"
             aria-hidden="true"
-            style={{ left: "42%", top: "60%", width: 9, height: 9, background: "var(--nc-warn, #f5e600)", boxShadow: "0 0 14px var(--nc-warn,#f5e600)" }}
+            style={{
+              left: "42%",
+              top: "60%",
+              width: 9,
+              height: 9,
+              background: "var(--nc-warn, #f5e600)",
+              boxShadow: "0 0 14px var(--nc-warn,#f5e600)",
+            }}
           />
           <div
             className="nc-radar-blip"
             aria-hidden="true"
-            style={{ left: "55%", top: "72%", width: 7, height: 7, background: "var(--term-red)", boxShadow: "0 0 12px var(--term-red)" }}
+            style={{
+              left: "55%",
+              top: "72%",
+              width: 7,
+              height: 7,
+              background: "var(--term-red)",
+              boxShadow: "0 0 12px var(--term-red)",
+            }}
           />
         </div>
       )}

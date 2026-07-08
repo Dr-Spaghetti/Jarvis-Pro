@@ -192,7 +192,11 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
   if (DEPLOY_VERBS.test(command)) {
     for (const [keyword, [archetypeId, archetypeName]] of Object.entries(ARCHETYPE_KEYWORDS)) {
       if (new RegExp(`\\b${keyword}\\b`).test(command)) {
-        return { transcript, commandText, intent: { type: "deploy-agent", archetypeId, archetypeName } };
+        return {
+          transcript,
+          commandText,
+          intent: { type: "deploy-agent", archetypeId, archetypeName },
+        };
       }
     }
   }

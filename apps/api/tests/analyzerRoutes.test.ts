@@ -43,7 +43,11 @@ const DEPS = {} as unknown as RouteHandlerDependencies;
 const temps: string[] = [];
 let origCwd: () => string;
 
-const makeRequest = (method: string, body?: Buffer, headers?: Record<string, string>): IncomingMessage => {
+const makeRequest = (
+  method: string,
+  body?: Buffer,
+  headers?: Record<string, string>,
+): IncomingMessage => {
   const req = {
     method,
     headers: headers ?? {},
@@ -448,7 +452,11 @@ describe("handleAnalyzerChatRoute", () => {
   });
 
   it("returns 405 for non-POST", async () => {
-    const { handled, status } = await call(handleAnalyzerChatRoute, "GET", "/api/analyzer/analysis-123/chat");
+    const { handled, status } = await call(
+      handleAnalyzerChatRoute,
+      "GET",
+      "/api/analyzer/analysis-123/chat",
+    );
     expect(handled).toBe(true);
     expect(status).toBe(405);
   });
@@ -495,12 +503,25 @@ describe("handleAnalyzerChatRoute", () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-        candidates: [{
-          content: { parts: [{ text: JSON.stringify({
-            objects: "coffee mug", people: "none", scene: "desk", text_on_image: "none",
-            composition: "close-up", style: "photo", contextual_cues: "morning",
-          })}] },
-        }],
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    objects: "coffee mug",
+                    people: "none",
+                    scene: "desk",
+                    text_on_image: "none",
+                    composition: "close-up",
+                    style: "photo",
+                    contextual_cues: "morning",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
       }),
     });
 
@@ -517,11 +538,18 @@ describe("handleAnalyzerChatRoute", () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-        content: [{ type: "text", text: "The image shows a coffee mug on a desk, likely a morning workspace setup." }],
+        content: [
+          {
+            type: "text",
+            text: "The image shows a coffee mug on a desk, likely a morning workspace setup.",
+          },
+        ],
       }),
     });
 
-    const chatBody = Buffer.from(JSON.stringify({ message: "What does this tell you about the workspace?" }));
+    const chatBody = Buffer.from(
+      JSON.stringify({ message: "What does this tell you about the workspace?" }),
+    );
     const { handled, status, json } = await call(
       handleAnalyzerChatRoute,
       "POST",

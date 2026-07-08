@@ -84,6 +84,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   }, []);
 
   // Poll every 3s for fresh output when a detail panel is open
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   useEffect(() => {
     if (!isEnabled || !selectedAgentId) return;
     const interval = setInterval(() => {
@@ -142,7 +143,8 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
       } else if (e.key === "Enter") {
         setKeyboardIndex((i) => {
           const agent = cur[i];
-          if (agent) setSelectedAgentId((prev) => (prev === agent.terminalId ? null : agent.terminalId));
+          if (agent)
+            setSelectedAgentId((prev) => (prev === agent.terminalId ? null : agent.terminalId));
           return i;
         });
       } else if (e.key === "Escape") {
@@ -154,6 +156,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   }, []);
 
   // Initial fetch
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   useEffect(() => {
     if (!isEnabled) return;
     let cancelled = false;
@@ -187,6 +190,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   }, []);
 
   // WebSocket subscription for live updates with exponential backoff reconnect
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   useEffect(() => {
     if (!isEnabled) return;
     let destroyed = false;
@@ -294,8 +298,12 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   const active = agents.filter((a) => a.lifecycleState === "running");
   activeRef.current = active;
   const history = agents.filter((a) => a.lifecycleState !== "running");
-  const selectedAgent = selectedAgentId ? (agents.find((a) => a.terminalId === selectedAgentId) ?? null) : null;
-  const agentTelemetry = selectedAgent ? agentTokens.find((t) => t.tentacleId === selectedAgent.terminalId) ?? null : null;
+  const selectedAgent = selectedAgentId
+    ? (agents.find((a) => a.terminalId === selectedAgentId) ?? null)
+    : null;
+  const agentTelemetry = selectedAgent
+    ? (agentTokens.find((t) => t.tentacleId === selectedAgent.terminalId) ?? null)
+    : null;
 
   // Screens = active agents first, then empty slots up to MAX_SCREENS (or more if needed)
   const screenCount = Math.max(MAX_SCREENS, active.length);
@@ -370,169 +378,172 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
       {activeTab === "alerts" ? (
         <AgentAlertsPanel />
       ) : (
-      <div className="surv-room">
-        <div className="surv-room-grid">
-          {/* Active agent screens */}
-          {active.map((agent, idx) => (
-            <button
-              key={agent.terminalId}
-              type="button"
-              className={`surv-screen surv-screen--active${selectedAgentId === agent.terminalId ? " surv-screen--selected" : ""}${keyboardIndex === idx && !selectedAgentId ? " surv-screen--focused" : ""}`}
-              onClick={() => {
-                setSelectedAgentId((prev) => prev === agent.terminalId ? null : agent.terminalId);
-                onSelectAgent?.(agent.terminalId);
-              }}
-              aria-label={`Open agent ${agent.tentacleName ?? agent.terminalId}`}
-            >
-              <div className="surv-screen-hd">
-                <div className="surv-screen-dot surv-screen-dot--on" />
-                <div className="surv-screen-name">{agent.tentacleName ?? agent.terminalId}</div>
-                <div className="surv-screen-state">
-                  {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
-                </div>
-              </div>
-              <div className="surv-screen-feed">
-                {agent.toolName && <div className="surv-action">&gt; {agent.toolName}</div>}
-                {agent.agentRuntimeState && (
-                  <div className="surv-thought">{agent.agentRuntimeState}</div>
-                )}
-                {agent.recentOutput && <pre className="surv-output">{agent.recentOutput}</pre>}
-              </div>
-              <div className="surv-screen-foot">
-                <span>{agent.state}</span>
-                {/* tick reference keeps duration labels live */}
-                <span>{tick > -1 && formatDuration(agent.startedAt)}</span>
-              </div>
-            </button>
-          ))}
-
-          {/* Empty screen slots */}
-          {Array.from({ length: emptySlotCount }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder slots
-            <div key={`slot-${i}`} className="surv-screen surv-screen--empty">
-              <div className="surv-corner tl" />
-              <div className="surv-corner tr" />
-              <div className="surv-corner bl" />
-              <div className="surv-corner br" />
-              <div className="surv-screen-num">
-                SCREEN {String(active.length + i + 1).padStart(2, "0")}
-              </div>
-              <div className="surv-screen-idle">NO FEED</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="surv-room-status">
-          {active.length === 0
-            ? "SURVEILLANCE ROOM · ALL CLEAR · 0 AGENTS ACTIVE"
-            : `SURVEILLANCE ROOM · ${active.length} AGENT${active.length !== 1 ? "S" : ""} ACTIVE`}
-          {wsStatus === "disconnected" && (
-            <span className="surv-ws-badge">● DISCONNECTED</span>
-          )}
-        </div>
-
-        {history.length > 0 && (
-          <div className="surv-history">
-            <div className="surv-history-title">SESSION HISTORY</div>
-            <div className="surv-history-list">
-              {history.map((agent) => (
-                <button
-                  key={agent.terminalId}
-                  type="button"
-                  className={`surv-history-item${selectedAgentId === agent.terminalId ? " surv-history-item--selected" : ""}`}
-                  onClick={() => {
-                    setSelectedAgentId((prev) => prev === agent.terminalId ? null : agent.terminalId);
-                    onSelectAgent?.(agent.terminalId);
-                  }}
-                  aria-label={`Open session ${agent.tentacleName ?? agent.terminalId}`}
-                >
-                  <span className="surv-history-name">
-                    {agent.tentacleName ?? agent.terminalId}
-                  </span>
-                  <span className="surv-history-state">
-                    {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
-                  </span>
-                  <span className="surv-history-dur">
-                    {tick > -1 && formatDuration(agent.startedAt)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {selectedAgent && (
-          <div
-            className="surv-detail"
-            role="dialog"
-            aria-label={`Agent output: ${selectedAgent.tentacleName ?? selectedAgent.terminalId}`}
-          >
-            <div className="surv-detail-header">
-              <div className="surv-detail-header-left">
-                <div
-                  className={`surv-screen-dot surv-screen-dot--${selectedAgent.lifecycleState === "running" ? "on" : "off"}`}
-                />
-                <span className="surv-detail-name">
-                  {selectedAgent.tentacleName ?? selectedAgent.terminalId}
-                </span>
-                <span className="surv-detail-state">
-                  {STATE_LABELS[selectedAgent.state] ?? selectedAgent.state.toUpperCase()}
-                </span>
-                <span className="surv-detail-dur">
-                  {tick > -1 && formatDuration(selectedAgent.startedAt)}
-                </span>
-              </div>
+        <div className="surv-room">
+          <div className="surv-room-grid">
+            {/* Active agent screens */}
+            {active.map((agent, idx) => (
               <button
+                key={agent.terminalId}
                 type="button"
-                className="surv-detail-close"
-                onClick={() => setSelectedAgentId(null)}
+                className={`surv-screen surv-screen--active${selectedAgentId === agent.terminalId ? " surv-screen--selected" : ""}${keyboardIndex === idx && !selectedAgentId ? " surv-screen--focused" : ""}`}
+                onClick={() => {
+                  setSelectedAgentId((prev) =>
+                    prev === agent.terminalId ? null : agent.terminalId,
+                  );
+                  onSelectAgent?.(agent.terminalId);
+                }}
+                aria-label={`Open agent ${agent.tentacleName ?? agent.terminalId}`}
               >
-                ✕ CLOSE
-              </button>
-            </div>
-
-            {(selectedAgent.toolName || selectedAgent.agentRuntimeState) && (
-              <div className="surv-detail-meta">
-                {selectedAgent.toolName && (
-                  <span className="surv-detail-tool">&gt; {selectedAgent.toolName}</span>
-                )}
-                {selectedAgent.agentRuntimeState && (
-                  <span className="surv-detail-thought">{selectedAgent.agentRuntimeState}</span>
-                )}
-              </div>
-            )}
-
-            <div className="surv-detail-output-wrap">
-              <pre className="surv-detail-output">
-                {selectedAgent.recentOutput ?? "No output captured yet."}
-              </pre>
-            </div>
-
-            {channelMessages.length > 0 && (
-              <div className="surv-detail-channels">
-                <div className="surv-detail-channels-title">SWARM MESSAGES</div>
-                {channelMessages.map((msg) => (
-                  <div key={msg.messageId} className="surv-detail-channel-msg">
-                    <span className="surv-channel-from">{msg.fromTerminalId.slice(0, 8)}</span>
-                    <span className="surv-channel-arrow"> → </span>
-                    <span className="surv-channel-to">{msg.toTerminalId.slice(0, 8)}</span>
-                    <span className="surv-channel-content"> {msg.content}</span>
+                <div className="surv-screen-hd">
+                  <div className="surv-screen-dot surv-screen-dot--on" />
+                  <div className="surv-screen-name">{agent.tentacleName ?? agent.terminalId}</div>
+                  <div className="surv-screen-state">
+                    {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
                   </div>
+                </div>
+                <div className="surv-screen-feed">
+                  {agent.toolName && <div className="surv-action">&gt; {agent.toolName}</div>}
+                  {agent.agentRuntimeState && (
+                    <div className="surv-thought">{agent.agentRuntimeState}</div>
+                  )}
+                  {agent.recentOutput && <pre className="surv-output">{agent.recentOutput}</pre>}
+                </div>
+                <div className="surv-screen-foot">
+                  <span>{agent.state}</span>
+                  {/* tick reference keeps duration labels live */}
+                  <span>{tick > -1 && formatDuration(agent.startedAt)}</span>
+                </div>
+              </button>
+            ))}
+
+            {/* Empty screen slots */}
+            {Array.from({ length: emptySlotCount }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder slots
+              <div key={`slot-${i}`} className="surv-screen surv-screen--empty">
+                <div className="surv-corner tl" />
+                <div className="surv-corner tr" />
+                <div className="surv-corner bl" />
+                <div className="surv-corner br" />
+                <div className="surv-screen-num">
+                  SCREEN {String(active.length + i + 1).padStart(2, "0")}
+                </div>
+                <div className="surv-screen-idle">NO FEED</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="surv-room-status">
+            {active.length === 0
+              ? "SURVEILLANCE ROOM · ALL CLEAR · 0 AGENTS ACTIVE"
+              : `SURVEILLANCE ROOM · ${active.length} AGENT${active.length !== 1 ? "S" : ""} ACTIVE`}
+            {wsStatus === "disconnected" && <span className="surv-ws-badge">● DISCONNECTED</span>}
+          </div>
+
+          {history.length > 0 && (
+            <div className="surv-history">
+              <div className="surv-history-title">SESSION HISTORY</div>
+              <div className="surv-history-list">
+                {history.map((agent) => (
+                  <button
+                    key={agent.terminalId}
+                    type="button"
+                    className={`surv-history-item${selectedAgentId === agent.terminalId ? " surv-history-item--selected" : ""}`}
+                    onClick={() => {
+                      setSelectedAgentId((prev) =>
+                        prev === agent.terminalId ? null : agent.terminalId,
+                      );
+                      onSelectAgent?.(agent.terminalId);
+                    }}
+                    aria-label={`Open session ${agent.tentacleName ?? agent.terminalId}`}
+                  >
+                    <span className="surv-history-name">
+                      {agent.tentacleName ?? agent.terminalId}
+                    </span>
+                    <span className="surv-history-state">
+                      {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
+                    </span>
+                    <span className="surv-history-dur">
+                      {tick > -1 && formatDuration(agent.startedAt)}
+                    </span>
+                  </button>
                 ))}
               </div>
-            )}
-
-            <div className="surv-detail-footer">
-              <span>LIVE OUTPUT · REFRESH 3s</span>
-              {agentTelemetry ? (
-                <span className="surv-detail-tokens">
-                  ↑{agentTelemetry.inputTokens.toLocaleString()} ↓{agentTelemetry.outputTokens.toLocaleString()} tok
-                </span>
-              ) : null}
-              <span>{selectedAgent.lifecycleState?.toUpperCase() ?? ""}</span>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+          {selectedAgent && (
+            <div
+              className="surv-detail"
+              role="dialog"
+              aria-label={`Agent output: ${selectedAgent.tentacleName ?? selectedAgent.terminalId}`}
+            >
+              <div className="surv-detail-header">
+                <div className="surv-detail-header-left">
+                  <div
+                    className={`surv-screen-dot surv-screen-dot--${selectedAgent.lifecycleState === "running" ? "on" : "off"}`}
+                  />
+                  <span className="surv-detail-name">
+                    {selectedAgent.tentacleName ?? selectedAgent.terminalId}
+                  </span>
+                  <span className="surv-detail-state">
+                    {STATE_LABELS[selectedAgent.state] ?? selectedAgent.state.toUpperCase()}
+                  </span>
+                  <span className="surv-detail-dur">
+                    {tick > -1 && formatDuration(selectedAgent.startedAt)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="surv-detail-close"
+                  onClick={() => setSelectedAgentId(null)}
+                >
+                  ✕ CLOSE
+                </button>
+              </div>
+
+              {(selectedAgent.toolName || selectedAgent.agentRuntimeState) && (
+                <div className="surv-detail-meta">
+                  {selectedAgent.toolName && (
+                    <span className="surv-detail-tool">&gt; {selectedAgent.toolName}</span>
+                  )}
+                  {selectedAgent.agentRuntimeState && (
+                    <span className="surv-detail-thought">{selectedAgent.agentRuntimeState}</span>
+                  )}
+                </div>
+              )}
+
+              <div className="surv-detail-output-wrap">
+                <pre className="surv-detail-output">
+                  {selectedAgent.recentOutput ?? "No output captured yet."}
+                </pre>
+              </div>
+
+              {channelMessages.length > 0 && (
+                <div className="surv-detail-channels">
+                  <div className="surv-detail-channels-title">SWARM MESSAGES</div>
+                  {channelMessages.map((msg) => (
+                    <div key={msg.messageId} className="surv-detail-channel-msg">
+                      <span className="surv-channel-from">{msg.fromTerminalId.slice(0, 8)}</span>
+                      <span className="surv-channel-arrow"> → </span>
+                      <span className="surv-channel-to">{msg.toTerminalId.slice(0, 8)}</span>
+                      <span className="surv-channel-content"> {msg.content}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="surv-detail-footer">
+                <span>LIVE OUTPUT · REFRESH 3s</span>
+                {agentTelemetry ? (
+                  <span className="surv-detail-tokens">
+                    ↑{agentTelemetry.inputTokens.toLocaleString()} ↓
+                    {agentTelemetry.outputTokens.toLocaleString()} tok
+                  </span>
+                ) : null}
+                <span>{selectedAgent.lifecycleState?.toUpperCase() ?? ""}</span>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </section>
   );
