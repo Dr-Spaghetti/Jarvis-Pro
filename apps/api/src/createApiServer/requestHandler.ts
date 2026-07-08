@@ -292,13 +292,16 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   [
     "workflows",
     [
-      handleWorkflowRunsRecentRoute,
       handleWorkflowsCollectionRoute,
       handleWorkflowItemRoute,
       handleWorkflowRunHistoryRoute,
       handleWorkflowImproveRoute,
       handleWorkflowRunRoute,
     ],
+  ],
+  [
+    "workflow-runs",
+    [handleWorkflowRunsRecentRoute],
   ],
   [
     "terminals",
