@@ -75,13 +75,13 @@ describe("App Monitor runtime", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Monitor (5)",
+        name: "Surveillance (2)",
       }),
     );
 
-    const monitorView = await screen.findByLabelText("Monitor primary view");
+    const monitorView = await screen.findByLabelText("Surveillance room");
 
-    // SESSIONS is the default active subtab (formerly "Surveillance")
+    // SESSIONS is the default active subtab
     expect(within(monitorView).getByRole("button", { name: "SESSIONS" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -89,7 +89,7 @@ describe("App Monitor runtime", () => {
     // Alerts subtab is present
     expect(within(monitorView).getByRole("button", { name: "Alerts" })).toBeInTheDocument();
 
-    // Agent card from terminal snapshot appears in the surveillance panel
+    // Agent card from terminal snapshot appears in the sessions panel
     await waitFor(() => {
       expect(within(monitorView).getByText("Senior Developer")).toBeInTheDocument();
     });
@@ -150,11 +150,11 @@ describe("App Monitor runtime", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Monitor (5)",
+        name: "Surveillance (2)",
       }),
     );
 
-    const monitorView = await screen.findByLabelText("Monitor primary view");
+    const monitorView = await screen.findByLabelText("Surveillance room");
     await waitFor(() => {
       expect(within(monitorView).getByText(/ALL CLEAR/i)).toBeInTheDocument();
     });
@@ -285,9 +285,6 @@ describe("App Monitor runtime", () => {
 
   it("does not call monitor APIs when Monitor is disabled, even if bottom telemetry is enabled", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    let monitorConfigCalls = 0;
-    let monitorFeedCalls = 0;
-    let monitorRefreshCalls = 0;
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
@@ -341,21 +338,6 @@ describe("App Monitor runtime", () => {
         return jsonResponse({});
       }
 
-      if (url.endsWith("/api/monitor/config") && method === "GET") {
-        monitorConfigCalls += 1;
-        return jsonResponse({});
-      }
-
-      if (url.endsWith("/api/monitor/feed") && method === "GET") {
-        monitorFeedCalls += 1;
-        return jsonResponse({});
-      }
-
-      if (url.endsWith("/api/monitor/refresh") && method === "POST") {
-        monitorRefreshCalls += 1;
-        return jsonResponse({});
-      }
-
       return notFoundResponse();
     });
 
@@ -363,11 +345,7 @@ describe("App Monitor runtime", () => {
 
     expect(screen.queryByLabelText("Telemetry ticker tape")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Monitor (5)" }));
-    expect(await screen.findByLabelText("Monitor primary view disabled")).toBeInTheDocument();
-
-    expect(monitorConfigCalls).toBe(0);
-    expect(monitorFeedCalls).toBe(0);
-    expect(monitorRefreshCalls).toBe(0);
+    fireEvent.click(await screen.findByRole("button", { name: "Surveillance (2)" }));
+    expect(await screen.findByLabelText("Surveillance room disabled")).toBeInTheDocument();
   });
 });

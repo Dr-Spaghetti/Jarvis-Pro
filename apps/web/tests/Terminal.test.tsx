@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Terminal } from "../src/components/Terminal";
+import { ToastProvider } from "../src/components/ui/ToastProvider";
 
 type Listener = (event: { data: unknown }) => void;
 
@@ -48,7 +49,7 @@ describe("Terminal", () => {
   it("renders idle badge and updates it from websocket state events", async () => {
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
 
-    render(<Terminal terminalId="tentacle-a" />);
+    render(<ToastProvider><Terminal terminalId="tentacle-a" /></ToastProvider>);
 
     expect(screen.getByText("IDLE")).toBeInTheDocument();
 
@@ -80,7 +81,7 @@ describe("Terminal", () => {
   it("renders terminal with the provided terminal label", async () => {
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
 
-    render(<Terminal terminalId="tentacle-a-agent-1" terminalLabel="tentacle-a-agent-1" />);
+    render(<ToastProvider><Terminal terminalId="tentacle-a-agent-1" terminalLabel="tentacle-a-agent-1" /></ToastProvider>);
 
     expect(screen.getByText("tentacle-a-agent-1")).toBeInTheDocument();
   });

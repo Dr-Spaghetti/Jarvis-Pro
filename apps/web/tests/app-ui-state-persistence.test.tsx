@@ -56,7 +56,7 @@ describe("App UI state persistence", () => {
 
       if (url.endsWith("/api/ui-state") && method === "GET") {
         return jsonResponse({
-          activePrimaryNav: 8,
+          activePrimaryNav: 7,
           isRuntimeStatusStripVisible: false,
           isMonitorVisible: false,
           isBottomTelemetryVisible: false,

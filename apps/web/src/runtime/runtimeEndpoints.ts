@@ -543,6 +543,15 @@ export const buildDeckTentaclePinnedUrl = (
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildDeckTentacleSwarmUrl = (
+  tentacleId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/deck/tentacles/${encodeURIComponent(tentacleId)}/swarm`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildPromptsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/prompts";

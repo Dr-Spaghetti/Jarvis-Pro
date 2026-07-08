@@ -11,6 +11,11 @@ import { SurveillancePanel } from "./SurveillancePanel";
 import { TerminalPrimaryView } from "./TerminalPrimaryView";
 import { WorkflowsPrimaryView } from "./WorkflowsPrimaryView";
 
+type CanvasPrimaryViewProps = {
+  onSpawnSwarm?: (tentacleId: string, workspaceMode: "shared" | "worktree") => Promise<void>;
+  onSolveTodoItem?: (tentacleId: string, itemIndex: number) => Promise<void>;
+};
+
 type PrimaryViewRouterProps = {
   activePrimaryNav: PrimaryNavIndex;
   settingsPrimaryViewProps: ComponentProps<typeof SettingsPrimaryView>;
@@ -18,6 +23,8 @@ type PrimaryViewRouterProps = {
   onConversationsSidebarContent: (content: ReactNode) => void;
   onConversationsActionPanel: (content: ReactNode) => void;
   onPrimaryNavChange: (index: PrimaryNavIndex) => void;
+  isMonitorEnabled?: boolean;
+  canvasPrimaryViewProps?: CanvasPrimaryViewProps;
 };
 
 export const PrimaryViewRouter = ({
@@ -27,6 +34,7 @@ export const PrimaryViewRouter = ({
   onConversationsSidebarContent,
   onConversationsActionPanel,
   onPrimaryNavChange,
+  isMonitorEnabled = true,
 }: PrimaryViewRouterProps) => {
   // 9 — Jarvis HQ
   if (activePrimaryNav === 9) {
@@ -40,7 +48,7 @@ export const PrimaryViewRouter = ({
 
   // 2 — Surveillance (live CCTV agent monitor)
   if (activePrimaryNav === 2) {
-    return <SurveillancePanel />;
+    return <SurveillancePanel isEnabled={isMonitorEnabled} />;
   }
 
   // 3 — Workflows

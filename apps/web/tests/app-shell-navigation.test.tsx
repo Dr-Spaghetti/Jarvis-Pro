@@ -95,7 +95,7 @@ describe("App shell and navigation", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Tasks (4)",
+        name: "Recent Convos (4)",
       }),
     ).toHaveAttribute("aria-current", "page");
   });
@@ -108,7 +108,7 @@ describe("App shell and navigation", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Settings (8)",
+        name: "Settings (7)",
       }),
     );
 

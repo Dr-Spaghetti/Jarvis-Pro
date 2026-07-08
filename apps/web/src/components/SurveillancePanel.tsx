@@ -6,6 +6,7 @@ import {
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
 } from "../runtime/runtimeEndpoints";
+import { AgentAlertsPanel } from "./AgentAlertsPanel";
 
 type AgentCard = TerminalSnapshot & {
   toolName?: string;
@@ -38,17 +39,19 @@ const isAgentRuntimeState = (val: unknown): val is string =>
 
 type SurveillancePanelProps = {
   onSelectAgent?: (terminalId: string) => void;
+  isEnabled?: boolean;
 };
 
 const MAX_SCREENS = 6;
 
-export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => {
+export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: SurveillancePanelProps) => {
   const [agents, setAgents] = useState<AgentCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [wsStatus, setWsStatus] = useState<"connected" | "disconnected">("connected");
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"sessions" | "alerts">("sessions");
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(1000);
@@ -61,7 +64,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
 
   // Poll every 3s for fresh output when a detail panel is open
   useEffect(() => {
-    if (!selectedAgentId) return;
+    if (!isEnabled || !selectedAgentId) return;
     const interval = setInterval(() => {
       void apiFetch(buildTerminalSnapshotsUrl(), { method: "GET" })
         .then(async (res) => {
@@ -76,6 +79,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
 
   // Initial fetch
   useEffect(() => {
+    if (!isEnabled) return;
     let cancelled = false;
     setIsLoading(true);
     setError(null);
@@ -108,6 +112,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
 
   // WebSocket subscription for live updates with exponential backoff reconnect
   useEffect(() => {
+    if (!isEnabled) return;
     let destroyed = false;
 
     const connect = () => {
@@ -218,6 +223,18 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
   const screenCount = Math.max(MAX_SCREENS, active.length);
   const emptySlotCount = screenCount - active.length;
 
+  if (!isEnabled) {
+    return (
+      <section className="surveillance-panel" aria-label="Surveillance room disabled">
+        <div className="surv-room">
+          <div className="surv-room-status">
+            SURVEILLANCE DISABLED · ENABLE IN SETTINGS → SURFACES
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (isLoading) {
     return (
       <section className="surveillance-panel" aria-label="Surveillance room">
@@ -253,6 +270,28 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
 
   return (
     <section className="surveillance-panel" aria-label="Surveillance room">
+      <nav className="surv-tab-bar" aria-label="Surveillance tabs">
+        <button
+          type="button"
+          className={`surv-tab${activeTab === "sessions" ? " surv-tab--active" : ""}`}
+          aria-current={activeTab === "sessions" ? "page" : undefined}
+          onClick={() => setActiveTab("sessions")}
+        >
+          SESSIONS
+        </button>
+        <button
+          type="button"
+          className={`surv-tab${activeTab === "alerts" ? " surv-tab--active" : ""}`}
+          aria-current={activeTab === "alerts" ? "page" : undefined}
+          onClick={() => setActiveTab("alerts")}
+        >
+          Alerts
+        </button>
+      </nav>
+
+      {activeTab === "alerts" ? (
+        <AgentAlertsPanel />
+      ) : (
       <div className="surv-room">
         <div className="surv-room-grid">
           {/* Active agent screens */}
@@ -397,6 +436,7 @@ export const SurveillancePanel = ({ onSelectAgent }: SurveillancePanelProps) => 
           </div>
         )}
       </div>
+      )}
     </section>
   );
 };

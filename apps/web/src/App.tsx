@@ -38,6 +38,7 @@ import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader
 import { apiFetch, getWsAuthProtocols } from "./runtime/apiClient";
 
 import {
+  buildDeckTentacleSwarmUrl,
   buildNotificationsUrl,
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
@@ -325,6 +326,17 @@ export const App = () => {
     enabled: isUiStateHydrated && (activePrimaryNav === 2 || isRuntimeStatusStripVisible),
   });
 
+  const handleSpawnSwarm = useCallback(
+    async (tentacleId: string, workspaceMode: "shared" | "worktree") => {
+      await apiFetch(buildDeckTentacleSwarmUrl(tentacleId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceMode }),
+      });
+    },
+    [],
+  );
+
   const toggleShortcutsOverlay = useCallback(() => setIsShortcutsOverlayOpen((open) => !open), []);
   useConsoleKeyboardShortcuts({
     setActivePrimaryNav,
@@ -464,6 +476,8 @@ export const App = () => {
             <PrimaryViewRouter
               activePrimaryNav={activePrimaryNav}
               onPrimaryNavChange={setActivePrimaryNav}
+              isMonitorEnabled={isMonitorVisible}
+              canvasPrimaryViewProps={{ onSpawnSwarm: handleSpawnSwarm }}
               settingsPrimaryViewProps={{
                 isMonitorVisible,
                 isRuntimeStatusStripVisible,

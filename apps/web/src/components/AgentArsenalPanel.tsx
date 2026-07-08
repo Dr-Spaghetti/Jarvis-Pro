@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 
+import type { DeckTentacleSummary, WorkspaceSetupSnapshot } from "@octogent/core";
 import { apiFetch } from "../runtime/apiClient";
-import { buildArsenalUrl, buildDeployAgentUrl } from "../runtime/runtimeEndpoints";
+import {
+  buildArsenalUrl,
+  buildDeployAgentUrl,
+  buildDeckTentaclesUrl,
+  buildDeckTentaclePinnedUrl,
+  buildWorkspaceSetupUrl,
+} from "../runtime/runtimeEndpoints";
 import { useToasts } from "./ui/ToastProvider";
+import { WorkspaceSetupCard } from "./WorkspaceSetupCard";
 
 type AgentArchetypeCard = {
   id: string;
@@ -54,6 +62,8 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
     return (saved as CategoryFilter | null) ?? "all";
   });
   const [deployState, setDeployState] = useState<DeployState | null>(null);
+  const [setup, setSetup] = useState<WorkspaceSetupSnapshot | null>(null);
+  const [tentacles, setTentacles] = useState<DeckTentacleSummary[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +95,43 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    void apiFetch(buildWorkspaceSetupUrl(), { method: "GET" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as WorkspaceSetupSnapshot;
+        setSetup(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    void apiFetch(buildDeckTentaclesUrl(), { method: "GET" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as DeckTentacleSummary[];
+        setTentacles(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handlePinToggle = async (tentacle: DeckTentacleSummary) => {
+    try {
+      const res = await apiFetch(buildDeckTentaclePinnedUrl(tentacle.tentacleId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: !tentacle.pinned }),
+      });
+      if (!res.ok) return;
+      const updated = (await res.json()) as DeckTentacleSummary;
+      setTentacles((prev) =>
+        prev.map((t) => (t.tentacleId === updated.tentacleId ? updated : t)),
+      );
+    } catch {
+      // pin toggle failed silently
+    }
+  };
 
   const handleCategoryFilter = (cat: CategoryFilter) => {
     setCategoryFilter(cat);
@@ -138,9 +185,36 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
     }
   };
 
+  const recentAgentsSection =
+    tentacles.length > 0 ? (
+      <section className="arsenal-recent" aria-label="Recent Agents">
+        <h3 className="arsenal-recent-title">Recent Agents</h3>
+        <ul className="arsenal-recent-list">
+          {tentacles.map((t) => (
+            <li key={t.tentacleId} className="arsenal-recent-item">
+              <span className="arsenal-recent-name">{t.displayName}</span>
+              <button
+                type="button"
+                className="arsenal-recent-pin"
+                aria-label={`${t.pinned ? "Unpin" : "Pin"} ${t.displayName}`}
+                aria-pressed={t.pinned}
+                onClick={() => void handlePinToggle(t)}
+              >
+                {t.pinned ? "Unpin" : "Pin"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
+
   if (isLoading) {
     return (
       <section className="arsenal-panel" aria-label="Agent Arsenal">
+        {setup?.shouldShowSetupCard && (
+          <WorkspaceSetupCard setup={setup} onSetupChange={setSetup} />
+        )}
+        {recentAgentsSection}
         <p className="arsenal-loading">Loading agents...</p>
       </section>
     );
@@ -149,6 +223,10 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
   if (loadError) {
     return (
       <section className="arsenal-panel" aria-label="Agent Arsenal">
+        {setup?.shouldShowSetupCard && (
+          <WorkspaceSetupCard setup={setup} onSetupChange={setSetup} />
+        )}
+        {recentAgentsSection}
         <p className="arsenal-error">{loadError}</p>
       </section>
     );
@@ -156,6 +234,11 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
 
   return (
     <section className="arsenal-panel" aria-label="Agent Arsenal">
+      {setup?.shouldShowSetupCard && (
+        <WorkspaceSetupCard setup={setup} onSetupChange={setSetup} />
+      )}
+      {recentAgentsSection}
+
       <nav className="arsenal-filter-bar" aria-label="Filter agents by category">
         {CATEGORY_FILTERS.map((cat) => (
           <button
