@@ -92,8 +92,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
             voice.setPendingVoiceIntent(null);
             void voice
               .speakJarvis("Confirmed.")
-              .then(() => p.onConfirm())
-              .catch(() => p.onConfirm());
+              .then(() => p?.onConfirm())
+              .catch(() => p?.onConfirm());
           }}
           onCancel={() => {
             voice.setPendingVoiceIntent(null);

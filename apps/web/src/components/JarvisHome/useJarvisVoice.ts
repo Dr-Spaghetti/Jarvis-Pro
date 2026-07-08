@@ -138,7 +138,7 @@ export const useJarvisVoice = ({
           if (!prev || prev === "browser") {
             const best =
               config.tts.recommended ||
-              config.tts.configuredProviders?.find((p) => p !== "browser") ||
+              config.tts.providers?.find((p: string) => p !== "browser") ||
               "deepgram";
             try {
               window.localStorage.setItem("jarvis.ttsProvider", best);
