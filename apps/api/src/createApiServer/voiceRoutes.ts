@@ -69,7 +69,7 @@ const getKokoroUrl = (): string | null => {
   return value && value.length > 0 ? value : null;
 };
 const getKokoroVoice = (): string => process.env.KOKORO_VOICE?.trim() || "af_heart";
-const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-thalia-en";
+const getDeepgramModel = (): string => process.env.DEEPGRAM_TTS_MODEL?.trim() || "aura-2-odysseus-en";
 const getDeepgramSttModel = (): string => process.env.DEEPGRAM_STT_MODEL?.trim() || "nova-2";
 
 type DeepgramVoiceEntry = { id: string; name: string; description: string };
@@ -78,7 +78,7 @@ const DEEPGRAM_VOICE_CATALOG: DeepgramVoiceEntry[] = [
   {
     id: "aura-2-thalia-en",
     name: "Thalia (Aura 2)",
-    description: "Warm female — conversational default",
+    description: "Warm female — conversational",
   },
   { id: "aura-2-luna-en", name: "Luna (Aura 2)", description: "Soft female — gentle and clear" },
   { id: "aura-2-electra-en", name: "Electra (Aura 2)", description: "Expressive female — lively" },
@@ -93,7 +93,7 @@ const DEEPGRAM_VOICE_CATALOG: DeepgramVoiceEntry[] = [
     description: "Confident female — assertive",
   },
   { id: "aura-2-orpheus-en", name: "Orpheus (Aura 2)", description: "Professional male — smooth" },
-  { id: "aura-2-odysseus-en", name: "Odysseus (Aura 2)", description: "Deep male — authoritative" },
+  { id: "aura-2-odysseus-en", name: "Odysseus (Aura 2)", description: "Deep male — authoritative (default)" },
   { id: "aura-2-zeus-en", name: "Zeus (Aura 2)", description: "Powerful male — commanding" },
   { id: "aura-2-hermes-en", name: "Hermes (Aura 2)", description: "Casual male — friendly" },
   { id: "aura-asteria-en", name: "Asteria", description: "Warm female — Aura classic" },

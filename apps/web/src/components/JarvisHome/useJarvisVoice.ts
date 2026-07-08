@@ -47,7 +47,7 @@ export const useJarvisVoice = ({
     try { return window.localStorage.getItem("jarvis.ttsProvider") || "elevenlabs"; } catch { return "elevenlabs"; }
   });
   const [deepgramVoice, setDeepgramVoice] = useState<string>(() => {
-    try { return window.localStorage.getItem("jarvis.deepgramVoice") ?? ""; } catch { return ""; }
+    try { return window.localStorage.getItem("jarvis.deepgramVoice") ?? "aura-2-odysseus-en"; } catch { return "aura-2-odysseus-en"; }
   });
   const [deepgramVoices, setDeepgramVoices] = useState<
     { id: string; name: string; description: string }[]
@@ -268,6 +268,15 @@ export const useJarvisVoice = ({
           window.speechSynthesis.cancel();
           await new Promise<void>((resolve) => {
             const utterance = new SpeechSynthesisUtterance(text);
+            // Pick a deep English male voice when available
+            const voices = window.speechSynthesis.getVoices();
+            const maleVoice =
+              voices.find((v) => v.lang.startsWith("en") && /david|mark|daniel|alex|google uk english male/i.test(v.name)) ||
+              voices.find((v) => v.lang.startsWith("en") && /male/i.test(v.name)) ||
+              voices.find((v) => v.lang.startsWith("en"));
+            if (maleVoice) utterance.voice = maleVoice;
+            utterance.pitch = 0.7;
+            utterance.rate = 0.9;
             const timeoutId = setTimeout(resolve, 30_000);
             const done = () => { clearTimeout(timeoutId); resolve(); };
             utterance.addEventListener("end", done, { once: true });
