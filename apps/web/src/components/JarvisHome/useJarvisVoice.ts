@@ -745,6 +745,8 @@ export const useJarvisVoice = ({
     }
     setVoiceError(null);
     setVoiceStatus("Listening for command");
+    isRecordingCommandRef.current = true;
+    setIsRecordingCommand(true);
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -760,7 +762,6 @@ export const useJarvisVoice = ({
       setVoiceStatus("Voice idle");
       isRecordingCommandRef.current = false;
       setIsRecordingCommand(false);
-      setIsThinking(false);
       return;
     }
     mediaStreamRef.current = stream;
@@ -787,8 +788,6 @@ export const useJarvisVoice = ({
       }
       void transcribeCommandAudio(audio);
     });
-    isRecordingCommandRef.current = true;
-    setIsRecordingCommand(true);
     recorder.start();
     recordingTimerRef.current = window.setTimeout(() => stopCommandRecording(), 30000);
     try {
@@ -799,9 +798,9 @@ export const useJarvisVoice = ({
       ctx.createMediaStreamSource(stream).connect(analyser);
       const silenceBuf = new Uint8Array(analyser.frequencyBinCount);
       const recordingStartedAt = Date.now();
-      const MIN_REC_MS = 600;
-      const SILENCE_THRESHOLD_MS = 1500;
-      const NO_SPEECH_TIMEOUT_MS = 7000;
+      const MIN_REC_MS = 300;
+      const SILENCE_THRESHOLD_MS = 700;
+      const NO_SPEECH_TIMEOUT_MS = 3500;
       const RMS_THRESHOLD = 0.015;
       let heardSpeech = false;
       let silenceStartedAt: number | null = null;

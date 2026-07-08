@@ -466,9 +466,18 @@ const synthesizeDeepgramFallback = async (
       },
     );
     if (!res.ok) return false;
-    const audio = Buffer.from(await res.arrayBuffer());
     response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
-    response.end(audio);
+    const reader = res.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        response.write(value);
+      }
+    } finally {
+      res.body!.cancel().catch(() => {});
+      response.end();
+    }
     return true;
   } catch {
     return false;
@@ -553,9 +562,17 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       );
       return true;
     }
-    const audio = Buffer.from(await upstreamResponse.arrayBuffer());
     response.writeHead(200, withCors({ "Content-Type": "audio/mpeg" }, corsOrigin));
-    response.end(audio);
+    const reader = upstreamResponse.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        response.write(value);
+      }
+    } finally {
+      response.end();
+    }
     return true;
   }
 
