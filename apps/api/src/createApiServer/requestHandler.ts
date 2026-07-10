@@ -43,7 +43,7 @@ import {
   handleBrainstormIdeaItemRoute,
   handleBrainstormIdeasRoute,
 } from "./brainstormRoutes";
-import { handleBriefConfigRoute } from "./briefRoutes";
+import { handleBriefConfigRoute, handleBriefRunRoute } from "./briefRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
   handleConversationExportRoute,
@@ -185,6 +185,26 @@ type CreateApiRequestHandlerOptions = {
 //   carry an Authorization header; it is protected by its own OAuth state.
 const AUTH_EXEMPT_PATHS = new Set(["/api/auth/status", "/api/gmail/callback"]);
 
+// Per-IP sliding-window rate limiter for expensive (paid-API) routes.
+// Allows up to RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW_MS per IP.
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 30; // requests per window per IP
+const EXPENSIVE_ROUTE_PREFIXES = new Set(["voice", "brain", "skills", "orchestrate"]);
+const rateLimitCounters = new Map<string, { count: number; windowStart: number }>();
+
+const isRateLimited = (ip: string, routePrefix: string): boolean => {
+  if (!EXPENSIVE_ROUTE_PREFIXES.has(routePrefix)) return false;
+  const now = Date.now();
+  const key = `${ip}:${routePrefix}`;
+  const entry = rateLimitCounters.get(key);
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitCounters.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > RATE_LIMIT_MAX;
+};
+
 // Normalize a single trailing slash before the exempt lookup so that
 // "/api/auth/status/" is treated the same as "/api/auth/status". Without this
 // the lookup fails closed (denies), which is safe but a future foot-gun if a
@@ -229,7 +249,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleAnalyzerItemRoute,
     ],
   ],
-  ["brief", [handleBriefConfigRoute]],
+  ["brief", [handleBriefRunRoute, handleBriefConfigRoute]],
   ["channels", [handleChannelMessagesRoute]],
   ["hooks", [handleHookRoute]],
   ["prompts", [handlePromptsCollectionRoute, handlePromptItemRoute]],
@@ -433,8 +453,9 @@ export const createApiRequestHandler = ({
       return;
     }
 
+    let requestUrl = new URL("/", "http://localhost");
     try {
-      const requestUrl = new URL(request.url ?? "/", "http://localhost");
+      requestUrl = new URL(request.url ?? "/", "http://localhost");
 
       // CORS preflight stays open by design: an OPTIONS request returns an
       // identical empty 204 for every path regardless of auth, so it discloses
@@ -464,6 +485,19 @@ export const createApiRequestHandler = ({
       };
 
       const prefix = extractRoutePrefix(requestUrl.pathname);
+
+      // Rate-limit expensive routes when auth is disabled (local use without
+      // OCTOGENT_AUTH_TOKEN). When a token is set, the auth check above already
+      // blocks untrusted callers, so rate-limiting is not strictly needed.
+      if (
+        authToken === null &&
+        prefix !== null &&
+        isRateLimited(request.socket.remoteAddress ?? "unknown", prefix)
+      ) {
+        writeJson(response, 429, { error: "Too many requests." }, corsOrigin);
+        logRequest(request.method ?? "?", requestUrl.pathname, 429, startTime);
+        return;
+      }
       const handlers = prefix !== null ? API_ROUTE_MAP.get(prefix) : undefined;
       if (handlers) {
         for (const handleRoute of handlers) {
@@ -489,7 +523,7 @@ export const createApiRequestHandler = ({
       logRequest(request.method ?? "?", requestUrl.pathname, statusCode, startTime);
     } catch (error) {
       console.error(
-        `[API] Unhandled error: ${request.method ?? "?"} ${request.url ?? "/"}`,
+        `[API] Unhandled error: ${request.method ?? "?"} ${requestUrl.pathname}`,
         error instanceof Error ? (error.stack ?? error.message) : error,
       );
       writeJson(
@@ -500,7 +534,7 @@ export const createApiRequestHandler = ({
         },
         corsOrigin,
       );
-      logRequest(request.method ?? "?", request.url ?? "/", statusCode, startTime);
+      logRequest(request.method ?? "?", requestUrl.pathname, statusCode, startTime);
     }
   };
 };

@@ -48,11 +48,14 @@
       }
     },
     {
-      "include": ["apps/api/tests/**/*.test.ts"],
+      "include": ["apps/api/tests/**/*.test.ts", "apps/web/tests/**/*.test.tsx"],
       "linter": {
         "rules": {
           "performance": {
             "noDelete": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
           }
         }
       }

@@ -380,6 +380,10 @@ RATIONALE: [one sentence explaining the key improvement]`;
       headers,
       body: JSON.stringify({ question }),
     });
+    if (!res.ok) {
+      writeJson(response, 502, { error: "AI improvement request failed" }, corsOrigin);
+      return true;
+    }
     const data = (await res.json()) as { answer?: string };
     const answer = typeof data.answer === "string" ? data.answer : "";
 
@@ -465,10 +469,18 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
   const runId = `run-${Date.now()}`;
   let runStatus: "ok" | "error" = "ok";
 
+  let aborted = false;
+  const requestController = new AbortController();
+  request.on("close", () => {
+    aborted = true;
+    requestController.abort();
+  });
+
   // Signal first step is running
-  sendEvent({ type: "step-start", stepIndex: 0, step: steps[0] });
+  if (!aborted) sendEvent({ type: "step-start", stepIndex: 0, step: steps[0] });
 
   for (let i = 0; i < steps.length; i++) {
+    if (aborted) break;
     const step = steps[i] ?? "";
     const stepStart = Date.now();
 
@@ -483,8 +495,7 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), STEP_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => requestController.abort(), STEP_TIMEOUT_MS);
     let answer: string;
 
     try {
@@ -492,7 +503,7 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
         method: "POST",
         headers,
         body: JSON.stringify({ question }),
-        signal: controller.signal,
+        signal: requestController.signal,
       });
       const data = (await askRes.json()) as { answer?: string };
       answer = typeof data.answer === "string" ? data.answer : "(no answer)";
@@ -512,39 +523,42 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
     runSteps.push({ step, answer, durationMs });
 
     const isError = answer.startsWith("[timed out") || answer.startsWith("Error:");
-    sendEvent({
-      type: "step-done",
-      stepIndex: i,
-      step,
-      answer,
-      durationMs,
-      error: isError,
-    });
+    if (!aborted)
+      sendEvent({
+        type: "step-done",
+        stepIndex: i,
+        step,
+        answer,
+        durationMs,
+        error: isError,
+      });
 
     // Signal next step starting
-    if (i + 1 < steps.length) {
+    if (!aborted && i + 1 < steps.length) {
       sendEvent({ type: "step-start", stepIndex: i + 1, step: steps[i + 1] });
     }
   }
 
-  const completedAt = new Date().toISOString();
-  const run: WorkflowRun = {
-    id: runId,
-    workflowId: id,
-    workflowName: workflow.name,
-    startedAt,
-    completedAt,
-    status: runStatus,
-    steps: runSteps,
-  };
+  if (!aborted) {
+    const completedAt = new Date().toISOString();
+    const run: WorkflowRun = {
+      id: runId,
+      workflowId: id,
+      workflowName: workflow.name,
+      startedAt,
+      completedAt,
+      status: runStatus,
+      steps: runSteps,
+    };
 
-  try {
-    saveRun(workflowRunsDir(projectStateDir), run);
-  } catch {
-    // don't fail the run if persistence fails
+    try {
+      saveRun(workflowRunsDir(projectStateDir), run);
+    } catch {
+      // don't fail the run if persistence fails
+    }
+
+    sendEvent({ type: "done", runId, status: runStatus });
+    response.end();
   }
-
-  sendEvent({ type: "done", runId, status: runStatus });
-  response.end();
   return true;
 };

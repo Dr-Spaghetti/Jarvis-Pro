@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
 import {
-  buildBrainAskUrl,
   buildBrainCaptureUrl,
   buildBrainJournalUrl,
   buildBrainMemoryUrl,
@@ -17,6 +16,8 @@ import {
   buildVoiceSpeakUrl,
   buildVoiceVoicesUrl,
 } from "../runtime/runtimeEndpoints";
+import type { VoiceConfig } from "./JarvisHome/types";
+import { useJarvisAsk } from "./JarvisHome/useJarvisAsk";
 
 type BrainNote = { title: string; path: string; modified: string; snippet: string };
 type JournalEntry = {
@@ -25,17 +26,6 @@ type JournalEntry = {
   skill: string | null;
   action: string;
   detail: string | null;
-};
-type VoiceConfig = {
-  wake: { phrases: string[] };
-  transcription: { configured: boolean; defaultModel: string; models: string[] };
-  tts: {
-    configured: boolean;
-    providers?: string[];
-    configuredProviders?: string[];
-    recommended?: string;
-  };
-  brain?: { provider: string; webSearch: boolean };
 };
 
 const LS_KEYS = {
@@ -84,12 +74,12 @@ type VoiceSettingsPanelProps = { voiceConfig: VoiceConfig };
 const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   const [ttsProvider, setTtsProvider] = useState(() => {
     const stored = lsGet(LS_KEYS.ttsProvider);
-    const configured = voiceConfig.tts.configuredProviders ?? [];
+    const configured = voiceConfig.tts.providers ?? [];
     const recommended =
-      voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
+      voiceConfig.tts.recommended || configured.find((p: string) => p !== "browser") || "deepgram";
     if (
       !stored ||
-      (stored === "browser" && configured.some((p) => p !== "browser")) ||
+      (stored === "browser" && configured.some((p: string) => p !== "browser")) ||
       !configured.includes(stored)
     ) {
       lsSet(LS_KEYS.ttsProvider, recommended);
@@ -148,12 +138,12 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot migration on mount
   useEffect(() => {
     const stored = lsGet(LS_KEYS.ttsProvider);
-    const configured = voiceConfig.tts.configuredProviders ?? [];
+    const configured = voiceConfig.tts.providers ?? [];
     const recommended =
-      voiceConfig.tts.recommended || configured.find((p) => p !== "browser") || "deepgram";
+      voiceConfig.tts.recommended || configured.find((p: string) => p !== "browser") || "deepgram";
     if (
       (stored && !configured.includes(stored)) ||
-      (stored === "browser" && configured.some((p) => p !== "browser"))
+      (stored === "browser" && configured.some((p: string) => p !== "browser"))
     ) {
       setTtsProvider(recommended);
       lsSet(LS_KEYS.ttsProvider, recommended);
@@ -168,7 +158,7 @@ const VoiceSettingsPanel = ({ voiceConfig }: VoiceSettingsPanelProps) => {
   const allProviders = (
     voiceConfig.tts.providers ?? ["deepgram", "elevenlabs", "openai", "kokoro", "browser"]
   ).filter((p) => SHOWN_PROVIDERS.includes(p));
-  const configuredProviders = voiceConfig.tts.configuredProviders ?? [];
+  const configuredProviders = voiceConfig.tts.providers ?? [];
   const isProviderConfigured = (p: string) => configuredProviders.includes(p);
   const effectiveProvider =
     ttsProvider || configuredProviders.find((p) => p !== "browser") || "deepgram";
@@ -615,11 +605,15 @@ export const JarvisConfigSection = () => {
   const [openNote, setOpenNote] = useState<{ title: string; content: string } | null>(null);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [memoryItems, setMemoryItems] = useState<string[]>([]);
-  const [ask, setAsk] = useState("");
-  const [asking, setAsking] = useState(false);
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [askNote, setAskNote] = useState<string | null>(null);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
+  const chatModel = useMemo(() => lsGet(LS_KEYS.chatModel) || "claude-sonnet-4-6", []);
+  const noop = useCallback(() => {}, []);
+  const noopAsync = useCallback(async () => {}, []);
+  const { ask, setAsk, asking, answer, askNote, submitAsk } = useJarvisAsk({
+    chatModel,
+    autoSpeakIfListening: noop,
+    loadConversation: noopAsync,
+  });
   type CreditStatus = {
     status: "ok" | "out-of-credits" | "invalid-key" | "not-configured" | "error";
     note?: string;
@@ -695,28 +689,6 @@ export const JarvisConfigSection = () => {
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
-
-  const submitAsk = useCallback(async () => {
-    if (!ask.trim() || asking) return;
-    setAsking(true);
-    setAnswer(null);
-    setAskNote(null);
-    try {
-      const res = await apiFetch(buildBrainAskUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: ask }),
-      });
-      const data = (await res.json()) as { answer?: string; note?: string };
-      setAnswer(data.answer ?? null);
-      setAskNote(data.note ?? null);
-      setAsk("");
-    } catch {
-      setAskNote("Error contacting Jarvis.");
-    } finally {
-      setAsking(false);
-    }
-  }, [ask, asking]);
 
   const submitCapture = useCallback(async () => {
     if (!capture.trim() || capturing) return;

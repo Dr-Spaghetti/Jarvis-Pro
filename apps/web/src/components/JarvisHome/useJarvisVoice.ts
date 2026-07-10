@@ -213,7 +213,7 @@ export const useJarvisVoice = ({
         return;
       }
       setIntentCountdown(Math.ceil(remaining));
-    }, 250);
+    }, 1000);
     return () => clearInterval(interval);
   }, [pendingVoiceIntent]);
 
@@ -711,7 +711,9 @@ export const useJarvisVoice = ({
       chatModelRef,
     ],
   );
-  runVoiceIntentRef.current = runVoiceIntent;
+  useEffect(() => {
+    runVoiceIntentRef.current = runVoiceIntent;
+  }, [runVoiceIntent]);
 
   const transcribeCommandAudio = useCallback(
     async (audio: Blob) => {
@@ -1067,6 +1069,7 @@ export const useJarvisVoice = ({
     isThinking,
     canReplay,
     pendingVoiceIntent,
+    pendingVoiceIntentRef,
     setPendingVoiceIntent,
     intentCountdown,
     startListening,

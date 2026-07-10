@@ -44,7 +44,7 @@ import {
   buildTerminalSnapshotsUrl,
 } from "./runtime/runtimeEndpoints";
 
-export const App = () => {
+const AppContent = () => {
   const [terminals, setTerminals] = useState<TerminalView>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -424,96 +424,100 @@ export const App = () => {
   }, []);
 
   return (
-    <ToastProvider>
-      <div className="page console-shell">
-        {isRuntimeStatusStripVisible && (
-          <RuntimeStatusStrip
-            sparklinePoints={sparklinePoints}
-            usageData={heatmapData}
-            claudeUsage={claudeUsageSnapshot}
-            isRefreshingClaudeUsage={isRefreshingClaudeUsage}
-            onRefreshClaudeUsage={refreshClaudeUsage}
-          />
-        )}
-
-        <ConsolePrimaryNav
-          activePrimaryNav={activePrimaryNav}
-          onPrimaryNavChange={setActivePrimaryNav}
-          unreadNotificationCount={unreadNotificationCount}
-          onBellClick={() => setIsNotificationPanelOpen((v) => !v)}
+    <div className="page console-shell">
+      {isRuntimeStatusStripVisible && (
+        <RuntimeStatusStrip
+          sparklinePoints={sparklinePoints}
+          usageData={heatmapData}
+          claudeUsage={claudeUsageSnapshot}
+          isRefreshingClaudeUsage={isRefreshingClaudeUsage}
+          onRefreshClaudeUsage={refreshClaudeUsage}
         />
-        {isNotificationPanelOpen && (
-          <NotificationPanel
-            onClose={() => setIsNotificationPanelOpen(false)}
-            onUnreadChange={setUnreadNotificationCount}
-          />
-        )}
+      )}
 
-        <section className="console-main-canvas" aria-label="Main content canvas">
-          <div
-            className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 5 && activePrimaryNav !== 7 && activePrimaryNav !== 9 ? "" : " workspace-shell--full"}`}
-          >
-            {isAgentsSidebarVisible &&
-              activePrimaryNav !== 1 &&
-              activePrimaryNav !== 3 &&
-              activePrimaryNav !== 5 &&
-              activePrimaryNav !== 7 &&
-              activePrimaryNav !== 9 && (
-                <ActiveAgentsSidebar
-                  sidebarWidth={sidebarWidth}
-                  onSidebarWidthChange={(width) => {
-                    setSidebarWidth(clampSidebarWidth(width));
-                  }}
-                  actionPanel={sidebarActionPanel}
-                  bodyContent={
-                    activePrimaryNav === 4 ? (conversationsSidebarContent ?? undefined) : undefined
-                  }
-                />
-              )}
+      <ConsolePrimaryNav
+        activePrimaryNav={activePrimaryNav}
+        onPrimaryNavChange={setActivePrimaryNav}
+        unreadNotificationCount={unreadNotificationCount}
+        onBellClick={() => setIsNotificationPanelOpen((v) => !v)}
+      />
+      {isNotificationPanelOpen && (
+        <NotificationPanel
+          onClose={() => setIsNotificationPanelOpen(false)}
+          onUnreadChange={setUnreadNotificationCount}
+        />
+      )}
 
-            <PrimaryViewRouter
-              activePrimaryNav={activePrimaryNav}
-              onPrimaryNavChange={setActivePrimaryNav}
-              isMonitorEnabled={isMonitorVisible}
-              canvasPrimaryViewProps={{ onSpawnSwarm: handleSpawnSwarm }}
-              settingsPrimaryViewProps={{
-                isMonitorVisible,
-                isRuntimeStatusStripVisible,
-                onMonitorVisibilityChange: setIsMonitorVisible,
-                onRuntimeStatusStripVisibilityChange: setIsRuntimeStatusStripVisible,
-                onPreviewTerminalCompletionSound: playCompletionSoundPreview,
-                onTerminalCompletionSoundChange: setTerminalCompletionSound,
-                terminalCompletionSound,
-                gmailStatus,
-                isConnectingGmail,
-                onConnectGmail: connectGmail,
-                onDisconnectGmail: disconnectGmail,
-              }}
-              conversationsEnabled={isUiStateHydrated && activePrimaryNav === 4}
-              onConversationsSidebarContent={setConversationsSidebarContent}
-              onConversationsActionPanel={setConversationsActionPanel}
-            />
-          </div>
-        </section>
+      <section className="console-main-canvas" aria-label="Main content canvas">
+        <div
+          className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 5 && activePrimaryNav !== 7 && activePrimaryNav !== 9 ? "" : " workspace-shell--full"}`}
+        >
+          {isAgentsSidebarVisible &&
+            activePrimaryNav !== 1 &&
+            activePrimaryNav !== 3 &&
+            activePrimaryNav !== 5 &&
+            activePrimaryNav !== 7 &&
+            activePrimaryNav !== 9 && (
+              <ActiveAgentsSidebar
+                sidebarWidth={sidebarWidth}
+                onSidebarWidthChange={(width) => {
+                  setSidebarWidth(clampSidebarWidth(width));
+                }}
+                actionPanel={sidebarActionPanel}
+                bodyContent={
+                  activePrimaryNav === 4 ? (conversationsSidebarContent ?? undefined) : undefined
+                }
+              />
+            )}
 
-        {isUiStateHydrated && isMonitorVisible && isBottomTelemetryVisible && (
-          <TelemetryTape monitorFeed={monitorRuntime.monitorFeed} />
-        )}
-
-        {isSearchOpen && (
-          <GlobalSearch
-            onClose={() => setIsSearchOpen(false)}
-            onNavigate={(index) => {
-              setActivePrimaryNav(index);
-              setIsSearchOpen(false);
+          <PrimaryViewRouter
+            activePrimaryNav={activePrimaryNav}
+            onPrimaryNavChange={setActivePrimaryNav}
+            isMonitorEnabled={isMonitorVisible}
+            canvasPrimaryViewProps={{ onSpawnSwarm: handleSpawnSwarm }}
+            settingsPrimaryViewProps={{
+              isMonitorVisible,
+              isRuntimeStatusStripVisible,
+              onMonitorVisibilityChange: setIsMonitorVisible,
+              onRuntimeStatusStripVisibilityChange: setIsRuntimeStatusStripVisible,
+              onPreviewTerminalCompletionSound: playCompletionSoundPreview,
+              onTerminalCompletionSoundChange: setTerminalCompletionSound,
+              terminalCompletionSound,
+              gmailStatus,
+              isConnectingGmail,
+              onConnectGmail: connectGmail,
+              onDisconnectGmail: disconnectGmail,
             }}
+            conversationsEnabled={isUiStateHydrated && activePrimaryNav === 4}
+            onConversationsSidebarContent={setConversationsSidebarContent}
+            onConversationsActionPanel={setConversationsActionPanel}
           />
-        )}
+        </div>
+      </section>
 
-        {isShortcutsOverlayOpen && (
-          <ShortcutsOverlay onClose={() => setIsShortcutsOverlayOpen(false)} />
-        )}
-      </div>
-    </ToastProvider>
+      {isUiStateHydrated && isMonitorVisible && isBottomTelemetryVisible && (
+        <TelemetryTape monitorFeed={monitorRuntime.monitorFeed} />
+      )}
+
+      {isSearchOpen && (
+        <GlobalSearch
+          onClose={() => setIsSearchOpen(false)}
+          onNavigate={(index) => {
+            setActivePrimaryNav(index);
+            setIsSearchOpen(false);
+          }}
+        />
+      )}
+
+      {isShortcutsOverlayOpen && (
+        <ShortcutsOverlay onClose={() => setIsShortcutsOverlayOpen(false)} />
+      )}
+    </div>
   );
 };
+
+export const App = () => (
+  <ToastProvider>
+    <AppContent />
+  </ToastProvider>
+);

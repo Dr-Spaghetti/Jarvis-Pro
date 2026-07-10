@@ -434,6 +434,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     if (Date.now() >= claudeUnavailableUntil) {
       const claudeResult = await askViaClaude(question, claudeContext, history);
       if (claudeResult?.ok) {
+        claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
         writeJson(
           response,
@@ -445,7 +446,9 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       }
       if (claudeResult && !claudeResult.ok) {
         const s = claudeResult.status;
-        if (s === 401 || s === 403 || s === 402 || s === 429 || s === 529) {
+        if (s === 429 || s === 529) {
+          claudeUnavailableUntil = Date.now() + 60_000;
+        } else if (s === 401 || s === 403 || s === 402) {
           claudeUnavailableUntil = Date.now() + 300_000;
         }
       }

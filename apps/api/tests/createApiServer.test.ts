@@ -876,6 +876,107 @@ describe("createApiServer", () => {
     }
   });
 
+  it("returns 413 when audio payload exceeds 25 MB", async () => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg-key");
+    const baseUrl = await startServer();
+
+    try {
+      const oversized = new Uint8Array(25 * 1024 * 1024 + 1);
+      const response = await fetch(`${baseUrl}/api/voice/transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "audio/webm" },
+        body: oversized,
+      });
+
+      expect(response.status).toBe(413);
+      await expect(response.json()).resolves.toEqual({ error: "Audio payload is too large." });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("returns 400 when audio payload is empty", async () => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg-key");
+    const baseUrl = await startServer();
+
+    try {
+      const response = await fetch(`${baseUrl}/api/voice/transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "audio/webm" },
+        body: new Uint8Array(0),
+      });
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({ error: "Audio payload is required." });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("Deepgram STT returns non-ok and returns that error when no OpenAI key", async () => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg-key");
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const realFetch = globalThis.fetch;
+    const upstreamResponses = [new Response("quota exceeded", { status: 402 })];
+    vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("deepgram.com")) {
+        return Promise.resolve(upstreamResponses.shift()!);
+      }
+      return realFetch(url, init);
+    });
+    const baseUrl = await startServer();
+
+    try {
+      const response = await fetch(`${baseUrl}/api/voice/transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "audio/webm" },
+        body: new Uint8Array([1, 2, 3]),
+      });
+
+      expect(response.status).toBe(402);
+      await expect(response.json()).resolves.toMatchObject({ error: "Transcription failed." });
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("Deepgram STT returns non-ok and falls through to OpenAI when OpenAI key is present", async () => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg-key");
+    vi.stubEnv("OPENAI_API_KEY", "oai-key");
+    const realFetch = globalThis.fetch;
+    const upstreamByHost: Record<string, Response> = {
+      "deepgram.com": new Response("bad gateway", { status: 502 }),
+      "openai.com": new Response(JSON.stringify({ text: "hello world" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    };
+    vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+      if (typeof url === "string") {
+        for (const [host, resp] of Object.entries(upstreamByHost)) {
+          if (url.includes(host)) return Promise.resolve(resp);
+        }
+      }
+      return realFetch(url, init);
+    });
+    const baseUrl = await startServer();
+
+    try {
+      const response = await fetch(`${baseUrl}/api/voice/transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "audio/webm" },
+        body: new Uint8Array([1, 2, 3]),
+      });
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({ text: "hello world" });
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("resolves wake-prefixed Jarvis voice commands", async () => {
     const baseUrl = await startServer();
 
@@ -4115,5 +4216,81 @@ describe("createApiServer", () => {
     expect(typeof body.terminalId).toBe("string");
     expect(body.terminalId.length).toBeGreaterThan(0);
     expect(body.skillName).toBe("Test Skill");
+  });
+
+  it("POST /api/skills/run returns 200 even when PTY spawn fails (session start is decoupled)", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    const skillDir = join(workspaceCwd, ".claude", "skills", "crash-skill");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      "---\nname: Crash Skill\n---\n\nTriggers a pty failure.\n",
+      "utf8",
+    );
+
+    spawnMock.mockImplementationOnce(() => {
+      throw new Error("pty spawn failed");
+    });
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: "crash skill" }),
+    });
+    // Terminal creation succeeds even when the PTY session fails to start —
+    // sessionRuntime.startSession swallows spawn errors by design.
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { terminalId: string; skillName: string };
+    expect(typeof body.terminalId).toBe("string");
+    expect(body.skillName).toBe("Crash Skill");
+  });
+
+  it("POST /api/skills/run matches skill by word-overlap (fuzzy)", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    const skillDir = join(workspaceCwd, ".claude", "skills", "release-helper");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      "---\nname: Release Helper\n---\n\nHelps with releases.\n",
+      "utf8",
+    );
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    // "helper release" shares both words with "Release Helper" — word-overlap ≥ 50%
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: "helper release" }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { skillName: string };
+    expect(body.skillName).toBe("Release Helper");
+  });
+
+  it("POST /api/skills/run returns 500 when SKILL.md exists but is unreadable (generic FS error)", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+
+    // Create SKILL.md as a directory so existsSync passes but readFileSync throws EISDIR
+    const skillDir = join(workspaceCwd, ".claude", "skills", "broken-skill");
+    const skillFilePath = join(skillDir, "SKILL.md");
+    mkdirSync(skillFilePath, { recursive: true });
+
+    const baseUrl = await startServer({ workspaceCwd });
+
+    const res = await fetch(`${baseUrl}/api/skills/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: "broken-skill" }),
+    });
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toMatchObject({ error: expect.any(String) });
   });
 });

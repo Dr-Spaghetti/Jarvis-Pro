@@ -580,6 +580,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
         response.write(value);
       }
     } finally {
+      reader.cancel().catch(() => {});
       response.end();
     }
     return true;

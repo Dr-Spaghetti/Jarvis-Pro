@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
-import { buildBriefConfigUrl } from "../runtime/runtimeEndpoints";
+import { buildBriefConfigUrl, buildBriefRunUrl } from "../runtime/runtimeEndpoints";
 import { PanelState } from "./ui/PanelState";
 import { SettingsToggle } from "./ui/SettingsToggle";
 import { useToasts } from "./ui/ToastProvider";
@@ -30,6 +30,7 @@ export const MorningBriefPanel = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     setIsLoading(true);
@@ -72,6 +73,23 @@ export const MorningBriefPanel = () => {
       showToast("Network error saving morning brief settings.", "error");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const runBriefNow = async () => {
+    setIsRunning(true);
+    try {
+      const response = await apiFetch(buildBriefRunUrl(), { method: "POST" });
+      if (!response.ok) {
+        showToast("Could not run morning brief.", "error");
+        return;
+      }
+      setConfig((await response.json()) as BriefConfig);
+      showToast("Brief written.", "ok");
+    } catch {
+      showToast("Network error running morning brief.", "error");
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -121,6 +139,14 @@ export const MorningBriefPanel = () => {
               config.enabled ? `${config.time} daily` : "disabled"
             }`}
           </p>
+          <button
+            className="settings-brief-run-btn"
+            disabled={isRunning || isSaving}
+            onClick={() => void runBriefNow()}
+            type="button"
+          >
+            {isRunning ? "Running…" : "Run brief now"}
+          </button>
         </>
       )}
     </section>

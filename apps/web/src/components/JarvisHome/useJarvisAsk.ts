@@ -82,18 +82,20 @@ export const useJarvisAsk = ({
             askedAt,
             answeredAt,
           }),
-        }).then((r) => {
-          if (!r.ok) return;
-          const ts = new Date().toISOString();
-          try {
-            window.localStorage.setItem("jarvis.lastTurnAt", ts);
-          } catch {
-            /* ignore */
-          }
-          window.dispatchEvent(
-            new StorageEvent("storage", { key: "jarvis.lastTurnAt", newValue: ts }),
-          );
-        });
+        })
+          .then((r) => {
+            if (!r.ok) return;
+            const ts = new Date().toISOString();
+            try {
+              window.localStorage.setItem("jarvis.lastTurnAt", ts);
+            } catch {
+              /* ignore */
+            }
+            window.dispatchEvent(
+              new StorageEvent("storage", { key: "jarvis.lastTurnAt", newValue: ts }),
+            );
+          })
+          .catch(() => {});
         autoSpeakIfListening(cleanAnswer);
       } else {
         setAskNote(

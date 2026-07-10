@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
+const LiveDuration = ({ startedAt }: { startedAt: string | undefined }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{formatDuration(startedAt)}</>;
+};
+
 import type { TerminalSnapshot } from "@octogent/core";
 import { apiFetch, getWsAuthProtocols } from "../runtime/apiClient";
 import {
@@ -65,7 +74,6 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   const [agents, setAgents] = useState<AgentCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
   const [wsStatus, setWsStatus] = useState<"connected" | "disconnected">("connected");
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"sessions" | "alerts">("sessions");
@@ -77,16 +85,9 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
   const reconnectDelayRef = useRef(1000);
   const activeRef = useRef<AgentCard[]>([]);
 
-  // Tick every second to update duration labels
-  useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
   // Poll every 3s for fresh output when a detail panel is open
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot
   useEffect(() => {
-    if (!isEnabled || !selectedAgentId) return;
+    if (!isEnabled || !selectedAgentId || wsStatus !== "disconnected") return;
     const interval = setInterval(() => {
       void apiFetch(buildTerminalSnapshotsUrl(), { method: "GET" })
         .then(async (res) => {
@@ -97,7 +98,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
         .catch(() => {});
     }, 3000);
     return () => clearInterval(interval);
-  }, [selectedAgentId]);
+  }, [selectedAgentId, wsStatus, isEnabled]);
 
   // Poll channel messages every 5s when detail panel is open
   useEffect(() => {
@@ -323,7 +324,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
 
   if (isLoading) {
     return (
-      <section className="surveillance-panel" aria-label="Surveillance room">
+      <section className="surveillance-panel" aria-label="Surveillance room loading">
         <div className="surv-room">
           <div className="surv-room-grid">
             {Array.from({ length: MAX_SCREENS }).map((_, i) => (
@@ -410,8 +411,9 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
                 </div>
                 <div className="surv-screen-foot">
                   <span>{agent.state}</span>
-                  {/* tick reference keeps duration labels live */}
-                  <span>{tick > -1 && formatDuration(agent.startedAt)}</span>
+                  <span>
+                    <LiveDuration startedAt={agent.startedAt} />
+                  </span>
                 </div>
               </button>
             ))}
@@ -463,7 +465,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
                       {STATE_LABELS[agent.state] ?? agent.state.toUpperCase()}
                     </span>
                     <span className="surv-history-dur">
-                      {tick > -1 && formatDuration(agent.startedAt)}
+                      <LiveDuration startedAt={agent.startedAt} />
                     </span>
                   </button>
                 ))}
@@ -488,7 +490,7 @@ export const SurveillancePanel = ({ onSelectAgent, isEnabled = true }: Surveilla
                     {STATE_LABELS[selectedAgent.state] ?? selectedAgent.state.toUpperCase()}
                   </span>
                   <span className="surv-detail-dur">
-                    {tick > -1 && formatDuration(selectedAgent.startedAt)}
+                    <LiveDuration startedAt={selectedAgent.startedAt} />
                   </span>
                 </div>
                 <button

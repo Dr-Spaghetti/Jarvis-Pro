@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { buildGmailAuthUrl, buildGmailStatusUrl } from "../../runtime/runtimeEndpoints";
 
+import { useToasts } from "../../components/ui/ToastProvider";
 import { apiFetch } from "../../runtime/apiClient";
 
 export type GmailStatus = { connected: boolean; email?: string };
@@ -19,6 +20,7 @@ export const useGmailStatus = (): UseGmailStatusResult => {
   const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
   const [isConnectingGmail, setIsConnectingGmail] = useState(false);
   const isDisposedRef = useRef(false);
+  const { showToast } = useToasts();
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -43,6 +45,7 @@ export const useGmailStatus = (): UseGmailStatusResult => {
   }, [fetchStatus]);
 
   // Detect OAuth callback result in URL params (fires in the newly-opened tab).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showToast is stable from context
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has("gmail_connected")) {
@@ -53,15 +56,29 @@ export const useGmailStatus = (): UseGmailStatusResult => {
     } else if (params.has("gmail_error")) {
       window.history.replaceState(null, "", window.location.pathname);
       setIsConnectingGmail(false);
+      const errCode = params.get("gmail_error");
+      const message =
+        (
+          {
+            access_denied: "Gmail access was denied.",
+            invalid_state: "OAuth state mismatch — please try again.",
+            missing_credentials: "Gmail is not configured on this server.",
+            token_exchange_failed: "Could not exchange the OAuth code for a token.",
+          } as Record<string, string>
+        )[errCode ?? ""] ?? "Gmail connection failed.";
+      showToast(message, "error");
     }
   }, [fetchStatus]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showToast is stable from context
   const connectGmail = useCallback(() => {
     setIsConnectingGmail(true);
     void (async () => {
       try {
         const res = await apiFetch(buildGmailAuthUrl());
         if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          showToast(body.error ?? "Failed to start Gmail connection", "error");
           setIsConnectingGmail(false);
           return;
         }
@@ -69,9 +86,11 @@ export const useGmailStatus = (): UseGmailStatusResult => {
         if (data.url) {
           window.open(data.url, "_blank");
         } else {
+          showToast("Failed to start Gmail connection", "error");
           setIsConnectingGmail(false);
         }
       } catch {
+        showToast("Failed to start Gmail connection", "error");
         setIsConnectingGmail(false);
       }
     })();
