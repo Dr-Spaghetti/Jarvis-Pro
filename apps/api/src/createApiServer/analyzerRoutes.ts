@@ -83,6 +83,7 @@ type ImageBreakdown = {
   composition: string;
   style: string;
   contextual_cues: string;
+  focus_insights?: string;
 };
 
 type VideoScene = {
@@ -120,6 +121,7 @@ type AnalysisMeta = {
   filename: string;
   mimeType: string;
   created: string;
+  focusPrompt?: string;
 };
 
 type AnalysisRecord = {
@@ -165,9 +167,28 @@ const VIDEO_ANALYSIS_PROMPT = `Analyze this video and break it into scenes. Retu
 {"scenes": [{"start": <seconds>, "end": <seconds>, "description": "<what is happening visually and audibly>"}]}
 Be precise about timestamps. Each scene should cover a coherent sequence of events. If the video is long, cap at 30 scenes.`;
 
+const buildImagePrompt = (focus?: string): string => {
+  if (!focus) return IMAGE_ANALYSIS_PROMPT;
+  return `The user specifically wants to focus on: "${focus}"\n\nWith that in mind, analyze this image in detail. Return ONLY a JSON object (no markdown, no code fence) with exactly these string fields:
+- focus_insights: specific detailed findings about "${focus}" — what you observe in direct relation to this focus, be thorough
+- objects: comma-separated list of visible objects and items
+- people: description of any people (count, apparent activity, notable details; "none" if absent)
+- scene: overall scene and setting description
+- text_on_image: exact verbatim transcription of any visible text, signs, labels, or writing ("none" if absent)
+- composition: layout, framing, perspective, and lighting notes
+- style: artistic or photographic style (e.g. candid photo, diagram, screenshot, illustration)
+- contextual_cues: any other relevant context, anomalies, or notable observations`;
+};
+
+const buildVideoPrompt = (focus?: string): string => {
+  if (!focus) return VIDEO_ANALYSIS_PROMPT;
+  return `Pay special attention to "${focus}" throughout this video — note where and how it appears in your scene descriptions.\n\n${VIDEO_ANALYSIS_PROMPT}`;
+};
+
 const analyzeImageWithGemini = async (
   imageData: Buffer,
   mimeType: string,
+  focus?: string,
 ): Promise<ImageBreakdown | null> => {
   const key = getGeminiKey();
   if (!key) return null;
@@ -185,7 +206,7 @@ const analyzeImageWithGemini = async (
           {
             parts: [
               { inlineData: { mimeType, data: imageData.toString("base64") } },
-              { text: IMAGE_ANALYSIS_PROMPT },
+              { text: buildImagePrompt(focus) },
             ],
           },
         ],
@@ -209,6 +230,7 @@ const analyzeImageWithGemini = async (
       composition: String(parsed.composition ?? ""),
       style: String(parsed.style ?? ""),
       contextual_cues: String(parsed.contextual_cues ?? ""),
+      ...(parsed.focus_insights ? { focus_insights: String(parsed.focus_insights) } : {}),
     };
   } catch {
     return null;
@@ -220,6 +242,7 @@ const analyzeImageWithGemini = async (
 const analyzeImageWithClaude = async (
   imageData: Buffer,
   mimeType: string,
+  focus?: string,
 ): Promise<ImageBreakdown | null> => {
   const key = process.env.ANTHROPIC_API_KEY?.trim();
   if (!key) return null;
@@ -237,7 +260,7 @@ const analyzeImageWithClaude = async (
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-6",
         max_tokens: 2048,
         messages: [
           {
@@ -251,7 +274,7 @@ const analyzeImageWithClaude = async (
                   data: imageData.toString("base64"),
                 },
               },
-              { type: "text", text: IMAGE_ANALYSIS_PROMPT },
+              { type: "text", text: buildImagePrompt(focus) },
             ],
           },
         ],
@@ -274,6 +297,7 @@ const analyzeImageWithClaude = async (
       composition: String(parsed.composition ?? ""),
       style: String(parsed.style ?? ""),
       contextual_cues: String(parsed.contextual_cues ?? ""),
+      ...(parsed.focus_insights ? { focus_insights: String(parsed.focus_insights) } : {}),
     };
   } catch {
     return null;
@@ -348,6 +372,7 @@ const uploadVideoToGeminiFiles = async (
 const analyzeVideoWithGemini = async (
   fileUri: string,
   mimeType: string,
+  focus?: string,
 ): Promise<VideoScene[] | null> => {
   const key = getGeminiKey();
   if (!key) return null;
@@ -363,7 +388,7 @@ const analyzeVideoWithGemini = async (
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ fileData: { mimeType, fileUri } }, { text: VIDEO_ANALYSIS_PROMPT }],
+            parts: [{ fileData: { mimeType, fileUri } }, { text: buildVideoPrompt(focus) }],
           },
         ],
         generationConfig: { temperature: 0, maxOutputTokens: 4096 },
@@ -566,6 +591,8 @@ export const handleAnalyzerImageRoute: ApiRouteHandler = async ({
   const filename = (request.headers["x-filename"] as string | undefined) ?? "image";
   const mimeType =
     (request.headers["content-type"] ?? "image/jpeg").split(";")[0]?.trim() ?? "image/jpeg";
+  const focusPrompt =
+    (request.headers["x-focus-prompt"] as string | undefined)?.trim() || undefined;
 
   const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
@@ -584,10 +611,10 @@ export const handleAnalyzerImageRoute: ApiRouteHandler = async ({
   }
 
   // Try Gemini first, fall back to Claude
-  let result = await analyzeImageWithGemini(body, mimeType);
+  let result = await analyzeImageWithGemini(body, mimeType, focusPrompt);
   if (!result) {
     const geminiKey = getGeminiKey();
-    result = await analyzeImageWithClaude(body, mimeType);
+    result = await analyzeImageWithClaude(body, mimeType, focusPrompt);
     if (!result) {
       const errorMsg = !geminiKey
         ? "Set GEMINI_API_KEY in .env for image analysis (Claude fallback also unavailable — check ANTHROPIC_API_KEY)."
@@ -608,6 +635,7 @@ export const handleAnalyzerImageRoute: ApiRouteHandler = async ({
     filename,
     mimeType,
     created: new Date().toISOString(),
+    ...(focusPrompt ? { focusPrompt } : {}),
   };
 
   try {
@@ -639,6 +667,8 @@ export const handleAnalyzerVideoRoute: ApiRouteHandler = async ({
   const filename = (request.headers["x-filename"] as string | undefined) ?? "video";
   const mimeType =
     (request.headers["content-type"] ?? "video/mp4").split(";")[0]?.trim() ?? "video/mp4";
+  const focusPrompt =
+    (request.headers["x-focus-prompt"] as string | undefined)?.trim() || undefined;
 
   const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
   if (!ALLOWED_VIDEO_TYPES.includes(mimeType)) {
@@ -688,7 +718,7 @@ export const handleAnalyzerVideoRoute: ApiRouteHandler = async ({
 
   if (uploadResult) {
     geminiAvailable = true;
-    const sceneResult = await analyzeVideoWithGemini(uploadResult.fileUri, mimeType);
+    const sceneResult = await analyzeVideoWithGemini(uploadResult.fileUri, mimeType, focusPrompt);
     if (sceneResult) scenes = sceneResult;
     // Clean up the file from Gemini (best-effort)
     fetch(
@@ -741,6 +771,7 @@ export const handleAnalyzerVideoRoute: ApiRouteHandler = async ({
     filename,
     mimeType,
     created: new Date().toISOString(),
+    ...(focusPrompt ? { focusPrompt } : {}),
   };
 
   try {
@@ -789,8 +820,10 @@ const buildAnalysisContext = (record: AnalysisRecord): string => {
 
   if (meta.type === "image") {
     const img = result as ImageBreakdown;
-    return [
-      `Image analysis of "${meta.filename}" (via ${img.provider}):`,
+    const parts = [`Image analysis of "${meta.filename}" (via ${img.provider}):`];
+    if (meta.focusPrompt) parts.push(`User's focus: "${meta.focusPrompt}"`);
+    if (img.focus_insights) parts.push(`Focus findings: ${img.focus_insights}`);
+    parts.push(
       `Objects: ${img.objects || "none"}`,
       `People: ${img.people || "none"}`,
       `Scene: ${img.scene || "unknown"}`,
@@ -798,7 +831,8 @@ const buildAnalysisContext = (record: AnalysisRecord): string => {
       `Composition: ${img.composition || ""}`,
       `Style: ${img.style || ""}`,
       `Contextual cues: ${img.contextual_cues || ""}`,
-    ].join("\n");
+    );
+    return parts.join("\n");
   }
 
   const vid = result as VideoAnalysisResult;
@@ -851,6 +885,7 @@ export const handleAnalyzerChatRoute: ApiRouteHandler = async ({
     return true;
   }
 
+  // Read body BEFORE writing SSE headers (readJsonBodyOrWriteError may write error responses)
   const bodyResult = await readJsonBodyOrWriteError(request, response, corsOrigin);
   if (!bodyResult.ok) return true;
   const bodyPayload = (
@@ -874,46 +909,102 @@ export const handleAnalyzerChatRoute: ApiRouteHandler = async ({
   const systemContext = buildAnalysisContext(record);
   const messages: ChatMessage[] = [...history, { role: "user", content: message }];
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45_000);
+  // Switch to SSE streaming
+  const sseHeaders: Record<string, string> = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  };
+  if (corsOrigin) sseHeaders["Access-Control-Allow-Origin"] = corsOrigin;
+  response.writeHead(200, sseHeaders);
+
+  let aborted = false;
+  const requestController = new AbortController();
+  request.on("close", () => {
+    aborted = true;
+    requestController.abort();
+  });
+
+  const writeEvent = (data: Record<string, unknown>) => {
+    if (!aborted) {
+      try {
+        response.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        aborted = true;
+      }
+    }
+  };
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      signal: controller.signal,
+      signal: requestController.signal,
       headers: {
         "x-api-key": anthropicKey,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        system: `You are a visual/media analysis assistant. The user has analyzed a piece of media and wants to discuss the findings. Here is the analysis context:\n\n${systemContext}\n\nAnswer questions about this media thoughtfully and concisely.`,
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        stream: true,
+        system: `You are an expert visual and media analyst with deep knowledge of photography, videography, design, and content strategy. The user has analyzed a piece of media and wants to discuss it in depth. Here is the full analysis:\n\n${systemContext}\n\nProvide specific, analytical answers that reference concrete details from the analysis. Be precise and insightful, not generic.`,
         messages,
       }),
     });
 
-    if (!res.ok) {
+    if (!res.ok || !res.body) {
       const errText = await res.text().catch(() => `HTTP ${res.status}`);
-      writeJson(response, 502, { error: `Claude API error: ${errText}` }, corsOrigin);
+      writeEvent({ error: `Claude API error: ${errText}` });
+      response.end();
       return true;
     }
 
-    const data = (await res.json()) as {
-      content?: Array<{ type: string; text?: string }>;
-    };
-    const reply = data.content?.find((b) => b.type === "text")?.text ?? "";
-    writeJson(response, 200, { reply }, corsOrigin);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        if (aborted) break;
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const event = JSON.parse(data) as Record<string, unknown>;
+            if (event.type === "content_block_delta") {
+              const delta = event.delta as Record<string, unknown> | undefined;
+              if (delta?.type === "text_delta" && typeof delta.text === "string") {
+                writeEvent({ delta: delta.text });
+              }
+            }
+          } catch {
+            // skip malformed SSE lines
+          }
+        }
+      }
+    } finally {
+      reader.cancel().catch(() => {});
+    }
   } catch (e) {
-    writeJson(
-      response,
-      500,
-      { error: e instanceof Error ? e.message : "Chat request failed." },
-      corsOrigin,
-    );
-  } finally {
-    clearTimeout(timer);
+    if (!aborted && !(e instanceof Error && e.name === "AbortError")) {
+      writeEvent({ error: e instanceof Error ? e.message : "Chat request failed." });
+    }
+  }
+
+  if (!aborted) {
+    try {
+      response.write("data: [DONE]\n\n");
+      response.end();
+    } catch {
+      // connection already closed
+    }
   }
   return true;
 };

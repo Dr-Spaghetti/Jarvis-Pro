@@ -51,6 +51,7 @@ const makeRequest = (
   const req = {
     method,
     headers: headers ?? {},
+    on: (_event: string, _cb: () => void) => req,
   } as unknown as IncomingMessage & { [Symbol.asyncIterator]?: unknown };
   if (body) {
     (req as { [Symbol.asyncIterator]: () => AsyncGenerator<Buffer> })[Symbol.asyncIterator] =
@@ -80,6 +81,10 @@ const call = async (
       status = s;
       return response;
     },
+    write(chunk: string) {
+      parts.push(String(chunk));
+      return true;
+    },
     end(chunk?: string) {
       if (chunk) parts.push(String(chunk));
     },
@@ -91,7 +96,25 @@ const call = async (
     corsOrigin: null,
   };
   const handled = await handler(ctx, DEPS);
-  const json = parts.length ? JSON.parse(parts.join("")) : null;
+  const raw = parts.join("");
+  let json: Record<string, unknown> | null = null;
+  if (raw.includes("data: ")) {
+    // SSE response — reconstruct reply from delta events
+    const reply = raw
+      .split("\n")
+      .filter((l) => l.startsWith("data: ") && l.slice(6).trim() !== "[DONE]")
+      .map((l) => {
+        try {
+          return (JSON.parse(l.slice(6).trim()) as { delta?: string }).delta ?? "";
+        } catch {
+          return "";
+        }
+      })
+      .join("");
+    json = { reply };
+  } else if (raw.length > 0) {
+    json = JSON.parse(raw) as Record<string, unknown>;
+  }
   return { handled, status, json };
 };
 
@@ -534,18 +557,21 @@ describe("handleAnalyzerChatRoute", () => {
     );
     const analysisId = createResult.json.id as string;
 
-    // Now chat about it
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        content: [
-          {
-            type: "text",
-            text: "The image shows a coffee mug on a desk, likely a morning workspace setup.",
-          },
-        ],
-      }),
+    // Now chat about it — mock Anthropic streaming SSE response
+    const sseText = [
+      'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"The image shows a coffee mug on a desk"}}\n',
+      "\n",
+      "data: [DONE]\n",
+      "\n",
+    ].join("");
+    const encoder = new TextEncoder();
+    const sseBody = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(sseText));
+        controller.close();
+      },
     });
+    fetchMock.mockResolvedValue({ ok: true, body: sseBody });
 
     const chatBody = Buffer.from(
       JSON.stringify({ message: "What does this tell you about the workspace?" }),

@@ -21,6 +21,7 @@ type ImageBreakdown = {
   composition: string;
   style: string;
   contextual_cues: string;
+  focus_insights?: string;
 };
 
 type VideoScene = { start: number; end: number; description: string };
@@ -43,6 +44,7 @@ type AnalysisMeta = {
   filename: string;
   mimeType: string;
   created: string;
+  focusPrompt?: string;
 };
 
 type AnalysisRecord = {
@@ -243,7 +245,18 @@ const s = {
     borderTop: `1px solid ${BORDER}`,
     display: "flex" as const,
     flexDirection: "column" as const,
-    maxHeight: 300,
+    maxHeight: 340,
+  },
+  focusInput: {
+    width: "100%",
+    maxWidth: 400,
+    background: "#050705",
+    border: "1px solid rgba(57,255,20,0.18)",
+    color: "#c0dcc0",
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 9,
+    padding: "5px 8px",
+    outline: "none",
   },
   chatHdr: {
     padding: "6px 14px",
@@ -345,6 +358,30 @@ const ImageResult = ({ result }: { result: ImageBreakdown }) => {
   return (
     <div style={s.section}>
       <p style={s.sectionTitle}>Image Analysis — via {result.provider}</p>
+      {result.focus_insights && (
+        <div
+          style={{
+            background: "rgba(57,255,20,0.04)",
+            border: "1px solid rgba(57,255,20,0.22)",
+            borderLeft: `3px solid ${GREEN}`,
+            padding: "8px 10px",
+            marginBottom: 10,
+          }}
+        >
+          <p
+            style={{
+              fontSize: 8,
+              color: GREEN,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase" as const,
+              marginBottom: 5,
+            }}
+          >
+            ⬡ Focus Insights
+          </p>
+          <p style={{ fontSize: 10, color: "#d0f0d0", lineHeight: 1.7 }}>{result.focus_insights}</p>
+        </div>
+      )}
       {fields.map(([label, value]) => (
         <div key={label} style={s.field}>
           <span style={s.fieldLabel}>{label}</span>
@@ -436,10 +473,12 @@ export const AnalyzerPrimaryView = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isLoadingRecord, setIsLoadingRecord] = useState(false);
+  const [focusPrompt, setFocusPrompt] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatErrorRef = useRef<HTMLParagraphElement>(null);
   const uploadErrorRef = useRef<HTMLParagraphElement>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
+  const chatHistoryRef = useRef<HTMLDivElement>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatting, setIsChatting] = useState(false);
@@ -462,6 +501,12 @@ export const AnalyzerPrimaryView = () => {
     setChatError(null);
     setIsChatting(false);
   }, [selectedId]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chatHistoryRef.current is intentionally not a dep
+  useEffect(() => {
+    const el = chatHistoryRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatHistory]);
 
   const fetchList = useCallback(async () => {
     try {
@@ -512,8 +557,10 @@ export const AnalyzerPrimaryView = () => {
     setIsChatting(true);
     setChatError(null);
     const next: ChatMessage[] = [...chatHistory, { role: "user", content: msg }];
-    setChatHistory(next);
+    setChatHistory([...next, { role: "assistant", content: "" }]); // live streaming bubble
     setChatInput("");
+
+    let accumulated = "";
     try {
       const res = await apiFetch(buildAnalyzerChatUrl(selectedId), {
         method: "POST",
@@ -521,19 +568,131 @@ export const AnalyzerPrimaryView = () => {
         body: JSON.stringify({ message: msg, history: chatHistory }),
         signal: abort.signal,
       });
-      const data = (await res.json()) as { reply?: string; error?: string };
-      if (!res.ok || !data.reply) {
+
+      if (!res.ok || !res.body) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
         setChatError(data.error ?? `Chat failed (${res.status}).`);
+        setChatHistory(next);
         return;
       }
-      setChatHistory([...next, { role: "assistant", content: data.reply }]);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const event = JSON.parse(data) as { delta?: string; error?: string };
+            if (event.error) {
+              setChatError(event.error);
+              setChatHistory(next);
+              return;
+            }
+            if (event.delta) {
+              accumulated += event.delta;
+              setChatHistory([...next, { role: "assistant", content: accumulated }]);
+            }
+          } catch {
+            // skip malformed SSE lines
+          }
+        }
+      }
+
+      if (!accumulated) {
+        setChatHistory(next);
+        setChatError("No response received.");
+      }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
       setChatError("Chat request failed — check Jarvis is running.");
+      setChatHistory(next);
     } finally {
       setIsChatting(false);
     }
   }, [chatInput, isChatting, selectedId, chatHistory]);
+
+  const handleExport = useCallback(() => {
+    if (!selectedRecord) return;
+    const { meta, result } = selectedRecord;
+    const lines: string[] = [];
+    lines.push(`# ${meta.type === "image" ? "Image" : "Video"} Analysis — ${meta.filename}`);
+    lines.push(
+      `**Analyzed:** ${fmtDate(meta.created)}${meta.type === "image" && result && !isVideoResult(result) ? ` · via ${result.provider}` : ""}`,
+    );
+    if (meta.focusPrompt) lines.push(`**Focus:** ${meta.focusPrompt}`);
+    lines.push("");
+
+    if (result && isVideoResult(result)) {
+      if (result.timeline.length > 0) {
+        lines.push("## Timeline");
+        for (const entry of result.timeline) {
+          lines.push(`### ${fmtTime(entry.time_start)} → ${fmtTime(entry.time_end)}`);
+          if (entry.visual) lines.push(entry.visual);
+          if (entry.spoken) lines.push(`> "${entry.spoken}"`);
+          lines.push("");
+        }
+      } else {
+        if (result.scenes.length > 0) {
+          lines.push("## Scenes");
+          for (const scene of result.scenes) {
+            lines.push(`**${fmtTime(scene.start)} → ${fmtTime(scene.end)}:** ${scene.description}`);
+          }
+          lines.push("");
+        }
+        if (result.transcript.length > 0) {
+          lines.push("## Transcript");
+          for (const seg of result.transcript) {
+            lines.push(`**${fmtTime(seg.start)}:** ${seg.transcript}`);
+          }
+          lines.push("");
+        }
+      }
+    } else if (result) {
+      const img = result as ImageBreakdown;
+      lines.push("## Analysis");
+      if (img.focus_insights) {
+        lines.push("### Focus Insights");
+        lines.push(img.focus_insights);
+        lines.push("");
+      }
+      lines.push(`**Objects:** ${img.objects}`);
+      lines.push(`**People:** ${img.people}`);
+      lines.push(`**Scene:** ${img.scene}`);
+      lines.push(`**Text on Image:** ${img.text_on_image}`);
+      lines.push(`**Composition:** ${img.composition}`);
+      lines.push(`**Style:** ${img.style}`);
+      lines.push(`**Context:** ${img.contextual_cues}`);
+      lines.push("");
+    }
+
+    const filledChat = chatHistory.filter((m) => m.content);
+    if (filledChat.length > 0) {
+      lines.push("## Chat Session");
+      for (const msg of filledChat) {
+        lines.push(`**${msg.role === "user" ? "You" : "Jarvis"}:** ${msg.content}`);
+        lines.push("");
+      }
+    }
+
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${meta.filename.replace(/\.[^.]+$/, "")}-analysis.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [selectedRecord, chatHistory]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -553,12 +712,14 @@ export const AnalyzerPrimaryView = () => {
 
       try {
         const uploadUrl = isVideo ? buildAnalyzerVideoUrl() : buildAnalyzerImageUrl();
+        const headers: Record<string, string> = {
+          "Content-Type": file.type,
+          "X-Filename": file.name,
+        };
+        if (focusPrompt.trim()) headers["X-Focus-Prompt"] = focusPrompt.trim();
         const res = await apiFetch(uploadUrl, {
           method: "POST",
-          headers: {
-            "Content-Type": file.type,
-            "X-Filename": file.name,
-          },
+          headers,
           body: file,
         });
         const data = (await res.json()) as {
@@ -606,7 +767,7 @@ export const AnalyzerPrimaryView = () => {
         setIsUploading(false);
       }
     },
-    [fetchList, fetchRecord],
+    [fetchList, fetchRecord, focusPrompt],
   );
 
   return (
@@ -614,6 +775,11 @@ export const AnalyzerPrimaryView = () => {
       <header style={s.hdr}>
         <span style={s.hdrTitle}>⬡ Analyzer</span>
         <div style={s.hdrActions}>
+          {selectedRecord && (
+            <button type="button" style={s.smallBtn} onClick={handleExport}>
+              ↓ Export
+            </button>
+          )}
           <button type="button" style={s.smallBtn} onClick={() => void fetchList()}>
             ↺ Refresh
           </button>
@@ -644,6 +810,20 @@ export const AnalyzerPrimaryView = () => {
                   <p style={s.sidebarItemMeta}>
                     {a.type} · {fmtDate(a.created)}
                   </p>
+                  {a.focusPrompt && (
+                    <p
+                      style={{
+                        fontSize: 8,
+                        color: "rgba(57,255,20,0.22)",
+                        marginTop: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap" as const,
+                      }}
+                    >
+                      ⬡ {a.focusPrompt}
+                    </p>
+                  )}
                 </button>
               ))
             )}
@@ -659,6 +839,16 @@ export const AnalyzerPrimaryView = () => {
                 ? "Analyzing… this may take up to a minute for video"
                 : "Drop an image or video here, or click to browse"}
             </p>
+            {!isUploading && (
+              <input
+                type="text"
+                value={focusPrompt}
+                onChange={(e) => setFocusPrompt(e.target.value)}
+                placeholder="Focus on… (e.g. 'brand logos', 'expressions', 'text')"
+                style={s.focusInput}
+                aria-label="Analysis focus prompt"
+              />
+            )}
             {!isUploading && (
               <button
                 type="button"
@@ -693,6 +883,11 @@ export const AnalyzerPrimaryView = () => {
                   <p style={s.sectionTitle}>
                     {selectedRecord.meta.filename} — {selectedRecord.meta.type}
                   </p>
+                  {selectedRecord.meta.focusPrompt && (
+                    <p style={{ fontSize: 9, color: "rgba(57,255,20,0.4)", marginTop: 3 }}>
+                      ⬡ focus: {selectedRecord.meta.focusPrompt}
+                    </p>
+                  )}
                 </div>
                 {selectedRecord.result == null ? (
                   <p style={s.statusMsg(true)}>No result data for this analysis.</p>
@@ -715,14 +910,13 @@ export const AnalyzerPrimaryView = () => {
             <section aria-label="Analysis chat" style={s.chatSection}>
               <p style={s.chatHdr}>⬡ Analysis Chat</p>
               {chatHistory.length > 0 && (
-                <div style={s.chatHistory} aria-label="Chat history">
+                <div ref={chatHistoryRef} style={s.chatHistory} aria-label="Chat history">
                   {chatHistory.map((msg, i) => (
                     // biome-ignore lint/suspicious/noArrayIndexKey: no stable key available
                     <div key={i} style={s.chatBubble(msg.role)}>
-                      {msg.content}
+                      {msg.content || (isChatting && i === chatHistory.length - 1 ? "▋" : "—")}
                     </div>
                   ))}
-                  {isChatting && <div style={s.chatBubble("assistant")}>…</div>}
                 </div>
               )}
               {chatError && (
