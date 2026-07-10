@@ -26,11 +26,8 @@ afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
   }
   tempDirs.length = 0;
-  // biome-ignore lint/performance/noDelete: process.env.X = undefined stringifies to "undefined" — delete is required to truly unset
   delete process.env.GMAIL_REFRESH_TOKEN;
-  // biome-ignore lint/performance/noDelete: process.env.X = undefined stringifies to "undefined" — delete is required to truly unset
   delete process.env.GMAIL_USER_EMAIL;
-  // biome-ignore lint/performance/noDelete: process.env.X = undefined stringifies to "undefined" — delete is required to truly unset
   delete process.env.GMAIL_ACCESS_TOKEN;
 });
 
