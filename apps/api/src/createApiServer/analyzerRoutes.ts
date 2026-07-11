@@ -81,6 +81,9 @@ type ImageBreakdown = {
   scene: string;
   text_on_image: string;
   composition: string;
+  color_palette: string;
+  mood_and_tone: string;
+  technical_quality: string;
   style: string;
   contextual_cues: string;
   focus_insights?: string;
@@ -150,34 +153,40 @@ const readRawBody = async (request: IncomingMessage, maxBytes: number): Promise<
 
 const getGeminiKey = () => process.env.GEMINI_API_KEY?.trim() ?? null;
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-2.5-pro";
 const GEMINI_GENERATE_URL = (model: string, key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 
-const IMAGE_ANALYSIS_PROMPT = `Analyze this image in detail. Return ONLY a JSON object (no markdown, no code fence) with exactly these string fields:
-- objects: comma-separated list of visible objects and items
-- people: description of any people (count, apparent activity, notable details; "none" if absent)
-- scene: overall scene and setting description
-- text_on_image: exact verbatim transcription of any visible text, signs, labels, or writing ("none" if absent)
-- composition: layout, framing, perspective, and lighting notes
-- style: artistic or photographic style (e.g. candid photo, diagram, screenshot, illustration)
-- contextual_cues: any other relevant context, anomalies, or notable observations`;
+const IMAGE_ANALYSIS_PROMPT = `Analyze this image with expert-level depth and precision. Return ONLY a JSON object (no markdown, no code fence) with exactly these string fields:
+- objects: detailed comma-separated list of all visible objects, items, and elements — include size, position, and condition where notable
+- people: thorough description of any people (count, approximate age/gender, clothing, apparent emotion, activity, body language, relationships; "none" if absent)
+- scene: rich overall scene description including setting, environment, time of day if discernible, and spatial relationships between elements
+- text_on_image: exact verbatim transcription of ALL visible text, signs, labels, watermarks, or writing — include font style and placement ("none" if absent)
+- composition: detailed layout, framing, perspective, depth of field, rule-of-thirds placement, leading lines, foreground/midground/background layers, and lighting (direction, quality, shadows)
+- color_palette: dominant colors and their approximate proportions, color temperature (warm/cool/neutral), saturation level, and any notable color contrasts or harmonies
+- mood_and_tone: emotional atmosphere conveyed (e.g. tense, serene, celebratory), psychological impact, and intended emotional response
+- technical_quality: sharpness, focus accuracy, exposure (over/under/correct), noise/grain level, compression artifacts, motion blur — note any quality issues
+- style: artistic or photographic style with specifics (e.g. "DSLR candid portrait, shallow depth of field", "flat-design vector illustration", "architectural render", "phone screenshot")
+- contextual_cues: brand identifiers, cultural markers, temporal cues, unusual details, anomalies, implied narrative, or anything else a skilled analyst would flag`;
 
-const VIDEO_ANALYSIS_PROMPT = `Analyze this video and break it into scenes. Return ONLY a JSON object (no markdown, no code fence):
-{"scenes": [{"start": <seconds>, "end": <seconds>, "description": "<what is happening visually and audibly>"}]}
-Be precise about timestamps. Each scene should cover a coherent sequence of events. If the video is long, cap at 30 scenes.`;
+const VIDEO_ANALYSIS_PROMPT = `Analyze this video with expert-level depth. Break it into scenes and return ONLY a JSON object (no markdown, no code fence):
+{"scenes": [{"start": <seconds>, "end": <seconds>, "description": "<rich scene description>"}]}
+For each scene description, include: what is happening visually and audibly, shot type (wide/medium/close-up/extreme close-up/aerial), camera movement (static/pan/tilt/zoom/dolly/handheld), lighting quality and direction, number and activity of any people, notable objects or text on screen, mood/tone of the scene, and any significant audio elements (music, dialogue, sound effects, silence). Be precise about timestamps. Cover every distinct scene — do not skip or merge unrelated sequences. There is no scene cap; include as many scenes as needed for complete coverage.`;
 
 const buildImagePrompt = (focus?: string): string => {
   if (!focus) return IMAGE_ANALYSIS_PROMPT;
-  return `The user specifically wants to focus on: "${focus}"\n\nWith that in mind, analyze this image in detail. Return ONLY a JSON object (no markdown, no code fence) with exactly these string fields:
-- focus_insights: specific detailed findings about "${focus}" — what you observe in direct relation to this focus, be thorough
-- objects: comma-separated list of visible objects and items
-- people: description of any people (count, apparent activity, notable details; "none" if absent)
-- scene: overall scene and setting description
-- text_on_image: exact verbatim transcription of any visible text, signs, labels, or writing ("none" if absent)
-- composition: layout, framing, perspective, and lighting notes
-- style: artistic or photographic style (e.g. candid photo, diagram, screenshot, illustration)
-- contextual_cues: any other relevant context, anomalies, or notable observations`;
+  return `The user specifically wants to focus on: "${focus}"\n\nWith that in mind, analyze this image with expert-level depth. Return ONLY a JSON object (no markdown, no code fence) with exactly these string fields:
+- focus_insights: exhaustive, specific findings about "${focus}" — describe every observable detail directly related to this focus, be thorough and precise, reference exact locations within the image
+- objects: detailed comma-separated list of all visible objects, items, and elements — include size, position, and condition where notable
+- people: thorough description of any people (count, approximate age/gender, clothing, apparent emotion, activity, body language, relationships; "none" if absent)
+- scene: rich overall scene description including setting, environment, time of day if discernible, and spatial relationships between elements
+- text_on_image: exact verbatim transcription of ALL visible text, signs, labels, watermarks, or writing — include font style and placement ("none" if absent)
+- composition: detailed layout, framing, perspective, depth of field, rule-of-thirds placement, leading lines, foreground/midground/background layers, and lighting (direction, quality, shadows)
+- color_palette: dominant colors and their approximate proportions, color temperature (warm/cool/neutral), saturation level, and any notable color contrasts or harmonies
+- mood_and_tone: emotional atmosphere conveyed, psychological impact, and intended emotional response
+- technical_quality: sharpness, focus accuracy, exposure, noise/grain level, compression artifacts, motion blur — note any quality issues
+- style: artistic or photographic style with specifics
+- contextual_cues: brand identifiers, cultural markers, temporal cues, unusual details, anomalies, implied narrative, or anything else a skilled analyst would flag`;
 };
 
 const buildVideoPrompt = (focus?: string): string => {
@@ -210,7 +219,7 @@ const analyzeImageWithGemini = async (
             ],
           },
         ],
-        generationConfig: { temperature: 0, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 0, maxOutputTokens: 8192 },
       }),
     });
     if (!res.ok) return null;
@@ -228,6 +237,9 @@ const analyzeImageWithGemini = async (
       scene: String(parsed.scene ?? ""),
       text_on_image: String(parsed.text_on_image ?? "none"),
       composition: String(parsed.composition ?? ""),
+      color_palette: String(parsed.color_palette ?? ""),
+      mood_and_tone: String(parsed.mood_and_tone ?? ""),
+      technical_quality: String(parsed.technical_quality ?? ""),
       style: String(parsed.style ?? ""),
       contextual_cues: String(parsed.contextual_cues ?? ""),
       ...(parsed.focus_insights ? { focus_insights: String(parsed.focus_insights) } : {}),
@@ -261,7 +273,7 @@ const analyzeImageWithClaude = async (
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2048,
+        max_tokens: 8192,
         messages: [
           {
             role: "user",
@@ -295,6 +307,9 @@ const analyzeImageWithClaude = async (
       scene: String(parsed.scene ?? ""),
       text_on_image: String(parsed.text_on_image ?? "none"),
       composition: String(parsed.composition ?? ""),
+      color_palette: String(parsed.color_palette ?? ""),
+      mood_and_tone: String(parsed.mood_and_tone ?? ""),
+      technical_quality: String(parsed.technical_quality ?? ""),
       style: String(parsed.style ?? ""),
       contextual_cues: String(parsed.contextual_cues ?? ""),
       ...(parsed.focus_insights ? { focus_insights: String(parsed.focus_insights) } : {}),
@@ -391,7 +406,7 @@ const analyzeVideoWithGemini = async (
             parts: [{ fileData: { mimeType, fileUri } }, { text: buildVideoPrompt(focus) }],
           },
         ],
-        generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 0, maxOutputTokens: 8192 },
       }),
     });
     if (!res.ok) return null;
@@ -829,6 +844,9 @@ const buildAnalysisContext = (record: AnalysisRecord): string => {
       `Scene: ${img.scene || "unknown"}`,
       `Text on image: ${img.text_on_image || "none"}`,
       `Composition: ${img.composition || ""}`,
+      `Color palette: ${img.color_palette || ""}`,
+      `Mood and tone: ${img.mood_and_tone || ""}`,
+      `Technical quality: ${img.technical_quality || ""}`,
       `Style: ${img.style || ""}`,
       `Contextual cues: ${img.contextual_cues || ""}`,
     );
@@ -837,7 +855,6 @@ const buildAnalysisContext = (record: AnalysisRecord): string => {
 
   const vid = result as VideoAnalysisResult;
   const timelineSnippet = vid.timeline
-    .slice(0, 20)
     .map((e) => {
       const t = `${String(Math.floor(e.time_start / 60)).padStart(2, "0")}:${String(Math.floor(e.time_start % 60)).padStart(2, "0")}`;
       const parts: string[] = [];
