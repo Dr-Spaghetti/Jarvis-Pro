@@ -153,7 +153,7 @@ const readRawBody = async (request: IncomingMessage, maxBytes: number): Promise<
 
 const getGeminiKey = () => process.env.GEMINI_API_KEY?.trim() ?? null;
 
-const GEMINI_MODEL = "gemini-2.5-pro";
+const GEMINI_MODEL = "gemini-3-flash-preview";
 const GEMINI_GENERATE_URL = (model: string, key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 

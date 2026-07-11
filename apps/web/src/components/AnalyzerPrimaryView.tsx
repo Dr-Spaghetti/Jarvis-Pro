@@ -19,6 +19,9 @@ type ImageBreakdown = {
   scene: string;
   text_on_image: string;
   composition: string;
+  color_palette?: string;
+  mood_and_tone?: string;
+  technical_quality?: string;
   style: string;
   contextual_cues: string;
   focus_insights?: string;
@@ -352,6 +355,9 @@ const ImageResult = ({ result }: { result: ImageBreakdown }) => {
     ["Scene", result.scene],
     ["On-Image Text", result.text_on_image],
     ["Composition", result.composition],
+    ...(result.color_palette ? [["Color Palette", result.color_palette] as [string, string]] : []),
+    ...(result.mood_and_tone ? [["Mood & Tone", result.mood_and_tone] as [string, string]] : []),
+    ...(result.technical_quality ? [["Technical Quality", result.technical_quality] as [string, string]] : []),
     ["Style", result.style],
     ["Context", result.contextual_cues],
   ];
@@ -669,6 +675,9 @@ export const AnalyzerPrimaryView = () => {
       lines.push(`**Scene:** ${img.scene}`);
       lines.push(`**Text on Image:** ${img.text_on_image}`);
       lines.push(`**Composition:** ${img.composition}`);
+      if (img.color_palette) lines.push(`**Color Palette:** ${img.color_palette}`);
+      if (img.mood_and_tone) lines.push(`**Mood & Tone:** ${img.mood_and_tone}`);
+      if (img.technical_quality) lines.push(`**Technical Quality:** ${img.technical_quality}`);
       lines.push(`**Style:** ${img.style}`);
       lines.push(`**Context:** ${img.contextual_cues}`);
       lines.push("");
