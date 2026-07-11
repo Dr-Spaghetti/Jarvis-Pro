@@ -770,6 +770,13 @@ export const useJarvisVoice = ({
 
   const startCommandRecording = useCallback(async () => {
     if (isMutedRef.current) return;
+    // Immediately cut Jarvis off so the user's mic picks up a clean signal
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
     if (!voiceConfig?.transcription.configured) {
       const Recognition = getSpeechRecognitionConstructor();
       if (!Recognition) {
