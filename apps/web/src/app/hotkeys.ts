@@ -19,6 +19,7 @@ export const isEditableEventTarget = (target: EventTarget | null): boolean => {
 };
 
 export const parsePrimaryNavKey = (key: string): PrimaryNavIndex | null => {
+  if (key.length !== 1) return null;
   const n = Number.parseInt(key, 10);
   if (Number.isNaN(n) || n < 1 || n > PRIMARY_NAV_MAX) {
     return null;

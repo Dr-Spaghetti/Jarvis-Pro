@@ -68,6 +68,15 @@ import {
   handleDeckTodoToggleRoute,
   handleDeckVaultFileRoute,
 } from "./deckRoutes";
+import {
+  handleGeneratorAnimateRoute,
+  handleGeneratorAssetRoute,
+  handleGeneratorDeleteRoute,
+  handleGeneratorImageRoute,
+  handleGeneratorItemRoute,
+  handleGeneratorListRoute,
+  handleGeneratorStatusRoute,
+} from "./generatorRoutes";
 import { handleTentacleGitPullRequestRoute, handleTentacleGitRoute } from "./gitRoutes";
 import {
   handleGmailAuthRoute,
@@ -273,6 +282,18 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ],
   ["arsenal", [handleArsenalListRoute, handleArsenalDeployRoute]],
   ["credits", [handleCreditsStatusRoute]],
+  [
+    "generator",
+    [
+      handleGeneratorStatusRoute,
+      handleGeneratorImageRoute,
+      handleGeneratorAnimateRoute,
+      handleGeneratorAssetRoute,
+      handleGeneratorListRoute,
+      handleGeneratorDeleteRoute,
+      handleGeneratorItemRoute,
+    ],
+  ],
   ["notifications", [handleNotificationsReadRoute, handleNotificationsCollectionRoute]],
   ["search", [handleSearchRoute]],
   ["skills", [handleSkillsRunRoute]],

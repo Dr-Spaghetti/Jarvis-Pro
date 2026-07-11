@@ -702,3 +702,21 @@ export const buildJarvisConversationTurnUrl = (runtimeBaseUrl = readRuntimeBaseU
   if (!runtimeBaseUrl) return "/api/conversations/jarvis/turn";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/conversations/jarvis/turn");
 };
+
+export const buildGeneratorUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/generator", runtimeBaseUrl);
+
+export const buildGeneratorStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/generator/status", runtimeBaseUrl);
+
+export const buildGeneratorImageUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/generator/image", runtimeBaseUrl);
+
+export const buildGeneratorAnimateUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/generator/animate", runtimeBaseUrl);
+
+export const buildGeneratorItemUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/generator/${encodeURIComponent(id)}`, runtimeBaseUrl);
+
+export const buildGeneratorDeleteUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl(`/api/generator/${encodeURIComponent(id)}`, runtimeBaseUrl);

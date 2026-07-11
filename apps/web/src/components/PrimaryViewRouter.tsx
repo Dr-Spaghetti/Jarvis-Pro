@@ -4,6 +4,7 @@ import type { PrimaryNavIndex } from "../app/constants";
 import { AgentArsenalPanel } from "./AgentArsenalPanel";
 import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
+import { GeneratorPrimaryView } from "./GeneratorPrimaryView";
 import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
@@ -85,6 +86,11 @@ export const PrimaryViewRouter = ({
   // 8 — Terminal
   if (activePrimaryNav === 8) {
     return <TerminalPrimaryView />;
+  }
+
+  // 10 — Generator
+  if (activePrimaryNav === 10) {
+    return <GeneratorPrimaryView />;
   }
 
   return null;
