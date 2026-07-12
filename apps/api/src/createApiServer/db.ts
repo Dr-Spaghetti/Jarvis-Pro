@@ -149,7 +149,7 @@ export const searchTurns = (
   return turns
     .filter((t) => !roleFilter || t.role === roleFilter)
     .map((t) => ({ turn: t, score: scoreAgainst(t.content, queryTokens) }))
-    .filter((r) => r.score > 0)
+    .filter((r) => r.score >= 2)
     .sort((a, b) => b.score - a.score || b.turn.timestamp - a.turn.timestamp)
     .slice(0, limit)
     .map((r) => r.turn);

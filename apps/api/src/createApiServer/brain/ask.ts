@@ -326,29 +326,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       ? notes.map((n) => `### ${n.title} (${n.rel})\n${n.body}`).join("\n\n")
       : "(no matching notes)";
 
-  // Pull relevant past turns and learned facts — gives Jarvis cross-session recall
-  const recallTurns = searchTurns(question, 4, "user");
-  const recallLearnings = searchLearnings(question, 3);
-  let recallBlock = "";
-  if (recallTurns.length > 0) {
-    recallBlock +=
-      "\n\nPast conversations on this topic:\n" +
-      recallTurns
-        .map(
-          (t) =>
-            `- [${new Date(t.timestamp).toLocaleDateString()}] "${t.content.slice(0, 200)}"`,
-        )
-        .join("\n");
-  }
-  if (recallLearnings.length > 0) {
-    recallBlock +=
-      "\n\nLearned facts about Nick:\n" + recallLearnings.map((l) => `- ${l.content}`).join("\n");
-  }
-  if (clipboardContext) {
-    recallBlock += `\n\nNick just copied this to his clipboard: ${clipboardContext}`;
-  }
-
-  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}${recallBlock}`;
+  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
 
   // Unique ID for this Q&A pair — used to group turns and attribute learnings
   const sessionId = randomUUID();
@@ -358,7 +336,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     const now = Date.now();
     insertTurn({ id: randomUUID(), sessionId, role: "user", content: q, timestamp: now });
     insertTurn({ id: randomUUID(), sessionId, role: "assistant", content: a, timestamp: now + 1 });
-    extractLearning(q, a, sessionId, projectStateDir).catch(() => {});
+    extractLearning(q, a, sessionId).catch(() => {});
   };
 
   const isExplicitOllama = model !== undefined && !model.startsWith("claude-");
@@ -431,6 +409,29 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     }
   }
 
+  // Build recall — runs only after orchestrate/agentic early exits so we don't pay for paths that can't use it
+  const recallTurns = searchTurns(question, 5); // both roles: questions AND answers are relevant
+  const recallLearnings = vaultDir ? [] : searchLearnings(question, 3); // vault already injects Memory.md via memoryBlock
+  let recallBlock = "";
+  if (recallTurns.length > 0) {
+    recallBlock +=
+      "\n\nPast conversations on this topic:\n" +
+      recallTurns
+        .map(
+          (t) =>
+            `- [${t.role === "user" ? "You asked" : "Jarvis answered"}, ${new Date(t.timestamp).toLocaleDateString()}] "${t.content.slice(0, 200)}"`,
+        )
+        .join("\n");
+  }
+  if (recallLearnings.length > 0) {
+    recallBlock +=
+      "\n\nLearned facts about Nick:\n" + recallLearnings.map((l) => `- ${l.content}`).join("\n");
+  }
+  if (clipboardContext) {
+    recallBlock += `\n\nNick just copied this to his clipboard:\n${clipboardContext}`;
+  }
+  const claudeContextWithRecall = `${claudeContext}${recallBlock}`;
+
   if (!isExplicitOllama && isLiveQuestion(question)) {
     const deep = isDeepResearchRequest(question);
     const perp = await askViaPerplexity(question, deep);
@@ -454,7 +455,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
 
   if (model?.startsWith("claude-")) {
-    const result = await askViaClaude(question, claudeContext, history, model);
+    const result = await askViaClaude(question, claudeContextWithRecall, history, model);
     if (result?.ok) {
       if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
       recordTurn(question, result.answer);
@@ -479,7 +480,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
-      const claudeResult = await askViaClaude(question, claudeContext, history);
+      const claudeResult = await askViaClaude(question, claudeContextWithRecall, history);
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
@@ -538,7 +539,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     history.length > 0
       ? history.map((t) => `You: ${t.question}\nJarvis: ${t.answer}`).join("\n\n")
       : "(none)";
-  const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}\n\nQUESTION: ${question}`;
+  const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}${recallBlock}\n\nQUESTION: ${question}`;
   const ollamaAnswer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
     signal: AbortSignal.timeout(60000),

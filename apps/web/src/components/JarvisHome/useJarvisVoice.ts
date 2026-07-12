@@ -426,6 +426,9 @@ export const useJarvisVoice = ({
       setVoiceError(null);
       setIsThinking(true);
       setLastVoiceTranscript(transcript);
+      // Consume clipboard snapshot now — cleared for ALL intent types so stale context never leaks
+      const clipCtx = pendingClipboardRef.current;
+      pendingClipboardRef.current = null;
       try {
         const pending = pendingVoiceIntentRef.current;
         if (pending) {
@@ -647,8 +650,6 @@ export const useJarvisVoice = ({
           const ackText = REALTIME_RE.test(intent.question)
             ? "One sec, let me look that up."
             : "Let me think about that.";
-          const clipCtx = pendingClipboardRef.current;
-          pendingClipboardRef.current = null;
           const askBody: Record<string, string> = { question: intent.question };
           if (chatModelRef.current) askBody.model = chatModelRef.current;
           if (clipCtx) askBody.clipboardContext = clipCtx;
@@ -783,7 +784,7 @@ export const useJarvisVoice = ({
     // Snapshot clipboard — if it changed since last command, inject as context
     try {
       const clip = await navigator.clipboard.readText();
-      if (clip && clip !== lastClipboardRef.current && clip.length < 4000) {
+      if (clip && clip !== lastClipboardRef.current) {
         lastClipboardRef.current = clip;
         pendingClipboardRef.current = clip.slice(0, 800);
       }

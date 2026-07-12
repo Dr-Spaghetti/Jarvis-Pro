@@ -6,9 +6,8 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
 
-import { insertLearning } from "../db";
+import { insertLearning, searchLearnings } from "../db";
 import { ensureAndAppend, resolveVaultDir } from "./vault";
 
 const MEMORY_PATH = "Jarvis/Memory.md";
@@ -33,7 +32,6 @@ export const extractLearning = async (
   question: string,
   answer: string,
   sessionId: string,
-  projectStateDir: string,
 ): Promise<void> => {
   const apiKey = getAnthropicKey();
   if (!apiKey) return;
@@ -53,11 +51,12 @@ export const extractLearning = async (
         messages: [
           {
             role: "user",
-            content: `User asked: "${question.slice(0, 400)}"\nJarvis replied: "${answer.slice(0, 400)}"\n\nExtract one learning, or output nothing.`,
+            // Prioritize the tail of the answer — conclusions and decisions live there
+            content: `User asked: "${question.slice(0, 600)}"\nJarvis replied: "${answer.length > 1200 ? `…${answer.slice(-1200)}` : answer}"\n\nExtract one learning, or output nothing.`,
           },
         ],
       }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!res.ok) return;
@@ -68,6 +67,22 @@ export const extractLearning = async (
 
     const text = data?.content?.find((b) => b.type === "text")?.text?.trim() ?? "";
     if (!text.startsWith("- ")) return;
+
+    const newFact = text.slice(2).trim();
+
+    // Dedup: skip if a similar learning (2+ shared meaningful words) already exists
+    const similar = searchLearnings(newFact, 3);
+    if (similar.length > 0) {
+      const newWords = new Set(newFact.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
+      const isDupe = similar.some((s) => {
+        const shared = s.content
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((w) => w.length > 4 && newWords.has(w)).length;
+        return shared >= 2;
+      });
+      if (isDupe) return;
+    }
 
     // Write to Memory.md in the Obsidian vault (best-effort)
     const vaultDir = resolveVaultDir();
@@ -82,7 +97,7 @@ export const extractLearning = async (
     // Persist to the learnings store
     insertLearning({
       id: randomUUID(),
-      content: text.slice(2).trim(), // strip leading "- "
+      content: newFact,
       sourceSession: sessionId,
       timestamp: Date.now(),
     });
@@ -90,7 +105,3 @@ export const extractLearning = async (
     // Haiku call failing is silently ignored — this is background enrichment
   }
 };
-
-// Resolve the learnings store dir from the project state dir
-export const getLearningStoreDir = (projectStateDir: string): string =>
-  join(projectStateDir, "state");
