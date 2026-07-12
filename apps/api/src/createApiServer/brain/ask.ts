@@ -65,6 +65,39 @@ const isLiveQuestion = (question: string): boolean =>
 const isDeepResearchRequest = (question: string): boolean =>
   /deep\s*research|research\s*(this\s*)?(deeply|thoroughly)|thoroughly\s*research/i.test(question);
 
+// Personal context nouns — anything that's Nick's own data rather than world knowledge
+const PERSONAL_CONTEXT_NOUNS =
+  /\b(project|client|business|company|vault|notes?|idea|task|file|document|data|leads?|account|email|schedule|meeting|contact|customer|code|repo|app|site|design)\b/i;
+
+// True when the question is clearly about Nick's personal information, not general world knowledge.
+// Prevents routing personal questions through Perplexity.
+const isPersonalQuestion = (q: string): boolean => {
+  if (/\b(my|our)\b/i.test(q) && PERSONAL_CONTEXT_NOUNS.test(q)) return true;
+  if (/\bwhat (did|have|has) i\b/i.test(q)) return true;
+  if (/\b(remind me|remember when)\b/i.test(q)) return true;
+  if (/\byou (mentioned|said|told)\b/i.test(q)) return true;
+  return false;
+};
+
+// Patterns indicating a general knowledge / factual question that benefits from web context
+const WEB_ENRICHMENT_PATTERNS = [
+  /\b(what|how|why|when|where|which)\b/i,
+  /\bwho (is|was|are|were|invented|created|made|founded)\b/i,
+  /\b(explain|describe|define|clarify|summarize)\b/i,
+  /\btell me (about|more|what|how|why)\b/i,
+  /\b(difference between|compare|versus|vs\.?)\b/i,
+  /\bbest (way|practice|approach|tool|library|framework|method|option)\b/i,
+  /\b(should i|is it possible|are there|is there (a |an |any ))\b/i,
+  /\bhelp me (understand|learn|figure out|build|create|write|implement)\b/i,
+];
+
+const shouldEnrichWithWeb = (question: string): boolean => {
+  if (!getPerplexityApiKey()) return false;
+  if (isLiveQuestion(question)) return false;
+  if (isPersonalQuestion(question)) return false;
+  return WEB_ENRICHMENT_PATTERNS.some((p) => p.test(question));
+};
+
 type PerplexityCitation = { title: string; url: string };
 type PerplexityResult = { answer: string; citations: PerplexityCitation[] };
 
@@ -83,6 +116,7 @@ const fetchWithTimeout = async (
 const askViaPerplexity = async (
   question: string,
   deep: boolean,
+  forEnrichment = false,
 ): Promise<PerplexityResult | null> => {
   const apiKey = getPerplexityApiKey();
   if (!apiKey) return null;
@@ -97,12 +131,13 @@ const askViaPerplexity = async (
         messages: [
           {
             role: "system",
-            content:
-              "You are Jarvis, a sharp personal AI. Answer concisely in 1-3 sentences. Never use bullet points or headers unless asked.",
+            content: forEnrichment
+              ? "You are a research assistant. Provide a comprehensive, accurate answer covering key facts, context, and current information. Be thorough and include relevant details."
+              : "You are Jarvis, a sharp personal AI. Answer concisely in 1-3 sentences. Never use bullet points or headers unless asked.",
           },
           { role: "user", content: question },
         ],
-        max_tokens: 512,
+        max_tokens: forEnrichment ? 1024 : 512,
       }),
     },
     18000,
@@ -139,6 +174,8 @@ const JARVIS_VOICE_SYSTEM =
   "never use bullet points or headers. " +
   "Treat any preference, correction, or instruction in the saved memories as a standing rule " +
   "from Nick (how to address him, format, what to avoid) and follow it exactly. " +
+  "When 'Web search (live context)' appears in the context, use it to give accurate, current answers — " +
+  "synthesize it in your own words; don't quote or list sources unless Nick asks. " +
   "IMPORTANT: Your responses ARE spoken aloud via ElevenLabs text-to-speech automatically in Nick's browser. " +
   "You have full voice capabilities. When Nick asks you to 'read it back', 'say it again', or 'read the answer', " +
   "just answer normally — your reply will be spoken. Never tell him you lack audio capabilities.";
@@ -432,7 +469,23 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
   const claudeContextWithRecall = `${claudeContext}${recallBlock}`;
 
-  if (!isExplicitOllama && isLiveQuestion(question)) {
+  // For general knowledge questions: fetch live web context and inject into Claude's prompt.
+  // Claude synthesizes vault notes + web results + memory into one concise answer.
+  let webBlock = "";
+  if (!isExplicitOllama && shouldEnrichWithWeb(question)) {
+    const webResult = await askViaPerplexity(question, false, true);
+    if (webResult) {
+      webBlock = `\n\nWeb search (live context):\n${webResult.answer}`;
+      if (webResult.citations.length > 0) {
+        webBlock += `\nSources: ${webResult.citations.map((c) => c.url).join(" | ")}`;
+      }
+    }
+  }
+  const claudeContextFinal = webBlock
+    ? `${claudeContextWithRecall}${webBlock}`
+    : claudeContextWithRecall;
+
+  if (!isExplicitOllama && !isPersonalQuestion(question) && isLiveQuestion(question)) {
     const deep = isDeepResearchRequest(question);
     const perp = await askViaPerplexity(question, deep);
     if (perp) {
@@ -455,7 +508,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
 
   if (model?.startsWith("claude-")) {
-    const result = await askViaClaude(question, claudeContextWithRecall, history, model);
+    const result = await askViaClaude(question, claudeContextFinal, history, model);
     if (result?.ok) {
       if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
       recordTurn(question, result.answer);
@@ -480,7 +533,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
-      const claudeResult = await askViaClaude(question, claudeContextWithRecall, history);
+      const claudeResult = await askViaClaude(question, claudeContextFinal, history);
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
