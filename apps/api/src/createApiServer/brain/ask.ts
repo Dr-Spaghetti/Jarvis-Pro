@@ -157,12 +157,46 @@ const askViaPerplexity = async (
 
 const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
 const CLAUDE_SONNET_MODEL = "claude-sonnet-4-6";
+const CLAUDE_OPUS_MODEL = "claude-opus-4-8";
 const CLAUDE_MODEL_IDS = [
   "claude-fable-5",
-  "claude-opus-4-8",
+  CLAUDE_OPUS_MODEL,
   CLAUDE_SONNET_MODEL,
   CLAUDE_VOICE_MODEL,
 ] as const;
+
+// Signals that a question needs Opus-level reasoning (complex, multi-step, analytical)
+const OPUS_SIGNALS = [
+  /\b(architect|architecture|design (a|an|the)|comprehensive|in[- ]depth|deep[- ]dive)\b/i,
+  /\b(analyze|analysis|evaluate|evaluate|assess|audit|diagnose)\b/i,
+  /\b(strategy|strategic|roadmap|long[- ]term|scalab)\b/i,
+  /\b(all (possible|potential) (ways|approaches|options|routes|implications))\b/i,
+  /\b(think through|reason (through|about)|walk me through|step[- ]by[- ]step)\b/i,
+  /\b(build (a|an) (system|platform|pipeline|workflow|engine|framework))\b/i,
+  /\b(create a (plan|roadmap|strategy|framework|spec|proposal))\b/i,
+  /\b(pros and cons|trade[- ]?offs?|considerations|implications)\b/i,
+  /\b(optimize|refactor|overhaul|redesign|migrate)\b/i,
+  /\b(what (should|would) (i|we|you) (do|use|choose|recommend|pick))\b/i,
+];
+
+// Signals that a question is simple enough for Haiku (greetings, trivial yes/no)
+const HAIKU_SIGNALS = [
+  /^(hi|hey|hello|thanks|thank you|ok|okay|got it|cool|nice|great|yep|nope|sure)[!.?]?$/i,
+  /^.{1,25}[?!.]?$/, // Very short questions unlikely to need heavy reasoning
+];
+
+// Auto-select the right Claude model based on question complexity.
+// Opus for deep reasoning; Haiku for trivial; Sonnet for everything else.
+const selectClaudeModel = (question: string): string => {
+  const q = question.trim();
+  if (HAIKU_SIGNALS.some((p) => p.test(q))) return CLAUDE_VOICE_MODEL;
+  if (OPUS_SIGNALS.some((p) => p.test(q))) return CLAUDE_OPUS_MODEL;
+  return CLAUDE_SONNET_MODEL;
+};
+
+// Complex questions also get sonar-pro in Perplexity (not just "deep research" phrase)
+const isComplexQuestion = (question: string): boolean =>
+  OPUS_SIGNALS.some((p) => p.test(question));
 
 type AnthrContent = { type: "text"; text: string };
 type AnthrMessage = { role: "user" | "assistant"; content: string };
@@ -472,7 +506,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   // Live and general knowledge questions go directly to Perplexity (fast, web-grounded).
   // Personal questions (my projects, my tasks, etc.) always use Claude + vault instead.
   if (!isExplicitOllama && !isPersonalQuestion(question) && (isLiveQuestion(question) || shouldEnrichWithWeb(question))) {
-    const deep = isDeepResearchRequest(question);
+    const deep = isDeepResearchRequest(question) || isComplexQuestion(question);
     const perp = await askViaPerplexity(question, deep);
     if (perp) {
       if (vaultDir) appendConversationTurn(vaultDir, question, perp.answer);
@@ -519,7 +553,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
-      const claudeResult = await askViaClaude(question, claudeContextWithRecall, history);
+      const autoModel = selectClaudeModel(question);
+      const claudeResult = await askViaClaude(question, claudeContextWithRecall, history, autoModel);
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
@@ -527,7 +562,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         writeJson(
           response,
           200,
-          { available: true, answer: claudeResult.answer, sources },
+          { available: true, answer: claudeResult.answer, sources, model: autoModel },
           corsOrigin,
         );
         return true;
