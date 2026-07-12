@@ -114,6 +114,8 @@ export const useJarvisVoice = ({
   const audioUnlockedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const pendingAudioBlobRef = useRef<Blob | null>(null);
+  const lastClipboardRef = useRef<string>("");
+  const pendingClipboardRef = useRef<string | null>(null);
 
   const voicePhase = deriveVoicePhase({
     isMuted,
@@ -645,16 +647,17 @@ export const useJarvisVoice = ({
           const ackText = REALTIME_RE.test(intent.question)
             ? "One sec, let me look that up."
             : "Let me think about that.";
+          const clipCtx = pendingClipboardRef.current;
+          pendingClipboardRef.current = null;
+          const askBody: Record<string, string> = { question: intent.question };
+          if (chatModelRef.current) askBody.model = chatModelRef.current;
+          if (clipCtx) askBody.clipboardContext = clipCtx;
           const [, res] = await Promise.all([
             speakJarvis(ackText).catch(() => {}),
             apiFetch(buildBrainAskUrl(), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(
-                chatModelRef.current
-                  ? { question: intent.question, model: chatModelRef.current }
-                  : { question: intent.question },
-              ),
+              body: JSON.stringify(askBody),
             }),
           ]);
           if (!res.ok) {
@@ -777,6 +780,16 @@ export const useJarvisVoice = ({
     }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     setIsSpeaking(false);
+    // Snapshot clipboard — if it changed since last command, inject as context
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip && clip !== lastClipboardRef.current && clip.length < 4000) {
+        lastClipboardRef.current = clip;
+        pendingClipboardRef.current = clip.slice(0, 800);
+      }
+    } catch {
+      // Clipboard permission denied or unavailable — skip silently
+    }
     if (!voiceConfig?.transcription.configured) {
       const Recognition = getSpeechRecognitionConstructor();
       if (!Recognition) {

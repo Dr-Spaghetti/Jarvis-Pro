@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 
 import { agenticAsk } from "../agenticAsk";
@@ -7,11 +8,13 @@ import { cosineSimilarity, embedViaOllama } from "../ollamaEmbed";
 import { orchestrateTask } from "../orchestrateRoutes";
 import type { ApiRouteHandler } from "../routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "../routeHelpers";
+import { initDb, insertTurn, searchLearnings, searchTurns } from "../db";
 import {
   type ConversationTurn,
   appendConversationTurn,
   readConversationTurns,
 } from "./conversation";
+import { extractLearning } from "./autoLearn";
 import { readMemoryFacts } from "./memory";
 import { lexicalSearchNotes, loadSemanticIndex } from "./search";
 import { asRecord, deriveTitle, oneLine, resolveVaultDir, stripFrontmatter } from "./vault";
@@ -285,7 +288,7 @@ let claudeUnavailableUntil = 0;
 
 export const handleBrainAskRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
-  { runtime },
+  { runtime, projectStateDir },
 ) => {
   if (requestUrl.pathname !== "/api/brain/ask") return false;
   if (request.method !== "POST") {
@@ -303,6 +306,13 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
   const model =
     typeof payload.model === "string" && payload.model.trim() ? payload.model.trim() : undefined;
+  const clipboardContext =
+    typeof payload.clipboardContext === "string" && payload.clipboardContext.trim()
+      ? payload.clipboardContext.trim().slice(0, 800)
+      : null;
+
+  // Initialize persistent memory store (idempotent)
+  initDb(join(projectStateDir, "state"));
 
   const vaultDir = resolveVaultDir();
   const notes = vaultDir ? await retrieveContext(vaultDir, question, 6) : [];
@@ -316,7 +326,40 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       ? notes.map((n) => `### ${n.title} (${n.rel})\n${n.body}`).join("\n\n")
       : "(no matching notes)";
 
-  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
+  // Pull relevant past turns and learned facts — gives Jarvis cross-session recall
+  const recallTurns = searchTurns(question, 4, "user");
+  const recallLearnings = searchLearnings(question, 3);
+  let recallBlock = "";
+  if (recallTurns.length > 0) {
+    recallBlock +=
+      "\n\nPast conversations on this topic:\n" +
+      recallTurns
+        .map(
+          (t) =>
+            `- [${new Date(t.timestamp).toLocaleDateString()}] "${t.content.slice(0, 200)}"`,
+        )
+        .join("\n");
+  }
+  if (recallLearnings.length > 0) {
+    recallBlock +=
+      "\n\nLearned facts about Nick:\n" + recallLearnings.map((l) => `- ${l.content}`).join("\n");
+  }
+  if (clipboardContext) {
+    recallBlock += `\n\nNick just copied this to his clipboard: ${clipboardContext}`;
+  }
+
+  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}${recallBlock}`;
+
+  // Unique ID for this Q&A pair — used to group turns and attribute learnings
+  const sessionId = randomUUID();
+
+  // Records both sides of a turn to the persistent store and fires background learning extraction
+  const recordTurn = (q: string, a: string): void => {
+    const now = Date.now();
+    insertTurn({ id: randomUUID(), sessionId, role: "user", content: q, timestamp: now });
+    insertTurn({ id: randomUUID(), sessionId, role: "assistant", content: a, timestamp: now + 1 });
+    extractLearning(q, a, sessionId, projectStateDir).catch(() => {});
+  };
 
   const isExplicitOllama = model !== undefined && !model.startsWith("claude-");
   if (!isExplicitOllama) {
@@ -326,6 +369,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       const result = await orchestrateTask(question, runtime);
       if (result.ok) {
         if (vaultDir) appendConversationTurn(vaultDir, question, result.summary);
+        recordTurn(question, result.summary);
         writeJson(
           response,
           200,
@@ -347,6 +391,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       const result = await agenticAsk(question, claudeContext, classification.connectors);
       if (result.ok) {
         if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
+        recordTurn(question, result.answer);
         writeJson(
           response,
           200,
@@ -391,6 +436,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     const perp = await askViaPerplexity(question, deep);
     if (perp) {
       if (vaultDir) appendConversationTurn(vaultDir, question, perp.answer);
+      recordTurn(question, perp.answer);
       writeJson(
         response,
         200,
@@ -411,6 +457,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     const result = await askViaClaude(question, claudeContext, history, model);
     if (result?.ok) {
       if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
+      recordTurn(question, result.answer);
       writeJson(response, 200, { available: true, answer: result.answer, sources }, corsOrigin);
       return true;
     }
@@ -436,6 +483,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
+        recordTurn(question, claudeResult.answer);
         writeJson(
           response,
           200,
@@ -456,6 +504,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     const perpResult = await askViaPerplexity(question, false);
     if (perpResult) {
       if (vaultDir) appendConversationTurn(vaultDir, question, perpResult.answer);
+      recordTurn(question, perpResult.answer);
       writeJson(
         response,
         200,
@@ -512,6 +561,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     return true;
   }
   if (vaultDir) appendConversationTurn(vaultDir, question, ollamaAnswer);
+  recordTurn(question, ollamaAnswer);
   writeJson(response, 200, { available: true, answer: ollamaAnswer, sources }, corsOrigin);
   return true;
 };
