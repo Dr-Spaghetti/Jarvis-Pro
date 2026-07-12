@@ -1071,9 +1071,9 @@ export const useJarvisVoice = ({
     startWakeListeningRef.current = startWakeListening;
   }, [startWakeListening]);
 
-  // Stable ref-backed callback so submitAsk doesn't need to close over voice state directly.
+  // Speak after any answer (voice or typed) unless explicitly muted.
   const autoSpeakIfListening = useCallback((text: string) => {
-    if (isListeningRef.current && !isMutedRef.current) {
+    if (!isMutedRef.current) {
       void speakJarvisRef.current?.(text);
     }
   }, []);
