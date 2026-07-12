@@ -469,23 +469,9 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
   const claudeContextWithRecall = `${claudeContext}${recallBlock}`;
 
-  // For general knowledge questions: fetch live web context and inject into Claude's prompt.
-  // Claude synthesizes vault notes + web results + memory into one concise answer.
-  let webBlock = "";
-  if (!isExplicitOllama && shouldEnrichWithWeb(question)) {
-    const webResult = await askViaPerplexity(question, false, true);
-    if (webResult) {
-      webBlock = `\n\nWeb search (live context):\n${webResult.answer}`;
-      if (webResult.citations.length > 0) {
-        webBlock += `\nSources: ${webResult.citations.map((c) => c.url).join(" | ")}`;
-      }
-    }
-  }
-  const claudeContextFinal = webBlock
-    ? `${claudeContextWithRecall}${webBlock}`
-    : claudeContextWithRecall;
-
-  if (!isExplicitOllama && !isPersonalQuestion(question) && isLiveQuestion(question)) {
+  // Live and general knowledge questions go directly to Perplexity (fast, web-grounded).
+  // Personal questions (my projects, my tasks, etc.) always use Claude + vault instead.
+  if (!isExplicitOllama && !isPersonalQuestion(question) && (isLiveQuestion(question) || shouldEnrichWithWeb(question))) {
     const deep = isDeepResearchRequest(question);
     const perp = await askViaPerplexity(question, deep);
     if (perp) {
@@ -508,7 +494,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
 
   if (model?.startsWith("claude-")) {
-    const result = await askViaClaude(question, claudeContextFinal, history, model);
+    const result = await askViaClaude(question, claudeContextWithRecall, history, model);
     if (result?.ok) {
       if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
       recordTurn(question, result.answer);
@@ -533,7 +519,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
-      const claudeResult = await askViaClaude(question, claudeContextFinal, history);
+      const claudeResult = await askViaClaude(question, claudeContextWithRecall, history);
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);

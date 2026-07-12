@@ -3,11 +3,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApiServer } from "./createApiServer";
 
-// Load .env from monorepo root into process.env (shell exports take priority).
-// This runs before any process.env reads so all API keys are available.
+// Load .env into process.env (shell exports take priority).
+// Walks up from this file's directory so the same path works in both
+// dev (apps/api/src/) and production (dist/api/).
 {
-  const envPath = join(dirname(fileURLToPath(import.meta.url)), "../../../.env");
-  if (existsSync(envPath)) {
+  let envPath: string | null = null;
+  for (let d = dirname(fileURLToPath(import.meta.url)); d !== dirname(d); d = dirname(d)) {
+    const candidate = join(d, ".env");
+    if (existsSync(candidate)) { envPath = candidate; break; }
+  }
+  if (envPath) {
     for (const line of readFileSync(envPath, "utf-8").split("\n")) {
       const t = line.trim();
       if (!t || t.startsWith("#")) continue;
