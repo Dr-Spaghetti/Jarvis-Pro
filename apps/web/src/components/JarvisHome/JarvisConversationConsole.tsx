@@ -98,15 +98,15 @@ export const JarvisConversationConsole = ({
             AWAITING DIRECTIVE<span className="nc-blink">_</span>
           </div>
         )}
-        {conversation.map((turn) => (
-          <div className="nc-hq-turn" key={`${turn.time}-${turn.question}`}>
+        {conversation.map((turn, i) => (
+          <div className="nc-hq-turn" key={`${turn.time}-${i}`}>
             <div className="nc-hq-msg nc-hq-msg--you">
               <div className="nc-hq-msg-who">USR_CMD · {turn.time}</div>
               <div className="nc-hq-msg-text">{turn.question}</div>
             </div>
             <div className="nc-hq-msg nc-hq-msg--jarvis">
               <div className="nc-hq-msg-who">JARVIS</div>
-              <div className="nc-hq-msg-text">{turn.answer}</div>
+              <div className="nc-hq-msg-text">{turn.answer.replace(/\[\d+\]/g, "")}</div>
             </div>
           </div>
         ))}
