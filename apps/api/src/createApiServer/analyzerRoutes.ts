@@ -484,7 +484,11 @@ const extractAudioFromVideo = (videoData: Buffer, inputExt: string): Promise<Buf
           }
         }
       });
-      proc.on("error", () => resolve(null));
+      proc.on("error", () => {
+        try { unlinkSync(tmpIn); } catch { /* ignore */ }
+        try { unlinkSync(tmpOut); } catch { /* ignore */ }
+        resolve(null);
+      });
     } catch {
       resolve(null);
     }

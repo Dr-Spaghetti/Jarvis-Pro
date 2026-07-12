@@ -68,7 +68,9 @@ export const pushNotification = (title: string, detail?: string): void => {
         new StorageEvent("storage", { key: "jarvis.lastNotificationAt", newValue: ts }),
       );
     })
-    .catch(() => {});
+    .catch((err: unknown) => {
+      console.warn("[notification] Push failed:", err instanceof Error ? err.message : err);
+    });
 };
 
 export const voiceNavTargets: Record<

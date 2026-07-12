@@ -158,9 +158,9 @@ export const useJarvisVoice = ({
     })();
   }, []);
 
-  // Load Deepgram voice list.
+  // Load Deepgram voice list and refresh every 10 minutes.
   useEffect(() => {
-    (async () => {
+    const fetchVoices = async () => {
       try {
         const res = await apiFetch(buildVoiceVoicesUrl(), {
           headers: { Accept: "application/json" },
@@ -173,7 +173,10 @@ export const useJarvisVoice = ({
       } catch {
         /* voices are optional */
       }
-    })();
+    };
+    void fetchVoices();
+    const interval = setInterval(() => void fetchVoices(), 10 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // Sync voice settings from Settings tab.
