@@ -41,6 +41,7 @@ type UseJarvisVoiceOptions = {
     answer: string,
     sources: { title: string; path: string }[],
     via: string | null,
+    citations: { title: string; url: string }[],
   ) => void;
   onVoiceAnswerFailed: (hint: string) => void;
 };
@@ -671,6 +672,7 @@ export const useJarvisVoice = ({
             hint?: string;
             via?: string;
             sources?: { title: string; path: string }[];
+            citations?: { title: string; url: string }[];
           };
           if (data.available && typeof data.answer === "string") {
             const cleanAnswer = stripMarkdownForSpeech(data.answer);
@@ -678,6 +680,7 @@ export const useJarvisVoice = ({
               cleanAnswer,
               Array.isArray(data.sources) ? data.sources : [],
               typeof data.via === "string" ? data.via : null,
+              Array.isArray(data.citations) ? data.citations : [],
             );
             setVoiceStatus("Answered");
             void loadConversation();
@@ -1009,7 +1012,7 @@ export const useJarvisVoice = ({
         void runVoiceIntent(commandAfterWake).finally(() => maybeContinueLoop());
         return;
       }
-      void startCommandRecording();
+      if (!isRecordingCommandRef.current) void startCommandRecording();
     };
     recognition.onerror = (event) => {
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {

@@ -19,4 +19,5 @@ export {
   parseConversationMarkdown,
 } from "./brain/conversation";
 export { handleBrainModelsRoute, handleBrainAskRoute } from "./brain/ask";
+export { handleBrainLearningsRoute } from "./brain/learnings";
 export { resolveVaultDir } from "./brain/vault";

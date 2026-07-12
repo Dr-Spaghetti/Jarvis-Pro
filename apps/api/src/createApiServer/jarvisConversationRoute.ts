@@ -1,4 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+
+const MAX_EVENTS_PER_SESSION = 400; // ~200 turns; prune oldest when exceeded
 import { join } from "node:path";
 
 import type { ConversationTurn } from "@octogent/core";
@@ -54,11 +56,13 @@ export const handleJarvisConversationTurnRoute: ApiRouteHandler = async (
   const turnsPath = join(transcriptDir, turnsFilename(sessionId));
 
   const jsonlExists = existsSync(jsonlPath);
+  let existingLines: string[] = [];
   let eventCount = 0;
   if (jsonlExists) {
     try {
-      const existing = readFileSync(jsonlPath, "utf8");
-      eventCount = existing.split("\n").filter((l) => l.trim().length > 0).length;
+      const raw = readFileSync(jsonlPath, "utf8");
+      existingLines = raw.split("\n").filter((l) => l.trim().length > 0);
+      eventCount = existingLines.length;
     } catch {
       // start from zero
     }
@@ -110,7 +114,16 @@ export const handleJarvisConversationTurnRoute: ApiRouteHandler = async (
   );
 
   try {
-    appendFileSync(jsonlPath, `${lines.join("\n")}\n`, "utf8");
+    const combined = [...existingLines, ...lines];
+    if (combined.length > MAX_EVENTS_PER_SESSION) {
+      // Keep the session_start event plus the most recent turns
+      const sessionStart = combined.find((l) => l.includes('"type":"session_start"'));
+      const rest = combined.filter((l) => !l.includes('"type":"session_start"'));
+      const pruned = [...(sessionStart ? [sessionStart] : []), ...rest.slice(-MAX_EVENTS_PER_SESSION + 1)];
+      writeFileSync(jsonlPath, `${pruned.join("\n")}\n`, "utf8");
+    } else {
+      appendFileSync(jsonlPath, `${lines.join("\n")}\n`, "utf8");
+    }
   } catch (error) {
     writeJson(
       response,

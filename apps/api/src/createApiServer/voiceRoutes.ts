@@ -597,7 +597,7 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       );
       return true;
     }
-    response.writeHead(200, withCors({ "Content-Type": "audio/wav" }, corsOrigin));
+    response.writeHead(200, withCors({ "Content-Type": "audio/wav", "Content-Length": String(audio.length) }, corsOrigin));
     response.end(audio);
     return true;
   }
@@ -618,11 +618,11 @@ export const handleVoiceSpeakRoute: ApiRouteHandler = async ({
       }),
     });
     if (!upstreamResponse.ok) {
-      // 402/429 = out of credits — silently fall back to Deepgram
-      if (
-        (upstreamResponse.status === 402 || upstreamResponse.status === 429) &&
-        (await synthesizeDeepgramFallback(text, response, corsOrigin ?? ""))
-      ) {
+      // 402/429 = out of credits — fall back to Deepgram
+      if (upstreamResponse.status === 402 || upstreamResponse.status === 429) {
+        const fell = await synthesizeDeepgramFallback(text, response, corsOrigin ?? "");
+        if (fell) return true;
+        writeJson(response, 503, { error: "Speech synthesis failed: OpenAI quota exceeded and Deepgram fallback also unavailable. Check DEEPGRAM_API_KEY." }, corsOrigin);
         return true;
       }
       const errorText = await upstreamResponse.text();

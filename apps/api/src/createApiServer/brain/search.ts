@@ -140,7 +140,7 @@ export const handleBrainSemanticRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const queryVector = await embedViaOllama(q);
+  const queryVector = await embedViaOllama(q, AbortSignal.timeout(5000));
   if (!queryVector) {
     writeJson(
       response,
@@ -163,7 +163,7 @@ export const handleBrainSemanticRoute: ApiRouteHandler = async ({
       const existing = index[relPosix];
       if ((!existing || existing.mtime !== mtime) && embedded < MAX_EMBED_PER_REQUEST) {
         const content = readFileSync(join(vaultDir, rel), "utf8");
-        const vector = await embedViaOllama(embedTextFor(content, rel));
+        const vector = await embedViaOllama(embedTextFor(content, rel), AbortSignal.timeout(5000));
         if (vector) {
           index[relPosix] = { mtime, vector };
           embedded += 1;

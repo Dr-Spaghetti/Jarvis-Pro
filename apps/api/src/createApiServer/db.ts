@@ -7,7 +7,7 @@
  * fast enough for personal-scale data and can be swapped for SQLite later.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export type DbTurn = {
@@ -166,4 +166,21 @@ export const searchLearnings = (query: string, limit = 3): DbLearning[] => {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((r) => r.learning);
+};
+
+export const listAllLearnings = (): DbLearning[] =>
+  [...loadLearnings()].sort((a, b) => b.timestamp - a.timestamp);
+
+export const deleteLearning = (id: string): boolean => {
+  if (!memoryDir) return false;
+  const learnings = loadLearnings();
+  const next = learnings.filter((l) => l.id !== id);
+  if (next.length === learnings.length) return false;
+  try {
+    writeFileSync(learningsPath(), next.map((l) => JSON.stringify(l)).join("\n") + (next.length > 0 ? "\n" : ""), "utf8");
+    learningsCache = next;
+    return true;
+  } catch {
+    return false;
+  }
 };

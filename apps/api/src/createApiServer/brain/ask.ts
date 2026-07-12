@@ -142,7 +142,10 @@ const askViaPerplexity = async (
     },
     18000,
   );
-  if (!res?.ok) return null;
+  if (!res?.ok) {
+    if (res?.status === 429) perplexityUnavailableUntil = Date.now() + 60_000;
+    return null;
+  }
   const data = (await res.json().catch(() => null)) as {
     choices?: Array<{ message?: { content?: string } }>;
     citations?: string[];
@@ -283,7 +286,7 @@ const retrieveContext = async (
   limit: number,
 ): Promise<Array<{ rel: string; title: string; body: string }>> => {
   let paths: string[] = [];
-  const queryVector = await embedViaOllama(query);
+  const queryVector = await embedViaOllama(query, AbortSignal.timeout(5000));
   if (queryVector) {
     const index = loadSemanticIndex(vaultDir);
     const entries = Object.entries(index);
@@ -356,6 +359,7 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
 };
 
 let claudeUnavailableUntil = 0;
+let perplexityUnavailableUntil = 0;
 
 export const handleBrainAskRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
@@ -388,7 +392,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   const vaultDir = resolveVaultDir();
   const notes = vaultDir ? await retrieveContext(vaultDir, question, 6) : [];
   const facts = vaultDir ? readMemoryFacts(vaultDir, 20) : [];
-  const history = vaultDir ? readConversationTurns(vaultDir, 6) : [];
+  const history = vaultDir ? readConversationTurns(vaultDir, 10) : [];
   const sources = notes.map((note) => ({ title: note.title, path: note.rel }));
 
   const memoryBlock = facts.length > 0 ? facts.map((f) => `- ${f}`).join("\n") : "(none)";
@@ -505,7 +509,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   // Live and general knowledge questions go directly to Perplexity (fast, web-grounded).
   // Personal questions (my projects, my tasks, etc.) always use Claude + vault instead.
-  if (!isExplicitOllama && !isPersonalQuestion(question) && (isLiveQuestion(question) || shouldEnrichWithWeb(question))) {
+  if (!isExplicitOllama && !isPersonalQuestion(question) && Date.now() >= perplexityUnavailableUntil && (isLiveQuestion(question) || shouldEnrichWithWeb(question))) {
     const deep = isDeepResearchRequest(question) || isComplexQuestion(question);
     const perp = await askViaPerplexity(question, deep);
     if (perp) {
@@ -571,12 +575,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         const s = claudeResult.status;
         if (s === 429 || s === 529) {
           claudeUnavailableUntil = Date.now() + 60_000;
-        } else if (s === 401 || s === 403 || s === 402) {
-          claudeUnavailableUntil = Date.now() + 300_000;
         }
+        // Auth errors (401/403/402) don't set a lockout — they fail fast on every
+        // request, so no need to bypass Claude for 5 minutes on a transient error.
       }
     }
-    const perpResult = await askViaPerplexity(question, false);
+    const perpResult = Date.now() >= perplexityUnavailableUntil ? await askViaPerplexity(question, false) : null;
     if (perpResult) {
       if (vaultDir) appendConversationTurn(vaultDir, question, perpResult.answer);
       recordTurn(question, perpResult.answer);
@@ -589,19 +593,6 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
           sources,
           citations: perpResult.citations,
           via: "perplexity-sonar",
-        },
-        corsOrigin,
-      );
-      return true;
-    }
-    if (!vaultDir) {
-      writeJson(
-        response,
-        400,
-        {
-          available: false,
-          error: "No AI provider could answer.",
-          hint: "Check ANTHROPIC_API_KEY and PERPLEXITY_API_KEY in .env, or set OBSIDIAN_VAULT_PATH and run Ollama.",
         },
         corsOrigin,
       );

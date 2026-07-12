@@ -65,9 +65,8 @@ export const useJarvisAsk = ({
         citations?: { title: string; url: string }[];
       };
       if (data.available && typeof data.answer === "string") {
-        const cleanAnswer = stripMarkdownForSpeech(data.answer);
         const answeredAt = new Date().toISOString();
-        setAnswer(cleanAnswer);
+        setAnswer(data.answer);
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
         setAnswerCitations(Array.isArray(data.citations) ? data.citations : []);
         setAnswerVia(typeof data.via === "string" ? data.via : null);
@@ -78,7 +77,7 @@ export const useJarvisAsk = ({
           body: JSON.stringify({
             sessionId: jarvisSessionId,
             question,
-            answer: cleanAnswer,
+            answer: data.answer,
             askedAt,
             answeredAt,
           }),
@@ -96,7 +95,7 @@ export const useJarvisAsk = ({
             );
           })
           .catch(() => {});
-        autoSpeakIfListening(cleanAnswer);
+        autoSpeakIfListening(stripMarkdownForSpeech(data.answer));
       } else {
         setAskNote(
           data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
@@ -126,11 +125,16 @@ export const useJarvisAsk = ({
 
   // Called by the voice hook's onVoiceAnswer callback.
   const handleVoiceAnswer = useCallback(
-    (voiceAnswer: string, sources: { title: string; path: string }[], via: string | null) => {
+    (
+      voiceAnswer: string,
+      sources: { title: string; path: string }[],
+      via: string | null,
+      citations: { title: string; url: string }[],
+    ) => {
       setAnswer(voiceAnswer);
       setAnswerSources(sources);
       setAnswerVia(via);
-      setAnswerCitations([]);
+      setAnswerCitations(citations);
     },
     [],
   );

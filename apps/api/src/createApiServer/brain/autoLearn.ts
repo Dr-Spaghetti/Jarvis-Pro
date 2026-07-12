@@ -70,15 +70,15 @@ export const extractLearning = async (
 
     const newFact = text.slice(2).trim();
 
-    // Dedup: skip if a similar learning (2+ shared meaningful words) already exists
-    const similar = searchLearnings(newFact, 3);
+    // Dedup: skip exact matches and near-duplicates (2+ shared meaningful words)
+    const similar = searchLearnings(newFact, 5);
     if (similar.length > 0) {
-      const newWords = new Set(newFact.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
+      const normalised = newFact.toLowerCase().replace(/\W+/g, " ").trim();
+      const newWords = new Set(normalised.split(" ").filter((w) => w.length > 4));
       const isDupe = similar.some((s) => {
-        const shared = s.content
-          .toLowerCase()
-          .split(/\W+/)
-          .filter((w) => w.length > 4 && newWords.has(w)).length;
+        const sNorm = s.content.toLowerCase().replace(/\W+/g, " ").trim();
+        if (sNorm === normalised) return true; // exact match
+        const shared = sNorm.split(" ").filter((w) => w.length > 4 && newWords.has(w)).length;
         return shared >= 2;
       });
       if (isDupe) return;
@@ -89,8 +89,8 @@ export const extractLearning = async (
     if (vaultDir) {
       try {
         ensureAndAppend(vaultDir, MEMORY_PATH, MEMORY_HEADER, `${text}\n`);
-      } catch {
-        // Vault write failing is non-fatal
+      } catch (err) {
+        console.warn("[autoLearn] Memory.md write failed:", err instanceof Error ? err.message : err);
       }
     }
 

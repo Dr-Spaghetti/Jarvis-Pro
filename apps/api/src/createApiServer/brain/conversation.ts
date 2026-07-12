@@ -45,7 +45,9 @@ export const appendConversationTurn = (
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
-  const block = `## ${hh}:${mm}\n\n**You:** ${oneLine(question)}\n\n**Jarvis:** ${answer.trim()}\n\n`;
+  // Sanitize: prevent literal **You:** / **Jarvis:** in content from breaking the parser
+  const safeAnswer = answer.trim().replace(/\*\*You:\*\*/g, "You:").replace(/\*\*Jarvis:\*\*/g, "Jarvis:");
+  const block = `## ${hh}:${mm}\n\n**You:** ${oneLine(question)}\n\n**Jarvis:** ${safeAnswer}\n\n`;
   try {
     ensureAndAppend(vaultDir, conversationRelPath(), CONVERSATION_HEADER, block);
   } catch {

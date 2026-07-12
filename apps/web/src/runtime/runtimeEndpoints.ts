@@ -703,6 +703,17 @@ export const buildJarvisConversationTurnUrl = (runtimeBaseUrl = readRuntimeBaseU
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/conversations/jarvis/turn");
 };
 
+export const buildBrainLearningsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/brain/learnings";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/brain/learnings");
+};
+
+export const buildBrainLearningDeleteUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/brain/learnings/${encodeURIComponent(id)}`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildGeneratorUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/generator", runtimeBaseUrl);
 

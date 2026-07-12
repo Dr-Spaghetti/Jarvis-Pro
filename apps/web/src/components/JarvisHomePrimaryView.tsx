@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
 import { JarvisActivityFeed } from "./JarvisHome/JarvisActivityFeed";
+import { JarvisLearningsPanel } from "./JarvisHome/JarvisLearningsPanel";
 import { JarvisConversationConsole } from "./JarvisHome/JarvisConversationConsole";
 import { JarvisIntentConfirmOverlay } from "./JarvisHome/JarvisIntentConfirmOverlay";
 import { JarvisVisualizer } from "./JarvisHome/JarvisVisualizer";
@@ -109,6 +110,8 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       {voice.voiceError && <div className="nc-hq-voice-error">{voice.voiceError}</div>}
 
       <JarvisActivityFeed recentRuns={recentRuns} />
+
+      <JarvisLearningsPanel />
 
       <JarvisConversationConsole
         conversation={conversation}

@@ -12,9 +12,16 @@ export const MAX_FILES_SCANNED = 2000;
 
 export type BrainNote = { title: string; path: string; modified: string; snippet: string };
 
+let _vaultWarnedOnce = false;
 export const resolveVaultDir = (): string | null => {
   const dir = process.env.OBSIDIAN_VAULT_PATH?.trim();
-  if (!dir || !existsSync(dir)) return null;
+  if (!dir || !existsSync(dir)) {
+    if (!_vaultWarnedOnce) {
+      console.warn("[vault] OBSIDIAN_VAULT_PATH not set or path does not exist — vault features disabled.");
+      _vaultWarnedOnce = true;
+    }
+    return null;
+  }
   return dir;
 };
 
