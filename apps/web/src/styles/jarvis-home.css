@@ -578,6 +578,28 @@
   border-color: var(--term-red);
   color: var(--term-red);
 }
+.nc-hq-handsfree-btn {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all .15s;
+}
+.nc-hq-handsfree-btn:hover {
+  border-color: var(--neon-green, #39ff14);
+  color: var(--neon-green, #39ff14);
+}
+.nc-hq-handsfree-btn[data-active="true"] {
+  border-color: var(--neon-green, #39ff14);
+  color: var(--neon-green, #39ff14);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--neon-green, #39ff14) 30%, transparent);
+  animation: ncStatusPulse 2.5s ease-in-out infinite;
+}
 
 /* voice intent confirmation overlay */
 .nc-hq-intent-confirm {

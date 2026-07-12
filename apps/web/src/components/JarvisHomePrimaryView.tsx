@@ -76,11 +76,14 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       <JarvisVoiceBar
         isRecordingCommand={voice.isRecordingCommand}
         isMuted={voice.isMuted}
+        isListening={voice.isListening}
         canReplay={voice.canReplay}
         togglePushToTalk={voice.togglePushToTalk}
         hardMute={voice.hardMute}
         unmute={voice.unmute}
         playPending={voice.playPending}
+        startListening={voice.startListening}
+        stopListening={voice.stopListening}
       />
 
       {voice.pendingVoiceIntent && (
