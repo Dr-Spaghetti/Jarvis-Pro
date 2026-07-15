@@ -34,6 +34,11 @@ export const isAllowedOriginHeader = (origin: string | undefined, allowRemoteAcc
     return true;
   }
 
+  // Allow browser extension origins (chrome-extension://, moz-extension://)
+  if (origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://")) {
+    return true;
+  }
+
   const hostname = parseHostname(origin, true);
   return hostname !== null && isLoopbackHostname(hostname);
 };
