@@ -116,6 +116,7 @@ async function playAnswer() {
   const playBtn = panel.querySelector(".j-play");
   playBtn.textContent = "⏳";
   playBtn.disabled = true;
+  let url;
   try {
     const res = await fetch(`${JARVIS}/api/voice/speak`, {
       method: "POST",
@@ -124,7 +125,7 @@ async function playAnswer() {
     });
     if (!res.ok) throw new Error("speak failed");
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
     await audio.play();
