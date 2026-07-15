@@ -103,9 +103,9 @@ async function sendQuestion() {
     } else {
       answerEl.textContent = data.hint ?? "No answer model available — check your API keys in Jarvis Settings.";
     }
-  } catch (err) {
+  } catch {
     answerEl.className = "j-answer";
-    answerEl.textContent = String(err.message ?? "Jarvis is offline — start it first.");
+    answerEl.textContent = "Jarvis is offline — start it first.";
   } finally {
     send.disabled = false;
   }
@@ -129,7 +129,7 @@ async function playAnswer() {
     audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
     await audio.play();
   } catch {
-    // silent — button resets
+    URL.revokeObjectURL(url);
   } finally {
     playBtn.textContent = "🔊";
     playBtn.disabled = false;
