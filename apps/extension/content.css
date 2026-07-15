@@ -1,0 +1,143 @@
+#jarvis-ext-panel {
+  all: initial;
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  width: 380px !important;
+  background: #0a0a0a !important;
+  border: 1px solid #00ff88 !important;
+  border-radius: 4px !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 13px !important;
+  color: #e0e0e0 !important;
+  z-index: 2147483647 !important;
+  box-shadow: 0 0 24px rgba(0,255,136,0.15) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+#jarvis-ext-panel.jarvis-hidden {
+  display: none !important;
+}
+
+#jarvis-ext-panel * {
+  box-sizing: border-box;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+#jarvis-ext-panel .j-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1a1a1a;
+  color: #00ff88;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+}
+
+#jarvis-ext-panel .j-close {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+}
+
+#jarvis-ext-panel .j-close:hover { color: #00ff88; }
+
+#jarvis-ext-panel .j-context {
+  width: 100%;
+  background: #111;
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  color: #666;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  padding: 8px 12px;
+  resize: none;
+  height: 54px;
+  outline: none;
+}
+
+#jarvis-ext-panel .j-context:focus { color: #999; }
+
+#jarvis-ext-panel .j-input-row {
+  display: flex;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+#jarvis-ext-panel .j-input {
+  flex: 1;
+  background: #0d0d0d;
+  border: none;
+  color: #e0e0e0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+#jarvis-ext-panel .j-input::placeholder { color: #333; }
+
+#jarvis-ext-panel .j-send {
+  background: none;
+  border: none;
+  border-left: 1px solid #1a1a1a;
+  color: #00ff88;
+  cursor: pointer;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 0 14px;
+}
+
+#jarvis-ext-panel .j-send:hover { background: #0d1a12; }
+#jarvis-ext-panel .j-send:disabled { color: #333; cursor: default; }
+
+#jarvis-ext-panel .j-answer {
+  padding: 10px 12px;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1.6;
+  min-height: 40px;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#jarvis-ext-panel .j-answer.j-thinking { color: #444; }
+
+#jarvis-ext-panel .j-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid #1a1a1a;
+}
+
+#jarvis-ext-panel .j-play {
+  background: none;
+  border: 1px solid #1a1a1a;
+  border-radius: 3px;
+  color: #888;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+#jarvis-ext-panel .j-play:hover { border-color: #00ff88; color: #00ff88; }
+
+#jarvis-ext-panel .j-open {
+  color: #00ff88;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  margin-left: auto;
+}
+
+#jarvis-ext-panel .j-open:hover { text-decoration: underline; }
