@@ -73,7 +73,7 @@ function parseReflectionResponse(rawResponse: string): ReflectionResult {
         Math.max(0, Number(parsed.confidenceLevel) || 0.5),
       ),
       shouldContinue: Boolean(parsed.shouldContinue),
-      nextFocus: parsed.nextFocus ? String(parsed.nextFocus) : undefined,
+      ...(parsed.nextFocus ? { nextFocus: String(parsed.nextFocus) } : {}),
     };
   } catch (error) {
     // Fallback to safe defaults if parsing fails
@@ -153,9 +153,8 @@ function generateSyntheticReflection(
     qualityScore,
     confidenceLevel,
     shouldContinue,
-    nextFocus:
-      iterationNum < maxIterations
-        ? `Refine based on iteration ${ iterationNum } insights`
-        : undefined,
+    ...(iterationNum < maxIterations
+      ? { nextFocus: `Refine based on iteration ${ iterationNum } insights` }
+      : {}),
   };
 }

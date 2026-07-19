@@ -131,8 +131,8 @@ describe("Agent Matcher", () => {
       const ranked = rankAgentsForTask(agents, classification);
 
       expect(ranked.length).toBe(3);
-      expect(ranked[0].finalScore).toBeGreaterThanOrEqual(ranked[1].finalScore);
-      expect(ranked[1].finalScore).toBeGreaterThanOrEqual(ranked[2].finalScore);
+      expect(ranked[0]!.finalScore).toBeGreaterThanOrEqual(ranked[1]!.finalScore);
+      expect(ranked[1]!.finalScore).toBeGreaterThanOrEqual(ranked[2]!.finalScore);
     });
 
     it("ranks best agent first", () => {
@@ -150,7 +150,7 @@ describe("Agent Matcher", () => {
 
       const ranked = rankAgentsForTask(agents, classification);
 
-      expect(ranked[0].agent.archetype).toBe("senior-developer");
+      expect(ranked[0]!.agent.archetype).toBe("senior-developer");
     });
   });
 
@@ -205,21 +205,21 @@ describe("Domain Loop Capability", () => {
       const ranked = rankByLoopCapability("research");
 
       expect(ranked.length).toBeGreaterThan(0);
-      expect(ranked[0].iterationCapability).toBeGreaterThanOrEqual(
-        ranked[ranked.length - 1].iterationCapability,
+      expect(ranked[0]!.iterationCapability).toBeGreaterThanOrEqual(
+        ranked[ranked.length - 1]!.iterationCapability,
       );
     });
 
     it("research-analyst ranks first for research domain", () => {
       const ranked = rankByLoopCapability("research");
 
-      expect(ranked[0].archetype).toBe("research-analyst");
+      expect(ranked[0]!.archetype).toBe("research-analyst");
     });
 
     it("senior-developer ranks first for engineering domain", () => {
       const ranked = rankByLoopCapability("engineering");
 
-      expect(ranked[0].archetype).toBe("senior-developer");
+      expect(ranked[0]!.archetype).toBe("senior-developer");
     });
   });
 

@@ -85,7 +85,7 @@ describe("Agent Loop Executor", () => {
 
       const finalQuality = result.metrics.qualityProgression[
         result.metrics.qualityProgression.length - 1
-      ];
+      ]!;
       const expectedSuccess = finalQuality > 0.6;
       expect(result.succeeded).toBe(expectedSuccess);
     });

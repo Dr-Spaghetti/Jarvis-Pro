@@ -6,12 +6,12 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { RouteHandlerContext } from "./routeHelpers";
-import { writeJson } from "./routeHelpers";
-import { classifyTask } from "./agent/taskClassifier";
-import { executeAgentLoop } from "./agent/execution/agentLoopExecutor";
-import { globalLoopMetricsCollector } from "./agent/metrics/loopMetricsCollector";
-import type { TaskInput } from "./agent/taskClassifier";
+import type { RouteHandlerContext } from "../routeHelpers";
+import { writeJson } from "../routeHelpers";
+import { classifyTask } from "./taskClassifier";
+import { executeAgentLoop } from "./execution/agentLoopExecutor";
+import { globalLoopMetricsCollector } from "./metrics/loopMetricsCollector";
+import type { TaskInput } from "./taskClassifier";
 
 /**
  * Handle orchestration requests.
@@ -45,26 +45,24 @@ export async function handleOrchestrateRoute(
 
     const payload = JSON.parse(body) as unknown;
     if (!payload || typeof payload !== "object") {
-      writeJson(response, { error: "Invalid payload" }, 400);
+      writeJson(response, 400, { error: "Invalid payload" }, context.corsOrigin);
       return true;
     }
 
     const taskPayload = payload as Record<string, unknown>;
     const task: TaskInput = {
       title: String(taskPayload.title || ""),
-      description: taskPayload.description ? String(taskPayload.description) : undefined,
-      domain: taskPayload.domain ? String(taskPayload.domain) : undefined,
-      complexity: taskPayload.complexity ? String(taskPayload.complexity) : undefined,
-      timeConstraint: taskPayload.timeConstraint ? String(taskPayload.timeConstraint) : undefined,
-      qualityBar: taskPayload.qualityBar ? String(taskPayload.qualityBar) : undefined,
-      estimatedDurationMinutes: taskPayload.estimatedDurationMinutes
-        ? Number(taskPayload.estimatedDurationMinutes)
-        : undefined,
-      context: taskPayload.context ? (taskPayload.context as Record<string, unknown>) : undefined,
+      ...(taskPayload.description ? { description: String(taskPayload.description) } : {}),
+      ...(taskPayload.domain ? { domain: String(taskPayload.domain) } : {}),
+      ...(taskPayload.complexity ? { complexity: String(taskPayload.complexity) } : {}),
+      ...(taskPayload.timeConstraint ? { timeConstraint: String(taskPayload.timeConstraint) } : {}),
+      ...(taskPayload.qualityBar ? { qualityBar: String(taskPayload.qualityBar) } : {}),
+      ...(taskPayload.estimatedDurationMinutes ? { estimatedDurationMinutes: Number(taskPayload.estimatedDurationMinutes) } : {}),
+      ...(taskPayload.context ? { context: taskPayload.context as Record<string, unknown> } : {}),
     };
 
     if (!task.title) {
-      writeJson(response, { error: "Missing required field: title" }, 400);
+      writeJson(response, 400, { error: "Missing required field: title" }, context.corsOrigin);
       return true;
     }
 
@@ -96,7 +94,7 @@ export async function handleOrchestrateRoute(
 
       const loopResult = await executeAgentLoop(
         agentContext,
-        classification.loopStrategy,
+        classification.loopStrategy!,
       );
 
       executionResult = {
@@ -131,17 +129,18 @@ export async function handleOrchestrateRoute(
       timestamp: new Date().toISOString(),
     };
 
-    writeJson(response, responsePayload, 200);
+    writeJson(response, 200, responsePayload, context.corsOrigin);
     return true;
   } catch (error) {
     console.error("Orchestration error:", error);
     writeJson(
       response,
+      500,
       {
         error: "Orchestration failed",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      context.corsOrigin,
     );
     return true;
   }

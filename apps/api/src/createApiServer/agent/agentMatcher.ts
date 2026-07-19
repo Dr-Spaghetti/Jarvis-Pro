@@ -321,5 +321,5 @@ export function findBestAgent(
   classification: TaskClassification,
 ): MatchResult | null {
   const ranked = rankAgentsForTask(agents, classification);
-  return ranked.length > 0 ? ranked[0] : null;
+  return ranked[0] ?? null;
 }

@@ -54,12 +54,12 @@ function checkQualityImprovement(
   }
 
   // Calculate average improvement per iteration
-  const totalImprovement = progression[progression.length - 1] - progression[0];
+  const totalImprovement = progression[progression.length - 1]! - progression[0]!;
   const avgImprovementPerIteration = totalImprovement / (progression.length - 1);
 
   // Require at least 0.1 improvement per iteration on average (or flat/slight decline if starting high)
   const minAcceptableImprovement =
-    progression[0] > 0.7 ? -0.05 : 0.1;
+    progression[0]! > 0.7 ? -0.05 : 0.1;
   const passed = avgImprovementPerIteration >= minAcceptableImprovement;
 
   const improvementScore = Math.min(
@@ -93,7 +93,7 @@ function checkConfidenceStability(
   // Check for dramatic confidence drops (>0.3)
   let maxDrop = 0;
   for (let i = 1; i < progression.length; i++) {
-    const drop = progression[i - 1] - progression[i];
+    const drop = progression[i - 1]! - progression[i]!;
     if (drop > maxDrop) {
       maxDrop = drop;
     }

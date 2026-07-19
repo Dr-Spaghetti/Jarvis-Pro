@@ -285,7 +285,7 @@ describe("generatorRoutes", () => {
       });
       await call(handleGeneratorImageRoute, "POST", "/api/generator/image", { prompt: "test" });
       const body = JSON.parse(
-        fetchMock.mock.calls[0][1].body as string,
+        fetchMock.mock.calls[0]![1]!.body as string,
       ) as { parameters: { aspectRatio: string } };
       expect(body.parameters.aspectRatio).toBe("1:1");
     });
@@ -404,7 +404,7 @@ describe("generatorRoutes", () => {
       // Only 2 fetches (veoStart + veoPoll) — no external image fetch
       expect(fetchMock).toHaveBeenCalledTimes(2);
       const veoBody = JSON.parse(
-        fetchMock.mock.calls[0][1].body as string,
+        fetchMock.mock.calls[0]![1]!.body as string,
       ) as { instances: Array<{ image?: unknown }> };
       expect(veoBody.instances[0]?.image).toBeDefined();
     });
