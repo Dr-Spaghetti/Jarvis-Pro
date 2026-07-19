@@ -116,6 +116,11 @@ async function playAnswer() {
   const playBtn = panel.querySelector(".j-play");
   playBtn.textContent = "⏳";
   playBtn.disabled = true;
+  // Claim the user-gesture autoplay token before the async fetch boundary.
+  // Without this, Chrome blocks audio.play() because the gesture is consumed.
+  const unlock = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAAAAAAARQAABQAAAAAAAABAAEAIlYAAJSsAACABAAA");
+  unlock.volume = 0;
+  void unlock.play().catch(() => {});
   let url;
   try {
     const res = await fetch(`${JARVIS}/api/voice/speak`, {

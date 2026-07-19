@@ -255,6 +255,18 @@ export const useJarvisVoice = ({
     } catch {
       /* best-effort */
     }
+    // Unlock HTMLAudioElement autoplay separately — AudioContext.resume() does not
+    // cover <audio> elements. Playing a silent clip during a user gesture primes
+    // the browser so subsequent audio.play() calls succeed without a gesture.
+    try {
+      const silent = new Audio(
+        "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAAAAAAARQAABQAAAAAAAABAAEAIlYAAJSsAACABAAA",
+      );
+      silent.volume = 0;
+      void silent.play().catch(() => {});
+    } catch {
+      /* best-effort */
+    }
   }, []);
 
   const playPending = useCallback(async () => {
