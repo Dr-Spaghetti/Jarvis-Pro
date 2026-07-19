@@ -1,9 +1,9 @@
 ﻿import { describe, it, expect, beforeEach } from "vitest";
-import { classifyTask } from "../createApiServer/agent/taskClassifier";
-import { executeAgentLoop } from "../createApiServer/agent/execution/agentLoopExecutor";
-import { globalLoopMetricsCollector } from "../createApiServer/agent/metrics/loopMetricsCollector";
-import { evaluateLoopEfficacyGate } from "../createApiServer/agent/metrics/loopQualityEvaluator";
-import type { TaskInput } from "../createApiServer/agent/taskClassifier";
+import { classifyTask } from "../src/createApiServer/agent/taskClassifier";
+import { executeAgentLoop } from "../src/createApiServer/agent/execution/agentLoopExecutor";
+import { globalLoopMetricsCollector } from "../src/createApiServer/agent/metrics/loopMetricsCollector";
+import { evaluateLoopEfficacyGate } from "../src/createApiServer/agent/metrics/loopQualityEvaluator";
+import type { TaskInput } from "../src/createApiServer/agent/taskClassifier";
 
 describe("Orchestration Loop E2E", () => {
   beforeEach(() => {

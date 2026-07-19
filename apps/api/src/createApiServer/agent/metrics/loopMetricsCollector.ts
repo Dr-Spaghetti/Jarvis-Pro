@@ -54,12 +54,6 @@ class LoopMetricsCollector {
     deploymentId: string,
     metrics: AgentLoopMetrics,
   ): void {
-    const loop = this.activeLoops.get(deploymentId);
-    if (!loop) {
-      console.warn(`Loop not found for deployment: ${ deploymentId }`);
-      return;
-    }
-
     this.completedLoops.push(metrics);
     this.activeLoops.delete(deploymentId);
   }

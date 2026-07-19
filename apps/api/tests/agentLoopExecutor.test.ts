@@ -2,10 +2,10 @@
 import {
   executeAgentLoop,
   type AgentExecutionContext,
-} from "../createApiServer/agent/execution/agentLoopExecutor";
-import { reflectOnIteration } from "../createApiServer/agent/execution/reflectOnIteration";
-import { globalLoopMetricsCollector } from "../createApiServer/agent/metrics/loopMetricsCollector";
-import type { TaskLoopStrategy } from "../createApiServer/agent/taskClassifier";
+} from "../src/createApiServer/agent/execution/agentLoopExecutor";
+import { reflectOnIteration } from "../src/createApiServer/agent/execution/reflectOnIteration";
+import { globalLoopMetricsCollector } from "../src/createApiServer/agent/metrics/loopMetricsCollector";
+import type { TaskLoopStrategy } from "../src/createApiServer/agent/taskClassifier";
 
 const mockContext: AgentExecutionContext = {
   taskId: "test-task",

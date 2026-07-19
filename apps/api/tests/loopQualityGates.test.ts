@@ -4,8 +4,8 @@ import {
   describeGateResult,
   applyGateWeight,
   GATE_WEIGHT,
-} from "../createApiServer/agent/metrics/loopQualityEvaluator";
-import type { AgentLoopMetrics } from "../createApiServer/agent/metrics/loopMetricsTypes";
+} from "../src/createApiServer/agent/metrics/loopQualityEvaluator";
+import type { AgentLoopMetrics } from "../src/createApiServer/agent/metrics/loopMetricsTypes";
 
 const createMockMetrics = (overrides?: Partial<AgentLoopMetrics>): AgentLoopMetrics => ({
   strategy: {

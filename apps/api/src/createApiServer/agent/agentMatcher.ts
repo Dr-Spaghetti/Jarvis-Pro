@@ -286,7 +286,7 @@ export function matchAgentToTask(
 
   const finalScore = Math.min(1.0, baseScore + loopBonus);
   const recommendedForLoop =
-    classification.loopStrategy?.requiresLoop ?? false &&
+    (classification.loopStrategy?.requiresLoop ?? false) &&
     agent.loopCapabilityScore > 0.6;
 
   return {

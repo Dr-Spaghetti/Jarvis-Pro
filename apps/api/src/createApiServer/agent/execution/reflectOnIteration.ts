@@ -135,7 +135,7 @@ function generateSyntheticReflection(
   complexity: string,
 ): ReflectionResult {
   // Simulate quality improvement as iterations progress
-  const baseQuality = 0.6;
+  const baseQuality = 0.65;
   const improvementPerIteration = complexity === "expert" ? 0.08 : 0.05;
   const qualityScore = Math.min(
     0.95,

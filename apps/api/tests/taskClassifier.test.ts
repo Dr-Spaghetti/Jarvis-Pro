@@ -6,14 +6,14 @@ import {
   getClassificationCacheStats,
   determineLoopStrategy,
   type TaskInput,
-} from "../createApiServer/agent/taskClassifier";
+} from "../src/createApiServer/agent/taskClassifier";
 import {
   buildLoopStrategy,
   requiresIterativeExecution,
   estimateLoopTotalTime,
   shouldTerminateLoopEarly,
   describeLoopStrategy,
-} from "../createApiServer/agent/taskLoopStrategy";
+} from "../src/createApiServer/agent/taskLoopStrategy";
 
 describe("Task Classifier", () => {
   beforeEach(() => {

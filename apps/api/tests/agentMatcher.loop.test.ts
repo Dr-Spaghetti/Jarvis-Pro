@@ -5,10 +5,10 @@ import {
   findBestAgent,
   type AgentProfile,
   type AgentArchetype,
-} from "../createApiServer/agent/agentMatcher";
-import { classifyTask } from "../createApiServer/agent/taskClassifier";
-import { getLoopCapability, rankByLoopCapability, isSuitableForIterativeExecution } from "../createApiServer/agent/domainLoopCapability";
-import type { TaskInput } from "../createApiServer/agent/taskClassifier";
+} from "../src/createApiServer/agent/agentMatcher";
+import { classifyTask } from "../src/createApiServer/agent/taskClassifier";
+import { getLoopCapability, rankByLoopCapability, isSuitableForIterativeExecution } from "../src/createApiServer/agent/domainLoopCapability";
+import type { TaskInput } from "../src/createApiServer/agent/taskClassifier";
 
 const createMockAgent = (
   archetype: AgentArchetype,

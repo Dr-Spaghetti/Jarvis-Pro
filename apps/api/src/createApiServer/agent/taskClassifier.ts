@@ -129,11 +129,11 @@ function detectDomain(task: TaskInput): TaskDomain {
   if (text.match(/process|workflow|automation|deploy|release|operations|infrastructure/)) {
     return "operations";
   }
-  if (text.match(/design|creative|visual|ux|ui|brand|concept|brainstorm/)) {
-    return "creative";
-  }
   if (text.match(/research|investigate|explore|discovery|proof|poc|experiment/)) {
     return "research";
+  }
+  if (text.match(/design|creative|visual|ux|ui|brand|concept|brainstorm/)) {
+    return "creative";
   }
 
   return "planning";
@@ -153,7 +153,7 @@ function detectComplexity(task: TaskInput): ComplexityLevel {
   const text = `${ task.title } ${ task.description || "" }`.toLowerCase();
   const hasMultipleDependencies = (text.match(/depend|integration|cross|multi-/g) || []).length >= 2;
   const hasAdvancedTech = text.match(
-    /machine.learning|ai|distributed|blockchain|quantum|microservices/,
+    /machine[\s-]learning|\bai\b|distributed|blockchain|quantum|microservices/,
   );
   const hasUnknownScope = text.match(/unclear|ambiguous|undefined|unknown|fuzzy/);
 
@@ -280,7 +280,7 @@ export function determineLoopStrategy(classification: TaskClassification): TaskL
           : "disabled";
 
   // Observation interval: faster for urgent tasks, slower for flexible ones
-  const baseObservationMs = 5000; // 5 seconds
+  const baseObservationMs = 500; // 0.5 seconds
   const timeMultiplier =
     classification.timeConstraint === "immediate"
       ? 0.5
