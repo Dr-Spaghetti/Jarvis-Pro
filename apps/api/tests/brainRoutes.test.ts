@@ -377,12 +377,12 @@ describe("handleBrainAskRoute — model routing", () => {
     }
   });
 
-  it("explicit Ollama model skips cloud cascade (400 vs 200 distinguishes the two paths)", async () => {
+  it("explicit Ollama model skips cloud cascade (hint distinguishes the two paths)", async () => {
     const prevAnthropic = process.env.ANTHROPIC_API_KEY;
     const prevOpenAi = process.env.OPENAI_API_KEY;
     const prevOllama = process.env.OLLAMA_HOST;
-    // No cloud keys + no vault + unreachable Ollama: auto cascade → 400 "No AI provider"
-    //                                                explicit Ollama → 200 "no-chat-model"
+    // No cloud keys + no vault + unreachable Ollama: both paths return 200 no-chat-model.
+    // Distinction: auto cascade hint says "No AI provider"; explicit Ollama hint names the model.
     Reflect.deleteProperty(process.env, "ANTHROPIC_API_KEY");
     Reflect.deleteProperty(process.env, "OPENAI_API_KEY");
     Reflect.deleteProperty(process.env, "OBSIDIAN_VAULT_PATH");
@@ -391,8 +391,10 @@ describe("handleBrainAskRoute — model routing", () => {
       const autoRes = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
         question: "hello",
       });
-      expect(autoRes.status).toBe(400);
-      expect(autoRes.json.error).toBe("No AI provider could answer.");
+      expect(autoRes.status).toBe(200);
+      expect(autoRes.json.available).toBe(false);
+      expect(autoRes.json.reason).toBe("no-chat-model");
+      expect(autoRes.json.hint).toMatch(/No AI provider/);
 
       const explicitRes = await call(handleBrainAskRoute, "POST", "/api/brain/ask", {
         question: "hello",
@@ -400,6 +402,7 @@ describe("handleBrainAskRoute — model routing", () => {
       });
       expect(explicitRes.status).toBe(200);
       expect(explicitRes.json.reason).toBe("no-chat-model");
+      expect(explicitRes.json.hint).toMatch(/qwen3\.6:latest/);
     } finally {
       if (prevAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = prevAnthropic;
       if (prevOpenAi !== undefined) process.env.OPENAI_API_KEY = prevOpenAi;
