@@ -43,7 +43,7 @@ export const JarvisConversationConsole = ({
   }, [conversation.length]);
 
   return (
-    <div className="nc-hq-console">
+    <div className="nc-hq-console hud-panel">
       <div className="nc-hq-console-hdr">
         <span className="nc-hq-console-hdr-left">
           <span className="nc-hq-console-hdr-dot" aria-hidden="true" />
@@ -61,7 +61,7 @@ export const JarvisConversationConsole = ({
               textTransform: "uppercase",
             }}
           >
-            CTX · {conversation.length * 2} TURNS
+            CTX · {conversation.length} {conversation.length === 1 ? "TURN" : "TURNS"}
           </span>
           {conversation.length > 0 && (
             <button

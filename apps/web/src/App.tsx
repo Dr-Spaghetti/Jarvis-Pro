@@ -30,6 +30,7 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { NotificationPanel } from "./components/NotificationPanel";
 import { PrimaryViewRouter } from "./components/PrimaryViewRouter";
 import { RuntimeStatusStrip } from "./components/RuntimeStatusStrip";
+import { ShellCanvas } from "./components/ShellCanvas";
 import { SidebarActionPanel } from "./components/SidebarActionPanel";
 import { TelemetryTape } from "./components/TelemetryTape";
 import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
@@ -165,6 +166,15 @@ const AppContent = () => {
     setIsLoading,
     setIsUiStateHydrated,
   });
+
+  // Signal to E2E tests (and any external observers) that the initial API state has
+  // been fetched and applied. Tests must wait for this before clicking nav tabs to
+  // avoid a race where applyHydratedUiState() overwrites a click made during load.
+  useEffect(() => {
+    if (isUiStateHydrated) {
+      document.body.dataset.hydrated = "true";
+    }
+  }, [isUiStateHydrated]);
 
   useEffect(() => {
     return () => {
@@ -425,6 +435,7 @@ const AppContent = () => {
 
   return (
     <div className="page console-shell">
+      <ShellCanvas />
       {isRuntimeStatusStripVisible && (
         <RuntimeStatusStrip
           sparklinePoints={sparklinePoints}

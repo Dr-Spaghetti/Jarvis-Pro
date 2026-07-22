@@ -231,7 +231,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
   }
 
   return (
-    <section className="arsenal-panel" aria-label="Agent Arsenal">
+    <section className="arsenal-panel hud-hex-bg" aria-label="Agent Arsenal">
       {setup?.shouldShowSetupCard && <WorkspaceSetupCard setup={setup} onSetupChange={setSetup} />}
       {recentAgentsSection}
 
@@ -256,7 +256,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
           return (
             <article
               key={a.id}
-              className="arsenal-card"
+              className="arsenal-card hud-panel"
               data-expanded={isExpanded ? "true" : "false"}
               data-category={a.category}
             >

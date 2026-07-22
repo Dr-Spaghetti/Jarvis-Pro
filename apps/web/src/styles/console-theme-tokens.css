@@ -48,6 +48,16 @@
   --nc-err: #ff6152;
   --nc-panel: #050705;
   --nc-surface: #121414;
+
+  /* HUD depth & geometry tokens */
+  --accent-secondary: #00d4ff;
+  --accent-secondary-glow: rgba(0, 212, 255, 0.3);
+  --bg-deep: #020304;
+  --circuit: rgba(57, 255, 20, 0.08);
+  --circuit-hot: rgba(57, 255, 20, 0.16);
+  --hud-arc: rgba(57, 255, 20, 0.55);
+  --hud-corner: 20px;
+  --hud-corner-w: 1.5px;
 }
 
 body {

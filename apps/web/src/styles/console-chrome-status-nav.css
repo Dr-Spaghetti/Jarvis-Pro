@@ -396,11 +396,35 @@
   border-right: 1px solid var(--glass-border);
   border-bottom: none;
   background: linear-gradient(180deg, #050705 0%, #000 100%);
-  box-shadow: 1px 0 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 1px 0 18px rgba(0, 0, 0, 0.7), 2px 0 0 rgba(57, 255, 20, 0.04);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  position: relative;
+}
+
+/* Pulsing right-edge arc decoration */
+.console-shell .console-primary-nav::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 35%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(57, 255, 20, 0.2) 25%,
+    rgba(57, 255, 20, 0.6) 50%,
+    rgba(57, 255, 20, 0.2) 75%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
+  animation: hud-arc-pulse 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 20;
 }
 
 .console-shell .console-main-canvas {
@@ -503,13 +527,20 @@
 
 .console-primary-nav-tab[data-active="true"] {
   color: var(--gold);
-  background: rgba(57, 255, 20, 0.06);
+  background: linear-gradient(90deg, rgba(57, 255, 20, 0.1) 0%, rgba(57, 255, 20, 0.03) 100%);
   border-left: 2px solid var(--gold);
-  box-shadow: 0 0 12px var(--gold-glow), inset 0 0 16px rgba(57, 255, 20, 0.04);
+  box-shadow: 0 0 18px var(--gold-glow), inset 0 0 24px rgba(57, 255, 20, 0.05);
 }
 
 .console-primary-nav-tab[data-active="true"]::after {
-  display: none;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 2px;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(57, 255, 20, 0.5) 0%, transparent 80%);
+  pointer-events: none;
 }
 
 .console-primary-nav-tab[data-active="true"] .console-primary-nav-tab-icon {

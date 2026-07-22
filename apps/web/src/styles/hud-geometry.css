@@ -1,0 +1,217 @@
+/* ── HUD Geometry — Iron Man / Interstellar NC OS aesthetic ── */
+/* Reusable corner-bracket panels, labels, and ambient geometry */
+
+/* ── Panel with 4-corner L-bracket decorations ── */
+/* .hud-panel: adds 4-corner L-bracket decoration only — no position/border/bg override */
+.hud-panel {
+}
+
+.hud-panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  z-index: 2;
+  /* top-left horizontal */
+  background:
+    linear-gradient(var(--hud-arc) 0 0) top left / var(--hud-corner) var(--hud-corner-w),
+    /* top-left vertical */
+    linear-gradient(var(--hud-arc) 0 0) top left / var(--hud-corner-w) var(--hud-corner),
+    /* top-right horizontal */
+    linear-gradient(var(--hud-arc) 0 0) top right / var(--hud-corner) var(--hud-corner-w),
+    /* top-right vertical */
+    linear-gradient(var(--hud-arc) 0 0) top right / var(--hud-corner-w) var(--hud-corner),
+    /* bottom-left horizontal */
+    linear-gradient(var(--hud-arc) 0 0) bottom left / var(--hud-corner) var(--hud-corner-w),
+    /* bottom-left vertical */
+    linear-gradient(var(--hud-arc) 0 0) bottom left / var(--hud-corner-w) var(--hud-corner),
+    /* bottom-right horizontal */
+    linear-gradient(var(--hud-arc) 0 0) bottom right / var(--hud-corner) var(--hud-corner-w),
+    /* bottom-right vertical */
+    linear-gradient(var(--hud-arc) 0 0) bottom right / var(--hud-corner-w) var(--hud-corner);
+  background-repeat: no-repeat;
+}
+
+/* ── Bright targeting-reticle version (more prominent corners) ── */
+.hud-reticle {
+  --cr: 16px;
+  --cw: 2px;
+  position: relative;
+}
+
+.hud-reticle::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    linear-gradient(var(--nc-green) 0 0) top left / var(--cr) var(--cw),
+    linear-gradient(var(--nc-green) 0 0) top left / var(--cw) var(--cr),
+    linear-gradient(var(--nc-green) 0 0) top right / var(--cr) var(--cw),
+    linear-gradient(var(--nc-green) 0 0) top right / var(--cw) var(--cr),
+    linear-gradient(var(--nc-green) 0 0) bottom left / var(--cr) var(--cw),
+    linear-gradient(var(--nc-green) 0 0) bottom left / var(--cw) var(--cr),
+    linear-gradient(var(--nc-green) 0 0) bottom right / var(--cr) var(--cw),
+    linear-gradient(var(--nc-green) 0 0) bottom right / var(--cw) var(--cr);
+  background-repeat: no-repeat;
+}
+
+/* ── HUD label: "● LABEL TEXT" style ── */
+.hud-label {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1;
+}
+
+.hud-label::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 4px;
+  flex-shrink: 0;
+  background: var(--nc-green);
+  box-shadow: 0 0 7px var(--gold-glow);
+}
+
+/* ── Ambient radial grid overlay ── */
+.ambient-radial {
+  position: relative;
+}
+
+.ambient-radial::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+      ellipse 70% 55% at 50% 50%,
+      rgba(57, 255, 20, 0.05) 0%,
+      transparent 65%
+    ), repeating-linear-gradient(0deg, transparent, transparent 39px, var(--circuit) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, var(--circuit) 40px);
+}
+
+/* ── Arc decoration on the left edge of the sidebar ── */
+@keyframes hud-arc-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.hud-arc-left {
+  position: relative;
+  overflow: visible;
+}
+
+.hud-arc-left::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 40%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--glass-border-hot) 30%,
+    var(--nc-green) 50%,
+    var(--glass-border-hot) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px var(--gold-glow);
+  animation: hud-arc-pulse 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Sidebar tab: animated scan-line on active item ── */
+@keyframes hud-scanbar {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* ── Surveillance / CCTV screen reticle corners (screen-sized) ── */
+.hud-screen {
+  position: relative;
+}
+
+.hud-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background:
+    linear-gradient(var(--circuit-hot) 0 0) top left / 20px 1px,
+    linear-gradient(var(--circuit-hot) 0 0) top left / 1px 20px,
+    linear-gradient(var(--circuit-hot) 0 0) top right / 20px 1px,
+    linear-gradient(var(--circuit-hot) 0 0) top right / 1px 20px,
+    linear-gradient(var(--circuit-hot) 0 0) bottom left / 20px 1px,
+    linear-gradient(var(--circuit-hot) 0 0) bottom left / 1px 20px,
+    linear-gradient(var(--circuit-hot) 0 0) bottom right / 20px 1px,
+    linear-gradient(var(--circuit-hot) 0 0) bottom right / 1px 20px;
+  background-repeat: no-repeat;
+}
+
+/* ── Data readout strip ── */
+.hud-readout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.6);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.hud-readout-value {
+  color: var(--nc-green);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--gold-glow);
+}
+
+/* ── Hex grid overlay (used by Arsenal tab) ── */
+.hud-hex-bg {
+  position: relative;
+}
+
+.hud-hex-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpolygon points='14,1 27,8 27,22 14,29 1,22 1,8' fill='none' stroke='rgba(57,255,20,0.09)' stroke-width='0.7'/%3E%3Cpolygon points='14,25 27,32 27,46 14,53 1,46 1,32' fill='none' stroke='rgba(57,255,20,0.09)' stroke-width='0.7'/%3E%3C/svg%3E");
+  background-size: 28px 48px;
+}

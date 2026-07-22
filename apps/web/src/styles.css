@@ -25,3 +25,9 @@
 
 /* Global Ctrl/Cmd+K search palette */
 @import "./styles/global-search.css";
+
+/* HUD geometry — corner brackets, reticles, ambient geometry */
+@import "./styles/hud-geometry.css";
+
+/* HUD Ultimate — comprehensive visual override, loaded last */
+@import "./styles/jarvis-hud-ultimate.css";

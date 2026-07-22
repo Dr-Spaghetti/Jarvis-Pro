@@ -1,0 +1,631 @@
+/* ═══════════════════════════════════════════════════════════════════
+   JARVIS HUD ULTIMATE  ·  Matrix × Iron Man  ·  neon green edition
+   Imported LAST — wins all specificity. No component changes needed.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── KEYFRAMES ── */
+@keyframes hud-panel-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(57, 255, 20, 0.08), 0 0 60px rgba(57, 255, 20, 0.04), inset 0 0 30px
+      rgba(57, 255, 20, 0.02);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(57, 255, 20, 0.14), 0 0 90px rgba(57, 255, 20, 0.06), inset 0 0 30px
+      rgba(57, 255, 20, 0.04);
+  }
+}
+
+@keyframes hud-border-scan {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 6px;
+  }
+}
+
+@keyframes hud-corner-glow {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px #39ff14);
+  }
+}
+
+/* ══════════════════════════════════════════
+   1. SHELL FOUNDATION
+   ══════════════════════════════════════════ */
+
+.console-shell {
+  background: #020304 !important;
+}
+
+/* ══════════════════════════════════════════
+   2. SIDEBAR
+   ══════════════════════════════════════════ */
+
+.console-primary-nav {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 16, 0, 0.98) 0%,
+    rgba(2, 5, 2, 0.97) 50%,
+    rgba(0, 0, 0, 0.98) 100%
+  ) !important;
+  border-right: 1px solid rgba(57, 255, 20, 0.22) !important;
+  box-shadow: 4px 0 60px rgba(0, 0, 0, 0.9), inset -1px 0 0 rgba(57, 255, 20, 0.08), inset 0 0 80px
+    rgba(57, 255, 20, 0.015) !important;
+}
+
+/* Sidebar brand block */
+.console-shell .console-primary-nav .console-nav-brand,
+.console-shell .console-primary-nav [class*="brand"] {
+  border-bottom: 1px solid rgba(57, 255, 20, 0.14) !important;
+  text-shadow: 0 0 20px rgba(57, 255, 20, 0.5) !important;
+}
+
+/* Every nav item */
+.console-primary-nav [class*="nav-item"],
+.console-primary-nav [class*="nav-link"],
+.console-primary-nav button,
+.console-primary-nav a {
+  border-left: 2px solid transparent !important;
+  transition: all 0.15s ease !important;
+  letter-spacing: 0.12em !important;
+}
+
+/* Active nav item */
+.console-primary-nav [data-active="true"],
+.console-primary-nav [aria-current="page"],
+.console-primary-nav .active {
+  background: rgba(57, 255, 20, 0.09) !important;
+  border-left-color: #39ff14 !important;
+  color: #39ff14 !important;
+  text-shadow: 0 0 14px rgba(57, 255, 20, 0.7) !important;
+  box-shadow: inset 6px 0 20px rgba(57, 255, 20, 0.06) !important;
+}
+
+/* Hover nav item */
+.console-primary-nav [class*="nav-item"]:hover,
+.console-primary-nav button:hover,
+.console-primary-nav a:hover {
+  border-left-color: rgba(57, 255, 20, 0.4) !important;
+  background: rgba(57, 255, 20, 0.04) !important;
+}
+
+/* ══════════════════════════════════════════
+   3. TOP CHROME BAR
+   ══════════════════════════════════════════ */
+
+.console-top-bar,
+[class*="top-bar"],
+[class*="status-bar"],
+[class*="chrome-bar"] {
+  background: rgba(2, 4, 2, 0.96) !important;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.16) !important;
+  box-shadow: 0 2px 60px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(57, 255, 20, 0.08), inset 0 -1px 0
+    rgba(57, 255, 20, 0.04) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+/* ══════════════════════════════════════════
+   4. ALL TAB VIEWS — ambient background
+   ══════════════════════════════════════════ */
+
+.canvas-view {
+  background: radial-gradient(
+      ellipse 60% 50% at 50% 0%,
+      rgba(57, 255, 20, 0.06) 0%,
+      transparent 55%
+    ), radial-gradient(ellipse 40% 30% at 50% 100%, rgba(57, 255, 20, 0.03) 0%, transparent 50%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(57, 255, 20, 0.055) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(57, 255, 20, 0.055) 40px),
+    #020304 !important;
+}
+
+/* ══════════════════════════════════════════
+   5. ARSENAL TAB
+   ══════════════════════════════════════════ */
+
+.arsenal-panel {
+  background: radial-gradient(
+      ellipse 70% 40% at 50% 0%,
+      rgba(57, 255, 20, 0.04) 0%,
+      transparent 60%
+    ), #020304 !important;
+}
+
+.arsenal-card {
+  position: relative !important;
+  background: rgba(2, 9, 2, 0.94) !important;
+  border: 1px solid rgba(57, 255, 20, 0.16) !important;
+  border-left: 2px solid rgba(57, 255, 20, 0.5) !important;
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.04), inset 0 0 24px rgba(57, 255, 20, 0.025) !important;
+  backdrop-filter: blur(6px) !important;
+  transition: all 0.18s ease !important;
+}
+
+.arsenal-card:hover {
+  border-color: rgba(57, 255, 20, 0.32) !important;
+  border-left-color: rgba(57, 255, 20, 0.8) !important;
+  background: rgba(57, 255, 20, 0.04) !important;
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.1), 0 0 80px rgba(57, 255, 20, 0.04), inset 0 0 24px
+    rgba(57, 255, 20, 0.04) !important;
+  animation: hud-panel-pulse 3s ease-in-out infinite !important;
+}
+
+.arsenal-filter-pill {
+  border: 1px solid rgba(57, 255, 20, 0.18) !important;
+  background: rgba(57, 255, 20, 0.02) !important;
+  transition: all 0.12s ease !important;
+}
+
+.arsenal-filter-pill[data-active="true"] {
+  background: rgba(57, 255, 20, 0.12) !important;
+  border-color: rgba(57, 255, 20, 0.55) !important;
+  color: #39ff14 !important;
+  box-shadow: 0 0 12px rgba(57, 255, 20, 0.15), inset 0 0 8px rgba(57, 255, 20, 0.06) !important;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.6) !important;
+}
+
+.arsenal-filter-pill:hover:not([data-active="true"]) {
+  border-color: rgba(57, 255, 20, 0.35) !important;
+  background: rgba(57, 255, 20, 0.04) !important;
+}
+
+/* Deploy button */
+[class*="arsenal-deploy"],
+[class*="deploy-btn"],
+button.arsenal-deploy {
+  border: 1px solid rgba(57, 255, 20, 0.35) !important;
+  background: rgba(57, 255, 20, 0.06) !important;
+  transition: all 0.14s ease !important;
+}
+
+[class*="arsenal-deploy"]:hover,
+button.arsenal-deploy:hover {
+  background: rgba(57, 255, 20, 0.12) !important;
+  border-color: rgba(57, 255, 20, 0.6) !important;
+  box-shadow: 0 0 16px rgba(57, 255, 20, 0.14) !important;
+}
+
+/* ══════════════════════════════════════════
+   6. SURVEILLANCE TAB
+   ══════════════════════════════════════════ */
+
+.surv-room {
+  background: radial-gradient(
+      ellipse 80% 60% at 50% 50%,
+      rgba(57, 255, 20, 0.03) 0%,
+      transparent 65%
+    ), #020304 !important;
+}
+
+.surv-screen {
+  background: rgba(0, 6, 0, 0.96) !important;
+  border: 1px solid rgba(57, 255, 20, 0.14) !important;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.9) !important;
+  transition: all 0.18s ease !important;
+}
+
+.surv-screen--active {
+  border-color: rgba(57, 255, 20, 0.28) !important;
+  box-shadow: 0 0 16px rgba(57, 255, 20, 0.07), inset 0 0 40px rgba(0, 0, 0, 0.85) !important;
+}
+
+.surv-screen--active:hover {
+  border-color: rgba(57, 255, 20, 0.48) !important;
+  box-shadow: 0 0 28px rgba(57, 255, 20, 0.14), 0 0 80px rgba(57, 255, 20, 0.05), inset 0 0 30px
+    rgba(57, 255, 20, 0.04) !important;
+}
+
+.surv-screen--selected {
+  border-color: rgba(57, 255, 20, 0.7) !important;
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.2), 0 0 100px rgba(57, 255, 20, 0.07), inset 0 0 24px
+    rgba(57, 255, 20, 0.05) !important;
+}
+
+/* Make surv corners bright and glowing */
+.surv-corner {
+  width: 12px !important;
+  height: 12px !important;
+  border-color: rgba(57, 255, 20, 0.6) !important;
+  animation: hud-corner-glow 3s ease-in-out infinite !important;
+}
+
+.surv-screen--selected .surv-corner {
+  border-color: #39ff14 !important;
+  filter: drop-shadow(0 0 5px rgba(57, 255, 20, 0.8)) !important;
+}
+
+/* Surv screen status dot */
+.surv-screen-dot--on {
+  background: #39ff14 !important;
+  box-shadow: 0 0 8px #39ff14, 0 0 16px rgba(57, 255, 20, 0.5) !important;
+}
+
+.surv-tab-bar {
+  border-bottom: 1px solid rgba(57, 255, 20, 0.14) !important;
+  background: rgba(0, 6, 0, 0.8) !important;
+}
+
+.surv-tab--active {
+  color: #39ff14 !important;
+  border-bottom: 2px solid #39ff14 !important;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
+}
+
+/* ══════════════════════════════════════════
+   7. JARVIS HQ — PANEL UPGRADES
+   ══════════════════════════════════════════ */
+
+/* Learnings panel stronger glass */
+.nc-hq-learnings-panel {
+  background: rgba(0, 7, 0, 0.94) !important;
+  border: 1px solid rgba(57, 255, 20, 0.24) !important;
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.07), 0 0 80px rgba(57, 255, 20, 0.03), inset 0 0 40px
+    rgba(57, 255, 20, 0.025) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Console stronger glass */
+.nc-hq-console {
+  background: rgba(2, 7, 2, 0.92) !important;
+  border: 1px solid rgba(57, 255, 20, 0.28) !important;
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.09), 0 0 120px rgba(57, 255, 20, 0.04), inset 0 0 40px
+    rgba(57, 255, 20, 0.025) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.nc-hq-console-hdr {
+  border-bottom: 1px solid rgba(57, 255, 20, 0.18) !important;
+  background: rgba(57, 255, 20, 0.03) !important;
+}
+
+/* Input: glowing neon focus */
+.nc-hq-input {
+  background: rgba(57, 255, 20, 0.03) !important;
+  border: none !important;
+  color: rgba(57, 255, 20, 0.9) !important;
+  caret-color: #39ff14 !important;
+}
+
+.nc-hq-input:focus {
+  outline: none !important;
+  background: rgba(57, 255, 20, 0.05) !important;
+  box-shadow: inset 0 -1px 0 rgba(57, 255, 20, 0.4) !important;
+}
+
+.nc-hq-console-input {
+  border-top: 1px solid rgba(57, 255, 20, 0.16) !important;
+  background: rgba(0, 8, 0, 0.7) !important;
+}
+
+/* SEND button */
+.nc-hq-send {
+  background: rgba(57, 255, 20, 0.12) !important;
+  border: 1px solid rgba(57, 255, 20, 0.4) !important;
+  color: #39ff14 !important;
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.5) !important;
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.1) !important;
+  transition: all 0.14s ease !important;
+}
+
+.nc-hq-send:hover:not(:disabled) {
+  background: rgba(57, 255, 20, 0.2) !important;
+  border-color: rgba(57, 255, 20, 0.7) !important;
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.2), 0 0 60px rgba(57, 255, 20, 0.07) !important;
+  text-shadow: 0 0 12px rgba(57, 255, 20, 0.9) !important;
+}
+
+/* Voice bar buttons */
+.nc-hq-voice-bar,
+[class*="voice-bar"] {
+  backdrop-filter: blur(12px) !important;
+}
+
+/* TAP TO TALK button */
+[class*="push-to-talk"],
+[class*="tap-to-talk"],
+button[class*="talk"] {
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.2) !important;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.7) !important;
+}
+
+/* ══════════════════════════════════════════
+   8. WORKFLOWS TAB
+   ══════════════════════════════════════════ */
+
+[class*="workflow-card"],
+[class*="workflow-item"],
+[class*="wf-card"],
+[class*="wf-item"] {
+  position: relative !important;
+  border: 1px solid rgba(57, 255, 20, 0.16) !important;
+  background: rgba(2, 9, 2, 0.92) !important;
+  box-shadow: inset 0 0 20px rgba(57, 255, 20, 0.02) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+[class*="workflow-card"]:hover,
+[class*="wf-card"]:hover {
+  border-color: rgba(57, 255, 20, 0.35) !important;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.08), inset 0 0 20px rgba(57, 255, 20, 0.03) !important;
+}
+
+/* ══════════════════════════════════════════
+   9. IDEAS TAB
+   ══════════════════════════════════════════ */
+
+[class*="idea-card"],
+[class*="ideas-card"],
+[class*="idea-item"] {
+  position: relative !important;
+  border: 1px solid rgba(57, 255, 20, 0.16) !important;
+  background: rgba(2, 9, 2, 0.92) !important;
+  box-shadow: inset 0 0 20px rgba(57, 255, 20, 0.02) !important;
+  backdrop-filter: blur(6px) !important;
+  transition: all 0.15s ease !important;
+}
+
+[class*="idea-card"]:hover,
+[class*="idea-item"]:hover {
+  border-color: rgba(57, 255, 20, 0.32) !important;
+  box-shadow: 0 0 18px rgba(57, 255, 20, 0.08), inset 0 0 20px rgba(57, 255, 20, 0.03) !important;
+}
+
+/* ══════════════════════════════════════════
+   10. CONVERSATIONS TAB
+   ══════════════════════════════════════════ */
+
+.conversations-view {
+  background: radial-gradient(
+      ellipse 50% 40% at 50% 0%,
+      rgba(57, 255, 20, 0.04) 0%,
+      transparent 55%
+    ), #020304 !important;
+}
+
+.conversations-turn {
+  border-bottom: 1px solid rgba(57, 255, 20, 0.07) !important;
+  transition: background 0.12s ease !important;
+}
+
+.conversations-turn:hover {
+  background: rgba(57, 255, 20, 0.03) !important;
+}
+
+[class*="conversation-item"],
+[class*="convo-item"],
+[class*="thread-item"] {
+  border-bottom: 1px solid rgba(57, 255, 20, 0.08) !important;
+  transition: all 0.12s ease !important;
+}
+
+[class*="conversation-item"]:hover,
+[class*="convo-item"]:hover,
+[class*="thread-item"]:hover {
+  background: rgba(57, 255, 20, 0.04) !important;
+  border-left: 2px solid rgba(57, 255, 20, 0.4) !important;
+}
+
+/* ══════════════════════════════════════════
+   11. SETTINGS TAB
+   ══════════════════════════════════════════ */
+
+.settings-panel {
+  border: 1px solid rgba(57, 255, 20, 0.16) !important;
+  background: rgba(2, 8, 2, 0.92) !important;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.05), inset 0 0 30px rgba(57, 255, 20, 0.02) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.settings-sidebar {
+  border-right: 1px solid rgba(57, 255, 20, 0.14) !important;
+  background: rgba(0, 6, 0, 0.8) !important;
+}
+
+[class*="settings-section"],
+[class*="settings-card"],
+[class*="config-card"],
+[class*="config-section"] {
+  border: 1px solid rgba(57, 255, 20, 0.14) !important;
+  background: rgba(2, 8, 2, 0.9) !important;
+  box-shadow: inset 0 0 20px rgba(57, 255, 20, 0.02) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+/* ══════════════════════════════════════════
+   11b. IDEAS TAB
+   ══════════════════════════════════════════ */
+
+.ideas-view {
+  background: radial-gradient(
+      ellipse 60% 40% at 50% 15%,
+      rgba(57, 255, 20, 0.05) 0%,
+      transparent 55%
+    ), #020304 !important;
+}
+
+/* ══════════════════════════════════════════
+   11c. ANALYZER TAB
+   ══════════════════════════════════════════ */
+
+.analyzer-view {
+  background: radial-gradient(
+      ellipse 55% 35% at 50% 0%,
+      rgba(57, 255, 20, 0.04) 0%,
+      transparent 55%
+    ), #020304 !important;
+}
+
+/* Settings toggle/switch */
+[class*="toggle"][class*="on"],
+[class*="switch"][aria-checked="true"],
+[role="switch"][aria-checked="true"] {
+  background: rgba(57, 255, 20, 0.22) !important;
+  border-color: rgba(57, 255, 20, 0.55) !important;
+  box-shadow: 0 0 12px rgba(57, 255, 20, 0.2) !important;
+}
+
+/* ══════════════════════════════════════════
+   12. TERMINAL TAB
+   ══════════════════════════════════════════ */
+
+[class*="terminal-view"],
+[class*="terminal-output"],
+.terminal-panel,
+.xterm {
+  background: rgba(0, 6, 0, 0.97) !important;
+  border: 1px solid rgba(57, 255, 20, 0.14) !important;
+}
+
+/* ══════════════════════════════════════════
+   13. GLOBAL FORM INPUTS
+   ══════════════════════════════════════════ */
+
+.canvas-view input[type="text"],
+.canvas-view input[type="search"],
+.canvas-view textarea,
+.canvas-view select {
+  background: rgba(57, 255, 20, 0.03) !important;
+  border: 1px solid rgba(57, 255, 20, 0.22) !important;
+  color: rgba(57, 255, 20, 0.9) !important;
+  caret-color: #39ff14 !important;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease !important;
+}
+
+.canvas-view input[type="text"]:focus,
+.canvas-view textarea:focus,
+.canvas-view select:focus {
+  outline: none !important;
+  border-color: rgba(57, 255, 20, 0.55) !important;
+  box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.08), 0 0 20px rgba(57, 255, 20, 0.06) !important;
+}
+
+/* ══════════════════════════════════════════
+   14. GLOBAL BUTTONS
+   ══════════════════════════════════════════ */
+
+.canvas-view button:not([disabled]):not([class*="active"]):not([class*="tab"]) {
+  transition: all 0.14s ease !important;
+}
+
+.canvas-view button:not([disabled]):hover {
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
+}
+
+/* Primary / CTA buttons */
+.canvas-view button[class*="primary"],
+.canvas-view button[class*="cta"],
+.canvas-view button[class*="generate"],
+.canvas-view button[class*="deploy"],
+.canvas-view button[class*="create"],
+.canvas-view button[class*="submit"] {
+  border: 1px solid rgba(57, 255, 20, 0.45) !important;
+  background: rgba(57, 255, 20, 0.1) !important;
+  color: #39ff14 !important;
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.4) !important;
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.08) !important;
+}
+
+.canvas-view button[class*="primary"]:hover,
+.canvas-view button[class*="generate"]:hover,
+.canvas-view button[class*="deploy"]:hover {
+  background: rgba(57, 255, 20, 0.16) !important;
+  border-color: rgba(57, 255, 20, 0.7) !important;
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.18), 0 0 60px rgba(57, 255, 20, 0.06) !important;
+  text-shadow: 0 0 14px rgba(57, 255, 20, 0.8) !important;
+}
+
+/* ══════════════════════════════════════════
+   15. SCROLLBARS — neon green track
+   ══════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(57, 255, 20, 0.28) rgba(57, 255, 20, 0.04) !important;
+}
+
+::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(57, 255, 20, 0.04) !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(57, 255, 20, 0.3) !important;
+  border-radius: 0 !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(57, 255, 20, 0.55) !important;
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.4) !important;
+}
+
+/* ══════════════════════════════════════════
+   16. NOTIFICATION TICKER (bottom bar)
+   ══════════════════════════════════════════ */
+
+[class*="telemetry"],
+[class*="status-tape"],
+[class*="ticker"],
+[class*="monitor-bar"] {
+  border-top: 1px solid rgba(57, 255, 20, 0.14) !important;
+  background: rgba(0, 4, 0, 0.96) !important;
+}
+
+/* ══════════════════════════════════════════
+   17. BADGES & STATUS CHIPS
+   ══════════════════════════════════════════ */
+
+[class*="badge"],
+[class*="chip"],
+[class*="status-dot"] {
+  box-shadow: 0 0 8px currentColor !important;
+}
+
+/* ══════════════════════════════════════════
+   18. MODAL / OVERLAY DIALOGS
+   ══════════════════════════════════════════ */
+
+[class*="modal"],
+[class*="dialog"],
+[class*="overlay-panel"] {
+  background: rgba(2, 8, 2, 0.97) !important;
+  border: 1px solid rgba(57, 255, 20, 0.3) !important;
+  box-shadow: 0 0 60px rgba(57, 255, 20, 0.12), 0 0 160px rgba(57, 255, 20, 0.05), inset 0 0 60px
+    rgba(57, 255, 20, 0.025) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+/* ══════════════════════════════════════════
+   19. INITIATE PROTOCOL button (bottom of sidebar)
+   ══════════════════════════════════════════ */
+
+[class*="initiate-protocol"],
+[class*="init-protocol"],
+button[class*="initiate"] {
+  border: 1px solid rgba(57, 255, 20, 0.45) !important;
+  background: rgba(57, 255, 20, 0.08) !important;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.1), inset 0 0 20px rgba(57, 255, 20, 0.04) !important;
+  animation: hud-panel-pulse 4s ease-in-out infinite !important;
+}
+
+/* ══════════════════════════════════════════
+   20. HUD CORNER — override to be always visible
+   ══════════════════════════════════════════ */
+
+.hud-panel::before {
+  --hud-arc: rgba(57, 255, 20, 0.7) !important;
+  --hud-corner: 22px !important;
+  --hud-corner-w: 1.5px !important;
+  filter: drop-shadow(0 0 4px rgba(57, 255, 20, 0.5)) !important;
+  animation: hud-corner-glow 4s ease-in-out infinite !important;
+}

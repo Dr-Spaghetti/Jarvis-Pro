@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../../runtime/apiClient";
-import { buildBrainLearningDeleteUrl, buildBrainLearningsUrl } from "../../runtime/runtimeEndpoints";
+import {
+  buildBrainLearningDeleteUrl,
+  buildBrainLearningsUrl,
+} from "../../runtime/runtimeEndpoints";
 
 type Learning = {
   id: string;
@@ -20,7 +23,10 @@ export const JarvisLearningsPanel = () => {
     setLoadError(false);
     try {
       const res = await apiFetch(buildBrainLearningsUrl());
-      if (!res.ok) { setLoadError(true); return; }
+      if (!res.ok) {
+        setLoadError(true);
+        return;
+      }
       const data = (await res.json()) as { learnings: Learning[] };
       setLearnings(data.learnings ?? []);
     } catch {
@@ -34,23 +40,20 @@ export const JarvisLearningsPanel = () => {
     void load();
   }, [load]);
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      setDeleting(id);
-      try {
-        await apiFetch(buildBrainLearningDeleteUrl(id), { method: "DELETE" });
-        setLearnings((prev) => prev.filter((l) => l.id !== id));
-      } catch {
-        // ignore
-      } finally {
-        setDeleting(null);
-      }
-    },
-    [],
-  );
+  const handleDelete = useCallback(async (id: string) => {
+    setDeleting(id);
+    try {
+      await apiFetch(buildBrainLearningDeleteUrl(id), { method: "DELETE" });
+      setLearnings((prev) => prev.filter((l) => l.id !== id));
+    } catch {
+      // ignore
+    } finally {
+      setDeleting(null);
+    }
+  }, []);
 
   return (
-    <div className="nc-hq-learnings-panel">
+    <div className="nc-hq-learnings-panel hud-panel">
       <div className="nc-hq-learnings-header">
         <span className="nc-hq-learnings-title">WHAT JARVIS KNOWS ABOUT YOU</span>
         <span className="nc-hq-learnings-count">{learnings.length} facts</span>
@@ -60,10 +63,14 @@ export const JarvisLearningsPanel = () => {
       ) : loadError ? (
         <div className="nc-hq-learnings-error">
           Failed to load.{" "}
-          <button type="button" className="nc-hq-learnings-retry" onClick={() => void load()}>Retry</button>
+          <button type="button" className="nc-hq-learnings-retry" onClick={() => void load()}>
+            Retry
+          </button>
         </div>
       ) : learnings.length === 0 ? (
-        <div className="nc-hq-learnings-empty">No learned facts yet — Jarvis learns automatically from your conversations.</div>
+        <div className="nc-hq-learnings-empty">
+          No learned facts yet — Jarvis learns automatically from your conversations.
+        </div>
       ) : (
         <ul className="nc-hq-learnings-list">
           {learnings.map((l) => (
