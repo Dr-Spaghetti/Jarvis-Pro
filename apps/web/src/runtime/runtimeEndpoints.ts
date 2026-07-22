@@ -656,6 +656,16 @@ export const buildGmailAuthUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/auth");
 };
 
+export const buildEmailIngestStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/email-ingest/status";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/email-ingest/status");
+};
+
+export const buildEmailIngestSettingsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) return "/api/email-ingest/settings";
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/email-ingest/settings");
+};
+
 export const buildSkillsRunUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/skills/run";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/skills/run");

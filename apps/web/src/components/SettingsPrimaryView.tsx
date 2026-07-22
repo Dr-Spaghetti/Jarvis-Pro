@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { GmailStatus } from "../app/hooks/useGmailStatus";
 import {
@@ -6,15 +6,130 @@ import {
   type TerminalCompletionSoundId,
 } from "../app/notificationSounds";
 import {
+  apiFetch,
   appendAuthTokenParam,
   clearStoredAuthToken,
   getStoredAuthToken,
 } from "../runtime/apiClient";
-import { buildSettingsExportUrl } from "../runtime/runtimeEndpoints";
+import {
+  buildEmailIngestSettingsUrl,
+  buildEmailIngestStatusUrl,
+  buildSettingsExportUrl,
+} from "../runtime/runtimeEndpoints";
 import { JarvisConfigSection } from "./JarvisConfigSection";
 import { MorningBriefPanel } from "./MorningBriefPanel";
 import { ActionButton } from "./ui/ActionButton";
 import { SettingsToggle } from "./ui/SettingsToggle";
+
+type EmailIngestStatus = {
+  enabled: boolean;
+  processedCount: number;
+  lastReceivedAt: string | null;
+  lastErrors: string[];
+};
+
+const EmailInboxPanel = () => {
+  const [status, setStatus] = useState<EmailIngestStatus | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await apiFetch(buildEmailIngestStatusUrl());
+      if (res.ok) setStatus((await res.json()) as EmailIngestStatus);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchStatus();
+    pollRef.current = setInterval(() => void fetchStatus(), 30_000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchStatus]);
+
+  const toggle = async (enabled: boolean) => {
+    try {
+      const res = await apiFetch(buildEmailIngestSettingsUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (res.ok) setStatus((await res.json()) as EmailIngestStatus);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const formatTime = (iso: string | null) => {
+    if (!iso) return "Never";
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return d.toLocaleDateString();
+  };
+
+  return (
+    <section className="settings-panel" aria-label="Email inbox settings">
+      <header className="settings-panel-header">
+        <h2>Email Inbox</h2>
+        <p>
+          Email links or images to <code>niggims@agentmail.to</code> from your phone — Jarvis
+          analyzes them and drops results in the Content Analyzer tab instantly via WebSocket.
+        </p>
+      </header>
+
+      {status && (
+        <>
+          <div className="settings-panel-actions">
+            <SettingsToggle
+              label="Enabled"
+              description="Listen for incoming emails via AgentMail WebSocket"
+              ariaLabel="Toggle email inbox"
+              checked={status.enabled}
+              onChange={(v) => void toggle(v)}
+            />
+          </div>
+          <div
+            style={{
+              marginTop: "8px",
+              fontSize: "12px",
+              color: "var(--nc-text-muted, #888)",
+              display: "flex",
+              gap: "16px",
+            }}
+          >
+            <span>Last received: {formatTime(status.lastReceivedAt)}</span>
+            <span>Processed: {status.processedCount} emails</span>
+          </div>
+          {status.lastErrors.length > 0 && (
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "8px",
+                background: "rgba(255,180,0,0.08)",
+                border: "1px solid rgba(255,180,0,0.3)",
+                borderRadius: "4px",
+                fontSize: "12px",
+              }}
+            >
+              {status.lastErrors.map((e, i) => (
+                <div key={i} style={{ color: "rgba(255,180,0,0.9)" }}>
+                  {e}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+};
 
 type SettingsPrimaryViewProps = {
   terminalCompletionSound: TerminalCompletionSoundId;
@@ -196,6 +311,8 @@ export const SettingsPrimaryView = ({
             </div>
           </section>
         )}
+
+        {activeSection === "integrations" && <EmailInboxPanel />}
 
         {activeSection === "brain" && <MorningBriefPanel />}
 

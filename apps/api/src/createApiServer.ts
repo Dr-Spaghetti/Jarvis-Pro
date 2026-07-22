@@ -12,6 +12,7 @@ import {
 import { createCodeIntelStore } from "./codeIntelStore";
 import { readCodexUsageSnapshot as readCodexUsageSnapshotDefault } from "./codexUsage";
 import { createBriefScheduler } from "./createApiServer/briefScheduler";
+import { createEmailIngestWebSocket } from "./createApiServer/emailIngestWebSocket";
 import { createApiRequestHandler } from "./createApiServer/requestHandler";
 import { resolveAuthTokenFromEnv } from "./createApiServer/security";
 import type { CreateApiServerOptions } from "./createApiServer/types";
@@ -152,6 +153,7 @@ export const createApiServer = ({
   );
 
   const briefScheduler = createBriefScheduler(resolvedStateDir);
+  const emailIngestWs = createEmailIngestWebSocket(resolvedStateDir);
 
   return {
     server,
@@ -166,11 +168,13 @@ export const createApiServer = ({
       resolvedApiBaseUrl = `http://${host}:${resolvedPort}`;
 
       briefScheduler.start();
+      emailIngestWs.start();
 
       return { host, port: resolvedPort };
     },
     async stop() {
       briefScheduler.stop();
+      emailIngestWs.stop();
       await runtime.close();
       await new Promise<void>((resolveStop, rejectStop) => {
         server.close((error) => {
