@@ -741,3 +741,6 @@ export const buildGeneratorItemUrl = (id: string, runtimeBaseUrl = readRuntimeBa
 
 export const buildGeneratorDeleteUrl = (id: string, runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl(`/api/generator/${encodeURIComponent(id)}`, runtimeBaseUrl);
+
+export const buildAgentLoopUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  buildBrainUrl("/api/agent-loop", runtimeBaseUrl);

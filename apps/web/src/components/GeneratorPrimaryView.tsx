@@ -525,6 +525,13 @@ export const GeneratorPrimaryView = () => {
         }
       } else {
         const hasSource = sourceImageId || imageUrl.trim();
+        const confirmed = window.confirm(
+          `Generate video with Veo 2?\n\nThis takes 60–180s and uses your Gemini API quota.\n\nPrompt: "${trimmedPrompt}"`,
+        );
+        if (!confirmed) {
+          setBusy(false);
+          return;
+        }
         setStatusMsg({
           text: hasSource
             ? "Veo 2 animating image… (~60-180s in background)"

@@ -120,6 +120,13 @@ export const askViaPerplexity = async (
 ): Promise<PerplexityResult | null> => {
   const apiKey = getPerplexityApiKey();
   if (!apiKey) return null;
+
+  // Return cached result for identical questions (skip API hit)
+  if (!forEnrichment) {
+    const cached = getCachedPerplexity(question);
+    if (cached) return cached;
+  }
+
   const model = "sonar";
   const res = await fetchWithTimeout(
     "https://api.perplexity.ai/chat/completions",
@@ -155,7 +162,9 @@ export const askViaPerplexity = async (
   const citations: PerplexityCitation[] = (data?.citations ?? [])
     .slice(0, 5)
     .map((url, i) => ({ title: `Source ${i + 1}`, url }));
-  return { answer: stripToolMarkup(content), citations };
+  const result: PerplexityResult = { answer: stripToolMarkup(content), citations };
+  if (!forEnrichment) setCachedPerplexity(question, result);
+  return result;
 };
 
 const CLAUDE_VOICE_MODEL = "claude-haiku-4-5-20251001";
@@ -358,6 +367,33 @@ export const handleBrainModelsRoute: ApiRouteHandler = async ({
 
 let claudeUnavailableUntil = 0;
 let perplexityUnavailableUntil = 0;
+
+// In-memory response cache — avoids repeat API hits for identical questions.
+// Key: normalized question string. TTL: 1 hour. Max size: 500 entries.
+const PERPLEXITY_CACHE_TTL = 60 * 60 * 1000;
+const PERPLEXITY_CACHE_MAX = 500;
+type PerplexityCacheEntry = { ts: number; result: PerplexityResult };
+const perplexityCache = new Map<string, PerplexityCacheEntry>();
+
+const getCachedPerplexity = (question: string): PerplexityResult | null => {
+  const key = question.trim().toLowerCase();
+  const entry = perplexityCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > PERPLEXITY_CACHE_TTL) {
+    perplexityCache.delete(key);
+    return null;
+  }
+  return entry.result;
+};
+
+const setCachedPerplexity = (question: string, result: PerplexityResult): void => {
+  const key = question.trim().toLowerCase();
+  if (perplexityCache.size >= PERPLEXITY_CACHE_MAX) {
+    const oldest = perplexityCache.keys().next().value;
+    if (oldest) perplexityCache.delete(oldest);
+  }
+  perplexityCache.set(key, { ts: Date.now(), result });
+};
 
 export const handleBrainAskRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },

@@ -101,7 +101,8 @@ export class JarvisPage {
   }
 
   async sendMessage(text: string) {
-    await this.chatInput.fill(text);
+    await this.chatInput.click();
+    await this.chatInput.pressSequentially(text, { delay: 30 });
     await this.chatInput.press("Enter");
   }
 

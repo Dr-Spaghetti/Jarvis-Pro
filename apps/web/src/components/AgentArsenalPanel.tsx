@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { DeckTentacleSummary, WorkspaceSetupSnapshot } from "@octogent/core";
 import { apiFetch } from "../runtime/apiClient";
 import {
+  buildAgentLoopUrl,
   buildArsenalUrl,
   buildDeckTentaclePinnedUrl,
   buildDeckTentaclesUrl,
@@ -48,6 +49,13 @@ type DeployState = {
   error?: string;
 };
 
+type LoopState = {
+  archetypeId: string;
+  task: string;
+  isRunning: boolean;
+  error?: string;
+};
+
 type AgentArsenalPanelProps = {
   onDeployed?: (terminalId: string, archetypeId: string) => void;
 };
@@ -62,6 +70,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
     return (saved as CategoryFilter | null) ?? "all";
   });
   const [deployState, setDeployState] = useState<DeployState | null>(null);
+  const [loopState, setLoopState] = useState<LoopState | null>(null);
   const [setup, setSetup] = useState<WorkspaceSetupSnapshot | null>(null);
   const [tentacles, setTentacles] = useState<DeckTentacleSummary[]>([]);
 
@@ -145,6 +154,52 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
 
   const handleCancelDeploy = () => {
     setDeployState(null);
+  };
+
+  const handleLoopClick = (archetypeId: string) => {
+    setDeployState(null);
+    setLoopState({ archetypeId, task: "", isRunning: false });
+  };
+
+  const handleCancelLoop = () => {
+    setLoopState(null);
+  };
+
+  const handleRunLoop = async () => {
+    if (!loopState) return;
+    const archetype = archetypes.find((a) => a.id === loopState.archetypeId);
+    if (!archetype) return;
+
+    setLoopState((prev) => prev && { ...prev, isRunning: true });
+
+    try {
+      const res = await apiFetch(buildAgentLoopUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          archetypeId: loopState.archetypeId,
+          taskDescription: loopState.task || `Run ${archetype.name} agent loop`,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        const msg = body.error ?? `Loop failed (${res.status})`;
+        showToast(msg, "error");
+        setLoopState((prev) => prev && { ...prev, isRunning: false, error: msg });
+        return;
+      }
+
+      const result = (await res.json()) as { succeeded?: boolean; metrics?: { totalIterations?: number; finalQuality?: number } };
+      const iters = result.metrics?.totalIterations ?? "?";
+      const quality = result.metrics?.finalQuality != null ? `${Math.round(result.metrics.finalQuality * 100)}%` : "?";
+      showToast(`${archetype.name} loop complete — ${iters} iter · ${quality} quality`, result.succeeded ? "ok" : "error");
+      setLoopState(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Loop failed";
+      showToast(msg, "error");
+      setLoopState((prev) => prev && { ...prev, isRunning: false, error: msg });
+    }
   };
 
   const handleConfirmDeploy = async () => {
@@ -319,15 +374,64 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                     </button>
                   </div>
                 </div>
+              ) : loopState?.archetypeId === a.id ? (
+                <div className="arsenal-deploy-form">
+                  <label htmlFor={`arsenal-loop-${a.id}`} className="arsenal-deploy-label">
+                    Task for agent loop (optional)
+                  </label>
+                  <textarea
+                    id={`arsenal-loop-${a.id}`}
+                    className="arsenal-deploy-textarea"
+                    rows={3}
+                    placeholder="Describe the task to iterate on..."
+                    value={loopState.task}
+                    onChange={(e) =>
+                      setLoopState((prev) => prev && { ...prev, task: e.target.value })
+                    }
+                    disabled={loopState.isRunning}
+                  />
+                  {loopState.error && (
+                    <p className="arsenal-deploy-error">{loopState.error}</p>
+                  )}
+                  <div className="arsenal-deploy-actions">
+                    <button
+                      type="button"
+                      className="arsenal-btn arsenal-btn--primary"
+                      onClick={() => void handleRunLoop()}
+                      disabled={loopState.isRunning}
+                    >
+                      {loopState.isRunning ? "Running…" : "⟳ Run Loop"}
+                    </button>
+                    <button
+                      type="button"
+                      className="arsenal-btn arsenal-btn--ghost"
+                      onClick={handleCancelLoop}
+                      disabled={loopState.isRunning}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  className="arsenal-btn arsenal-btn--deploy"
-                  onClick={() => handleDeployClick(a.id)}
-                  disabled={deployState !== null && deployState.archetypeId !== a.id}
-                >
-                  Deploy
-                </button>
+                <div className="arsenal-deploy-actions">
+                  <button
+                    type="button"
+                    className="arsenal-btn arsenal-btn--deploy"
+                    onClick={() => handleDeployClick(a.id)}
+                    disabled={(deployState !== null && deployState.archetypeId !== a.id) || loopState !== null}
+                  >
+                    Deploy
+                  </button>
+                  <button
+                    type="button"
+                    className="arsenal-btn arsenal-btn--ghost"
+                    onClick={() => handleLoopClick(a.id)}
+                    disabled={(deployState !== null) || (loopState !== null && loopState.archetypeId !== a.id)}
+                    title="Run iterative agent loop"
+                  >
+                    ⟳ Loop
+                  </button>
+                </div>
               )}
             </article>
           );
