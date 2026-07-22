@@ -43,16 +43,30 @@ type VideoAnalysisResult = {
 
 type AnalysisMeta = {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "url";
   filename: string;
   mimeType: string;
   created: string;
   focusPrompt?: string;
+  source?: "email";
+  emailFrom?: string;
+  emailSubject?: string;
+  emailMessageId?: string;
+  sourceUrl?: string;
+};
+
+type UrlResearchResult = {
+  url: string;
+  title: string;
+  description: string;
+  research: string;
+  citations: string[];
+  fetchedAt: string;
 };
 
 type AnalysisRecord = {
   meta: AnalysisMeta;
-  result: ImageBreakdown | VideoAnalysisResult | null;
+  result: ImageBreakdown | VideoAnalysisResult | UrlResearchResult | null;
 };
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -343,8 +357,127 @@ const fmtDate = (iso: string) => {
   }
 };
 
-const isVideoResult = (r: ImageBreakdown | VideoAnalysisResult): r is VideoAnalysisResult =>
-  "scenes" in r && Array.isArray((r as VideoAnalysisResult).scenes);
+const isVideoResult = (
+  r: ImageBreakdown | VideoAnalysisResult | UrlResearchResult,
+): r is VideoAnalysisResult => "scenes" in r && Array.isArray((r as VideoAnalysisResult).scenes);
+
+const isUrlResult = (
+  r: ImageBreakdown | VideoAnalysisResult | UrlResearchResult,
+): r is UrlResearchResult => "fetchedAt" in r && "citations" in r;
+
+// ─── URL result display ───────────────────────────────────────────────────────
+
+const AMBER = "rgba(255,180,0,0.85)";
+const AMBER_DIM = "rgba(255,180,0,0.15)";
+const AMBER_BORDER = "rgba(255,180,0,0.25)";
+
+const UrlResult = ({
+  result,
+  sourceUrl,
+}: { result: UrlResearchResult; sourceUrl?: string | undefined }) => (
+  <div style={{ display: "flex", flexDirection: "column" as const, gap: 12 }}>
+    <div
+      style={{
+        background: AMBER_DIM,
+        border: `1px solid ${AMBER_BORDER}`,
+        borderRadius: 4,
+        padding: "10px 12px",
+      }}
+    >
+      <p
+        style={{
+          fontSize: 9,
+          color: AMBER,
+          fontFamily: "monospace",
+          wordBreak: "break-all" as const,
+          margin: 0,
+        }}
+      >
+        {sourceUrl || result.url}
+      </p>
+      {result.title && (
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "rgba(57,255,20,0.9)",
+            marginTop: 4,
+            marginBottom: 0,
+          }}
+        >
+          {result.title}
+        </p>
+      )}
+      {result.description && (
+        <p style={{ fontSize: 9, color: "rgba(57,255,20,0.5)", marginTop: 3, marginBottom: 0 }}>
+          {result.description}
+        </p>
+      )}
+    </div>
+    {result.research ? (
+      <div>
+        <p
+          style={{
+            fontSize: 8,
+            color: "rgba(57,255,20,0.35)",
+            textTransform: "uppercase" as const,
+            letterSpacing: 1,
+            marginBottom: 6,
+          }}
+        >
+          Research
+        </p>
+        <p
+          style={{
+            fontSize: 10,
+            color: "rgba(57,255,20,0.75)",
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap" as const,
+          }}
+        >
+          {result.research}
+        </p>
+      </div>
+    ) : (
+      <p style={{ fontSize: 9, color: "rgba(57,255,20,0.3)", fontStyle: "italic" }}>
+        No research data (Perplexity key not configured)
+      </p>
+    )}
+    {result.citations.length > 0 && (
+      <div>
+        <p
+          style={{
+            fontSize: 8,
+            color: "rgba(57,255,20,0.35)",
+            textTransform: "uppercase" as const,
+            letterSpacing: 1,
+            marginBottom: 4,
+          }}
+        >
+          Sources
+        </p>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 3 }}>
+          {result.citations.map((c, i) => (
+            <a
+              key={i}
+              href={c}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 9,
+                color: AMBER,
+                fontFamily: "monospace",
+                wordBreak: "break-all" as const,
+              }}
+            >
+              {c}
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
 
 // ─── Image result display ─────────────────────────────────────────────────────
 
@@ -357,7 +490,9 @@ const ImageResult = ({ result }: { result: ImageBreakdown }) => {
     ["Composition", result.composition],
     ...(result.color_palette ? [["Color Palette", result.color_palette] as [string, string]] : []),
     ...(result.mood_and_tone ? [["Mood & Tone", result.mood_and_tone] as [string, string]] : []),
-    ...(result.technical_quality ? [["Technical Quality", result.technical_quality] as [string, string]] : []),
+    ...(result.technical_quality
+      ? [["Technical Quality", result.technical_quality] as [string, string]]
+      : []),
     ["Style", result.style],
     ["Context", result.contextual_cues],
   ];
@@ -630,10 +765,13 @@ export const AnalyzerPrimaryView = () => {
     if (!selectedRecord) return;
     const { meta, result } = selectedRecord;
     const lines: string[] = [];
-    lines.push(`# ${meta.type === "image" ? "Image" : "Video"} Analysis — ${meta.filename}`);
-    lines.push(
-      `**Analyzed:** ${fmtDate(meta.created)}${meta.type === "image" && result && !isVideoResult(result) ? ` · via ${result.provider}` : ""}`,
-    );
+    const typeLabel = meta.type === "image" ? "Image" : meta.type === "url" ? "URL" : "Video";
+    lines.push(`# ${typeLabel} Analysis — ${meta.filename}`);
+    const providerSuffix =
+      meta.type === "image" && result && !isVideoResult(result) && !isUrlResult(result)
+        ? ` · via ${result.provider}`
+        : "";
+    lines.push(`**Analyzed:** ${fmtDate(meta.created)}${providerSuffix}`);
     if (meta.focusPrompt) lines.push(`**Focus:** ${meta.focusPrompt}`);
     lines.push("");
 
@@ -815,7 +953,47 @@ export const AnalyzerPrimaryView = () => {
                   }}
                   onClick={() => handleSelect(a.id)}
                 >
-                  <p style={s.sidebarItemLabel}>{a.filename}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {a.source === "email" && (
+                      <span
+                        style={{
+                          fontSize: 8,
+                          background: "rgba(255,180,0,0.2)",
+                          color: "rgba(255,180,0,0.85)",
+                          padding: "0 4px",
+                          borderRadius: 2,
+                          flexShrink: 0,
+                        }}
+                      >
+                        ✉
+                      </span>
+                    )}
+                    <p
+                      style={{
+                        ...s.sidebarItemLabel,
+                        margin: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap" as const,
+                      }}
+                    >
+                      {a.filename}
+                    </p>
+                  </div>
+                  {a.source === "email" && a.emailSubject && (
+                    <p
+                      style={{
+                        fontSize: 8,
+                        color: "rgba(255,180,0,0.5)",
+                        marginTop: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap" as const,
+                      }}
+                    >
+                      {a.emailSubject}
+                    </p>
+                  )}
                   <p style={s.sidebarItemMeta}>
                     {a.type} · {fmtDate(a.created)}
                   </p>
@@ -900,6 +1078,13 @@ export const AnalyzerPrimaryView = () => {
                 </div>
                 {selectedRecord.result == null ? (
                   <p style={s.statusMsg(true)}>No result data for this analysis.</p>
+                ) : isUrlResult(selectedRecord.result) ? (
+                  <UrlResult
+                    result={selectedRecord.result}
+                    {...(selectedRecord.meta.sourceUrl !== undefined
+                      ? { sourceUrl: selectedRecord.meta.sourceUrl }
+                      : {})}
+                  />
                 ) : isVideoResult(selectedRecord.result) ? (
                   <VideoResult result={selectedRecord.result} />
                 ) : (

@@ -29,9 +29,7 @@ export const JarvisActivityFeed = ({ recentRuns }: Props) => {
               </span>
             </div>
           ))}
-          {overflow > 0 && (
-            <div className="nc-hq-activity-overflow">+{overflow} more</div>
-          )}
+          {overflow > 0 && <div className="nc-hq-activity-overflow">+{overflow} more</div>}
         </div>
       )}
     </div>

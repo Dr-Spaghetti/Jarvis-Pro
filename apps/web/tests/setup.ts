@@ -16,6 +16,15 @@ globalThis.ResizeObserver = class ResizeObserver {
 
 const canvasContextStub = {
   imageSmoothingEnabled: true,
+  fillStyle: "",
+  strokeStyle: "",
+  lineWidth: 1,
+  font: "",
+  textAlign: "left" as CanvasTextAlign,
+  textBaseline: "alphabetic" as CanvasTextBaseline,
+  shadowColor: "",
+  shadowBlur: 0,
+  globalAlpha: 1,
   clearRect() {},
   fillRect() {},
   save() {},
@@ -29,6 +38,20 @@ const canvasContextStub = {
   fill() {},
   ellipse() {},
   arc() {},
+  scale() {},
+  translate() {},
+  clip() {},
+  setLineDash() {},
+  fillText() {},
+  measureText() {
+    return { width: 0 };
+  },
+  createRadialGradient() {
+    return { addColorStop() {} };
+  },
+  createLinearGradient() {
+    return { addColorStop() {} };
+  },
 };
 
 Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {

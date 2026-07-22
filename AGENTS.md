@@ -65,7 +65,44 @@
 - For narrow changes, run the most direct test or package-scoped test first, then widen verification as needed.
 - For changes that affect shared contracts, persistence, or cross-app behavior, run the relevant package tests and the root build before landing.
 
+## E2E Testing Protocol
+
+After any change to `apps/web` or `apps/api` routes, invoke the `/e2e-test` skill:
+- Use the Playwright MCP to navigate `localhost:3001` and drive the affected UI surface
+- Verify the ★-starred flows in `e2e/flows.md` pass
+- Run `pnpm test:e2e --grep "@smoke"` — must pass before marking the task done
+- Run `pnpm test:e2e` for a full suite check before any release
+- Update `e2e/flows.md` whenever a new tab, panel, or surface is added
+
 ## Scoped Guides
 - `apps/api/AGENTS.md` expands server/runtime/worktree rules.
 - `apps/web/AGENTS.md` expands UI/component/style rules.
 - `packages/core/AGENTS.md` expands domain and ports-and-adapters rules.
+
+## Cross-Tool Sync (Claude Code ↔ Codex)
+
+Both Claude Code and Codex work on this repo. Follow this protocol so they stay aligned.
+
+### Session Start — read these in order
+1. `.octogent/.remember/remember.md` — snapshot of current state written at last session end
+2. `.octogent/.remember/today-YYYY-MM-DD.md` — today's running work log
+3. `.octogent/.remember/recent.md` — last 7 days of activity
+4. `git status` — confirm working tree state before touching anything
+
+### Session End — write a snapshot
+Append or overwrite `.octogent/.remember/remember.md` with:
+- **What changed**: files modified, features shipped, bugs fixed
+- **Working tree**: clean / has uncommitted changes (list them)
+- **Open threads**: in-progress work, next priorities
+- **Blockers**: anything the next tool needs to know before starting
+
+Keep it under 30 lines. The next tool reads this cold.
+
+### Division of labor
+- **Claude Code**: multi-file reasoning, planning, MCP integrations, Playwright E2E verification, artifacts, complex debugging across layers
+- **Codex**: rapid in-editor generation, focused single-file edits, TypeScript completions, staying in flow in VS Code
+
+### Conflict avoidance
+- Check `git status` before starting work. If uncommitted changes exist from the other tool, commit or stash them first.
+- Prefer feature branches for parallel work. Merge to `main` only after the verification gate passes (§Verification above).
+- Do not touch files the other tool is actively editing in an uncommitted state — coordinate via `remember.md` if handoff mid-feature is needed.

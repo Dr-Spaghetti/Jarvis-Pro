@@ -37,8 +37,12 @@ function buildPanel() {
 
   const input = el.querySelector(".j-input");
   const send = el.querySelector(".j-send");
-  input.addEventListener("input", () => { send.disabled = !input.value.trim(); });
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !send.disabled) sendQuestion(); });
+  input.addEventListener("input", () => {
+    send.disabled = !input.value.trim();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !send.disabled) sendQuestion();
+  });
   send.addEventListener("click", sendQuestion);
   el.querySelector(".j-play").addEventListener("click", playAnswer);
 
@@ -101,7 +105,8 @@ async function sendQuestion() {
       answerEl.textContent = answerText;
       footer.style.display = "flex";
     } else {
-      answerEl.textContent = data.hint ?? "No answer model available — check your API keys in Jarvis Settings.";
+      answerEl.textContent =
+        data.hint ?? "No answer model available — check your API keys in Jarvis Settings.";
     }
   } catch {
     answerEl.className = "j-answer";
@@ -118,7 +123,9 @@ async function playAnswer() {
   playBtn.disabled = true;
   // Claim the user-gesture autoplay token before the async fetch boundary.
   // Without this, Chrome blocks audio.play() because the gesture is consumed.
-  const unlock = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAAAAAAARQAABQAAAAAAAABAAEAIlYAAJSsAACABAAA");
+  const unlock = new Audio(
+    "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAAAAAAARQAABQAAAAAAAABAAEAIlYAAJSsAACABAAA",
+  );
   unlock.volume = 0;
   void unlock.play().catch(() => {});
   let url;

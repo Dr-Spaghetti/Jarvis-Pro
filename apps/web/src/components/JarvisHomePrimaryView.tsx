@@ -2,9 +2,9 @@ import { useCallback, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
 import { JarvisActivityFeed } from "./JarvisHome/JarvisActivityFeed";
-import { JarvisLearningsPanel } from "./JarvisHome/JarvisLearningsPanel";
 import { JarvisConversationConsole } from "./JarvisHome/JarvisConversationConsole";
 import { JarvisIntentConfirmOverlay } from "./JarvisHome/JarvisIntentConfirmOverlay";
+import { JarvisLearningsPanel } from "./JarvisHome/JarvisLearningsPanel";
 import { JarvisVisualizer } from "./JarvisHome/JarvisVisualizer";
 import { JarvisVoiceBar } from "./JarvisHome/JarvisVoiceBar";
 import { JarvisVoiceStatus } from "./JarvisHome/JarvisVoiceStatus";
