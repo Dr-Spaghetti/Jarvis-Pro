@@ -91,10 +91,50 @@ const loadLearnings = (): DbLearning[] => {
 // Score a piece of text against a query by word-intersection (ignores stop words).
 // Returns 0 if no words match; higher = more relevant.
 const STOP_WORDS = new Set([
-  "the", "a", "an", "is", "was", "are", "were", "it", "its", "in", "on", "at",
-  "to", "of", "and", "or", "but", "not", "for", "with", "this", "that", "i",
-  "me", "my", "you", "your", "he", "she", "we", "they", "do", "did", "have",
-  "has", "had", "be", "been", "being", "will", "can", "could", "would", "should",
+  "the",
+  "a",
+  "an",
+  "is",
+  "was",
+  "are",
+  "were",
+  "it",
+  "its",
+  "in",
+  "on",
+  "at",
+  "to",
+  "of",
+  "and",
+  "or",
+  "but",
+  "not",
+  "for",
+  "with",
+  "this",
+  "that",
+  "i",
+  "me",
+  "my",
+  "you",
+  "your",
+  "he",
+  "she",
+  "we",
+  "they",
+  "do",
+  "did",
+  "have",
+  "has",
+  "had",
+  "be",
+  "been",
+  "being",
+  "will",
+  "can",
+  "could",
+  "would",
+  "should",
 ]);
 
 const tokenize = (text: string): string[] =>
@@ -177,7 +217,11 @@ export const deleteLearning = (id: string): boolean => {
   const next = learnings.filter((l) => l.id !== id);
   if (next.length === learnings.length) return false;
   try {
-    writeFileSync(learningsPath(), next.map((l) => JSON.stringify(l)).join("\n") + (next.length > 0 ? "\n" : ""), "utf8");
+    writeFileSync(
+      learningsPath(),
+      next.map((l) => JSON.stringify(l)).join("\n") + (next.length > 0 ? "\n" : ""),
+      "utf8",
+    );
     learningsCache = next;
     return true;
   } catch {

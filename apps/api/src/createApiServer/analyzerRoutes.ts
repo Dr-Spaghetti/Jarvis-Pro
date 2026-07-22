@@ -27,14 +27,17 @@ const safeAnalysisPath = (id: string): string | null => {
   return target;
 };
 
-const readAnalysis = (id: string): AnalysisRecord | null => {
+export const readAnalysis = (id: string): AnalysisRecord | null => {
   const dir = safeAnalysisPath(id);
   if (!dir || !existsSync(dir)) return null;
   try {
     const meta = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8")) as AnalysisMeta;
     const resultPath = join(dir, "result.json");
     const result = existsSync(resultPath)
-      ? (JSON.parse(readFileSync(resultPath, "utf8")) as ImageBreakdown | VideoAnalysisResult)
+      ? (JSON.parse(readFileSync(resultPath, "utf8")) as
+          | ImageBreakdown
+          | VideoAnalysisResult
+          | UrlResearchResult)
       : null;
     return { meta, result };
   } catch {
@@ -42,7 +45,10 @@ const readAnalysis = (id: string): AnalysisRecord | null => {
   }
 };
 
-const saveAnalysis = (meta: AnalysisMeta, result: ImageBreakdown | VideoAnalysisResult) => {
+export const saveAnalysis = (
+  meta: AnalysisMeta,
+  result: ImageBreakdown | VideoAnalysisResult | UrlResearchResult | null,
+) => {
   const dir = getAnalysesDir();
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const analysisDir = join(dir, meta.id);
@@ -118,18 +124,32 @@ type VideoAnalysisResult = {
   sample_note?: string;
 };
 
-type AnalysisMeta = {
+export type UrlResearchResult = {
+  url: string;
+  title: string;
+  description: string;
+  research: string;
+  citations: string[];
+  fetchedAt: string;
+};
+
+export type AnalysisMeta = {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "url";
   filename: string;
   mimeType: string;
   created: string;
   focusPrompt?: string;
+  source?: "email";
+  emailFrom?: string;
+  emailSubject?: string;
+  emailMessageId?: string;
+  sourceUrl?: string;
 };
 
 type AnalysisRecord = {
   meta: AnalysisMeta;
-  result: ImageBreakdown | VideoAnalysisResult | null;
+  result: ImageBreakdown | VideoAnalysisResult | UrlResearchResult | null;
 };
 
 // ─── body reader ─────────────────────────────────────────────────────────────
@@ -219,7 +239,7 @@ const analyzeImageWithGemini = async (
             ],
           },
         ],
-        generationConfig: { temperature: 0, maxOutputTokens: 8192 },
+        generationConfig: { temperature: 0, maxOutputTokens: 2048 },
       }),
     });
     if (!res.ok) return null;
@@ -251,7 +271,7 @@ const analyzeImageWithGemini = async (
   }
 };
 
-const analyzeImageWithClaude = async (
+export const analyzeImageWithClaude = async (
   imageData: Buffer,
   mimeType: string,
   focus?: string,
@@ -272,8 +292,8 @@ const analyzeImageWithClaude = async (
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 8192,
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
         messages: [
           {
             role: "user",
@@ -406,7 +426,7 @@ const analyzeVideoWithGemini = async (
             parts: [{ fileData: { mimeType, fileUri } }, { text: buildVideoPrompt(focus) }],
           },
         ],
-        generationConfig: { temperature: 0, maxOutputTokens: 8192 },
+        generationConfig: { temperature: 0, maxOutputTokens: 2048 },
       }),
     });
     if (!res.ok) return null;
@@ -485,8 +505,16 @@ const extractAudioFromVideo = (videoData: Buffer, inputExt: string): Promise<Buf
         }
       });
       proc.on("error", () => {
-        try { unlinkSync(tmpIn); } catch { /* ignore */ }
-        try { unlinkSync(tmpOut); } catch { /* ignore */ }
+        try {
+          unlinkSync(tmpIn);
+        } catch {
+          /* ignore */
+        }
+        try {
+          unlinkSync(tmpOut);
+        } catch {
+          /* ignore */
+        }
         resolve(null);
       });
     } catch {
@@ -854,6 +882,19 @@ const buildAnalysisContext = (record: AnalysisRecord): string => {
       `Style: ${img.style || ""}`,
       `Contextual cues: ${img.contextual_cues || ""}`,
     );
+    return parts.join("\n");
+  }
+
+  if (meta.type === "url") {
+    const url = result as UrlResearchResult;
+    const parts = [
+      `URL analysis of "${url.url}":`,
+      `Title: ${url.title || "unknown"}`,
+      `Description: ${url.description || "none"}`,
+    ];
+    if (url.research) parts.push(`Research:\n${url.research}`);
+    if (url.citations.length > 0) parts.push(`Sources: ${url.citations.join(", ")}`);
+    if (meta.emailSubject) parts.push(`From email: "${meta.emailSubject}"`);
     return parts.join("\n");
   }
 

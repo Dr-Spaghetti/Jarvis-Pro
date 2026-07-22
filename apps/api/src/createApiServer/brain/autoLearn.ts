@@ -90,7 +90,10 @@ export const extractLearning = async (
       try {
         ensureAndAppend(vaultDir, MEMORY_PATH, MEMORY_HEADER, `${text}\n`);
       } catch (err) {
-        console.warn("[autoLearn] Memory.md write failed:", err instanceof Error ? err.message : err);
+        console.warn(
+          "[autoLearn] Memory.md write failed:",
+          err instanceof Error ? err.message : err,
+        );
       }
     }
 

@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -83,9 +76,7 @@ const call = async (
   };
   const handled = await handler(ctx, DEPS);
   const rawBuffer = parts.find((p): p is Buffer => p instanceof Buffer) ?? null;
-  const text = parts
-    .filter((p): p is string => typeof p === "string")
-    .join("");
+  const text = parts.filter((p): p is string => typeof p === "string").join("");
   let json: Record<string, unknown> | null = null;
   if (text.length > 0) {
     try {
@@ -111,9 +102,7 @@ const writeMedia = (id: string, ext: string, data = Buffer.from("fakedata")) => 
 };
 
 const readMeta = (id: string) =>
-  JSON.parse(
-    readFileSync(join(genDir(), `${id}.json`), "utf8"),
-  ) as Record<string, unknown>;
+  JSON.parse(readFileSync(join(genDir(), `${id}.json`), "utf8")) as Record<string, unknown>;
 
 // ─── setup ───────────────────────────────────────────────────────────────────
 
@@ -176,8 +165,20 @@ describe("generatorRoutes", () => {
     });
 
     it("returns generations sorted newest-first", async () => {
-      writeMeta({ id: "gen-100", mode: "text2image", prompt: "older", status: "completed", created: "2025-01-01T00:00:00.000Z" });
-      writeMeta({ id: "gen-200", mode: "text2image", prompt: "newer", status: "completed", created: "2025-06-01T00:00:00.000Z" });
+      writeMeta({
+        id: "gen-100",
+        mode: "text2image",
+        prompt: "older",
+        status: "completed",
+        created: "2025-01-01T00:00:00.000Z",
+      });
+      writeMeta({
+        id: "gen-200",
+        mode: "text2image",
+        prompt: "newer",
+        status: "completed",
+        created: "2025-06-01T00:00:00.000Z",
+      });
       const res = await call(handleGeneratorListRoute, "GET", "/api/generator");
       expect(res.status).toBe(200);
       const gens = res.json?.generations as Array<{ id: string }>;
@@ -195,7 +196,13 @@ describe("generatorRoutes", () => {
 
   describe("handleGeneratorItemRoute", () => {
     it("returns 200 with metadata for existing id", async () => {
-      writeMeta({ id: "gen-abc", mode: "text2image", prompt: "hello", status: "completed", created: new Date().toISOString() });
+      writeMeta({
+        id: "gen-abc",
+        mode: "text2image",
+        prompt: "hello",
+        status: "completed",
+        created: new Date().toISOString(),
+      });
       const res = await call(handleGeneratorItemRoute, "GET", "/api/generator/gen-abc");
       expect(res.status).toBe(200);
       expect(res.json?.id).toBe("gen-abc");
@@ -229,7 +236,13 @@ describe("generatorRoutes", () => {
     });
 
     it("returns 404 when no media file found", async () => {
-      writeMeta({ id: "gen-nomedia", mode: "text2image", prompt: "test", status: "completed", created: new Date().toISOString() });
+      writeMeta({
+        id: "gen-nomedia",
+        mode: "text2image",
+        prompt: "test",
+        status: "completed",
+        created: new Date().toISOString(),
+      });
       const res = await call(handleGeneratorAssetRoute, "GET", "/api/generator/assets/gen-nomedia");
       expect(res.status).toBe(404);
     });
@@ -257,7 +270,9 @@ describe("generatorRoutes", () => {
 
     it("returns 503 when GEMINI_API_KEY not set", async () => {
       Reflect.deleteProperty(process.env, "GEMINI_API_KEY");
-      const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", { prompt: "test" });
+      const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", {
+        prompt: "test",
+      });
       expect(res.status).toBe(503);
     });
 
@@ -265,7 +280,9 @@ describe("generatorRoutes", () => {
       const fakeB64 = Buffer.from("fake-png-bytes").toString("base64");
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ predictions: [{ bytesBase64Encoded: fakeB64, mimeType: "image/png" }] }),
+        json: async () => ({
+          predictions: [{ bytesBase64Encoded: fakeB64, mimeType: "image/png" }],
+        }),
       });
       const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", {
         prompt: "a red circle",
@@ -281,12 +298,16 @@ describe("generatorRoutes", () => {
     it("defaults aspectRatio to 1:1 when omitted", async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ predictions: [{ bytesBase64Encoded: Buffer.from("img").toString("base64"), mimeType: "image/png" }] }),
+        json: async () => ({
+          predictions: [
+            { bytesBase64Encoded: Buffer.from("img").toString("base64"), mimeType: "image/png" },
+          ],
+        }),
       });
       await call(handleGeneratorImageRoute, "POST", "/api/generator/image", { prompt: "test" });
-      const body = JSON.parse(
-        fetchMock.mock.calls[0]![1]!.body as string,
-      ) as { parameters: { aspectRatio: string } };
+      const body = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as {
+        parameters: { aspectRatio: string };
+      };
       expect(body.parameters.aspectRatio).toBe("1:1");
     });
 
@@ -295,7 +316,9 @@ describe("generatorRoutes", () => {
         ok: false,
         text: async () => JSON.stringify({ error: { message: "quota exceeded" } }),
       });
-      const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", { prompt: "test" });
+      const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", {
+        prompt: "test",
+      });
       expect(res.status).toBe(502);
     });
 
@@ -304,7 +327,9 @@ describe("generatorRoutes", () => {
         ok: true,
         json: async () => ({ predictions: [] }),
       });
-      const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", { prompt: "test" });
+      const res = await call(handleGeneratorImageRoute, "POST", "/api/generator/image", {
+        prompt: "test",
+      });
       expect(res.status).toBe(502);
     });
   });
@@ -319,7 +344,9 @@ describe("generatorRoutes", () => {
 
     it("returns 503 when GEMINI_API_KEY not set", async () => {
       Reflect.deleteProperty(process.env, "GEMINI_API_KEY");
-      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", { prompt: "wave" });
+      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", {
+        prompt: "wave",
+      });
       expect(res.status).toBe(503);
     });
 
@@ -329,9 +356,18 @@ describe("generatorRoutes", () => {
         .mockResolvedValueOnce({ ok: true, json: async () => ({ name: "operations/op-1" }) })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ done: true, response: { videos: [{ bytesBase64Encoded: Buffer.from("v").toString("base64"), mimeType: "video/mp4" }] } }),
+          json: async () => ({
+            done: true,
+            response: {
+              videos: [
+                { bytesBase64Encoded: Buffer.from("v").toString("base64"), mimeType: "video/mp4" },
+              ],
+            },
+          }),
         });
-      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", { prompt: "ocean" });
+      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", {
+        prompt: "ocean",
+      });
       expect(res.status).toBe(202);
       expect(res.json?.status).toBe("generating");
       expect(res.json?.mode).toBe("image2video");
@@ -350,7 +386,9 @@ describe("generatorRoutes", () => {
           }),
         });
 
-      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", { prompt: "ocean" });
+      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", {
+        prompt: "ocean",
+      });
       const id = res.json?.id as string;
 
       // Advance past veoPoll's 8-second setTimeout, then flush microtasks
@@ -368,7 +406,9 @@ describe("generatorRoutes", () => {
       vi.useFakeTimers();
       fetchMock.mockResolvedValueOnce({ ok: false });
 
-      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", { prompt: "fail" });
+      const res = await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", {
+        prompt: "fail",
+      });
       const id = res.json?.id as string;
 
       await vi.runAllTimersAsync();
@@ -382,14 +422,23 @@ describe("generatorRoutes", () => {
       vi.useFakeTimers();
       const srcId = "gen-src-img";
       writeMedia(srcId, "png", Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-      writeMeta({ id: srcId, mode: "text2image", prompt: "src", status: "completed", created: new Date().toISOString() });
+      writeMeta({
+        id: srcId,
+        mode: "text2image",
+        prompt: "src",
+        status: "completed",
+        created: new Date().toISOString(),
+      });
 
       const fakeVidB64 = Buffer.from("video").toString("base64");
       fetchMock
         .mockResolvedValueOnce({ ok: true, json: async () => ({ name: "operations/op-2" }) })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ done: true, response: { videos: [{ bytesBase64Encoded: fakeVidB64, mimeType: "video/mp4" }] } }),
+          json: async () => ({
+            done: true,
+            response: { videos: [{ bytesBase64Encoded: fakeVidB64, mimeType: "video/mp4" }] },
+          }),
         });
 
       await call(handleGeneratorAnimateRoute, "POST", "/api/generator/animate", {
@@ -403,9 +452,9 @@ describe("generatorRoutes", () => {
 
       // Only 2 fetches (veoStart + veoPoll) — no external image fetch
       expect(fetchMock).toHaveBeenCalledTimes(2);
-      const veoBody = JSON.parse(
-        fetchMock.mock.calls[0]![1]!.body as string,
-      ) as { instances: Array<{ image?: unknown }> };
+      const veoBody = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as {
+        instances: Array<{ image?: unknown }>;
+      };
       expect(veoBody.instances[0]?.image).toBeDefined();
     });
   });
@@ -420,7 +469,13 @@ describe("generatorRoutes", () => {
     });
 
     it("deletes metadata and media files", async () => {
-      writeMeta({ id: "gen-del", mode: "text2image", prompt: "bye", status: "completed", created: new Date().toISOString() });
+      writeMeta({
+        id: "gen-del",
+        mode: "text2image",
+        prompt: "bye",
+        status: "completed",
+        created: new Date().toISOString(),
+      });
       writeMedia("gen-del", "png");
       expect(existsSync(join(genDir(), "gen-del.json"))).toBe(true);
 

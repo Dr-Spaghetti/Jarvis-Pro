@@ -18,15 +18,26 @@ export const handleBrainLearningsRoute: ApiRouteHandler = async (
   initDb(join(projectStateDir, "state"));
 
   if (isList) {
-    if (request.method !== "GET") { writeMethodNotAllowed(response, corsOrigin); return true; }
+    if (request.method !== "GET") {
+      writeMethodNotAllowed(response, corsOrigin);
+      return true;
+    }
     writeJson(response, 200, { learnings: listAllLearnings() }, corsOrigin);
     return true;
   }
 
   // Item route — DELETE /:id
   const id: string = itemMatch![1] as string;
-  if (request.method !== "DELETE") { writeMethodNotAllowed(response, corsOrigin); return true; }
+  if (request.method !== "DELETE") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
   const deleted = deleteLearning(id);
-  writeJson(response, deleted ? 200 : 404, deleted ? { ok: true } : { error: "Learning not found" }, corsOrigin);
+  writeJson(
+    response,
+    deleted ? 200 : 404,
+    deleted ? { ok: true } : { error: "Learning not found" },
+    corsOrigin,
+  );
   return true;
 };

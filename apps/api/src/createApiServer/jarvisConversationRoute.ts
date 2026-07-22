@@ -119,7 +119,10 @@ export const handleJarvisConversationTurnRoute: ApiRouteHandler = async (
       // Keep the session_start event plus the most recent turns
       const sessionStart = combined.find((l) => l.includes('"type":"session_start"'));
       const rest = combined.filter((l) => !l.includes('"type":"session_start"'));
-      const pruned = [...(sessionStart ? [sessionStart] : []), ...rest.slice(-MAX_EVENTS_PER_SESSION + 1)];
+      const pruned = [
+        ...(sessionStart ? [sessionStart] : []),
+        ...rest.slice(-MAX_EVENTS_PER_SESSION + 1),
+      ];
       writeFileSync(jsonlPath, `${pruned.join("\n")}\n`, "utf8");
     } else {
       appendFileSync(jsonlPath, `${lines.join("\n")}\n`, "utf8");

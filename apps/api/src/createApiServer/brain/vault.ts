@@ -17,7 +17,9 @@ export const resolveVaultDir = (): string | null => {
   const dir = process.env.OBSIDIAN_VAULT_PATH?.trim();
   if (!dir || !existsSync(dir)) {
     if (!_vaultWarnedOnce) {
-      console.warn("[vault] OBSIDIAN_VAULT_PATH not set or path does not exist — vault features disabled.");
+      console.warn(
+        "[vault] OBSIDIAN_VAULT_PATH not set or path does not exist — vault features disabled.",
+      );
       _vaultWarnedOnce = true;
     }
     return null;

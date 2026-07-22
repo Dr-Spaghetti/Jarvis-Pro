@@ -10,7 +10,10 @@ import { createApiServer } from "./createApiServer";
   let envPath: string | null = null;
   for (let d = dirname(fileURLToPath(import.meta.url)); d !== dirname(d); d = dirname(d)) {
     const candidate = join(d, ".env");
-    if (existsSync(candidate)) { envPath = candidate; break; }
+    if (existsSync(candidate)) {
+      envPath = candidate;
+      break;
+    }
   }
   if (envPath) {
     for (const line of readFileSync(envPath, "utf-8").split("\n")) {

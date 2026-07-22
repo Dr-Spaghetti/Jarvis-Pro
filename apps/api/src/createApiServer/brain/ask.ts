@@ -3,18 +3,18 @@ import { join } from "node:path";
 
 import { agenticAsk } from "../agenticAsk";
 import { classifyBrainQuestion } from "../classifyBrainQuestion";
+import { initDb, insertTurn, searchLearnings, searchTurns } from "../db";
 import { chatViaOllama, getChatModel, isOllamaRunning, listOllamaChatModels } from "../ollamaChat";
 import { cosineSimilarity, embedViaOllama } from "../ollamaEmbed";
 import { orchestrateTask } from "../orchestrateRoutes";
 import type { ApiRouteHandler } from "../routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "../routeHelpers";
-import { initDb, insertTurn, searchLearnings, searchTurns } from "../db";
+import { extractLearning } from "./autoLearn";
 import {
   type ConversationTurn,
   appendConversationTurn,
   readConversationTurns,
 } from "./conversation";
-import { extractLearning } from "./autoLearn";
 import { readMemoryFacts } from "./memory";
 import { lexicalSearchNotes, loadSemanticIndex } from "./search";
 import { asRecord, deriveTitle, oneLine, resolveVaultDir, stripFrontmatter } from "./vault";
@@ -99,7 +99,7 @@ const shouldEnrichWithWeb = (question: string): boolean => {
 };
 
 type PerplexityCitation = { title: string; url: string };
-type PerplexityResult = { answer: string; citations: PerplexityCitation[] };
+export type PerplexityResult = { answer: string; citations: PerplexityCitation[] };
 
 const fetchWithTimeout = async (
   url: string,
@@ -113,14 +113,14 @@ const fetchWithTimeout = async (
   }
 };
 
-const askViaPerplexity = async (
+export const askViaPerplexity = async (
   question: string,
   deep: boolean,
   forEnrichment = false,
 ): Promise<PerplexityResult | null> => {
   const apiKey = getPerplexityApiKey();
   if (!apiKey) return null;
-  const model = deep ? "sonar-pro" : "sonar";
+  const model = "sonar";
   const res = await fetchWithTimeout(
     "https://api.perplexity.ai/chat/completions",
     {
@@ -189,17 +189,15 @@ const HAIKU_SIGNALS = [
 ];
 
 // Auto-select the right Claude model based on question complexity.
-// Opus for deep reasoning; Haiku for trivial; Sonnet for everything else.
+// Haiku for trivial; Sonnet for everything else (Opus removed — too expensive for daily use).
 const selectClaudeModel = (question: string): string => {
   const q = question.trim();
   if (HAIKU_SIGNALS.some((p) => p.test(q))) return CLAUDE_VOICE_MODEL;
-  if (OPUS_SIGNALS.some((p) => p.test(q))) return CLAUDE_OPUS_MODEL;
   return CLAUDE_SONNET_MODEL;
 };
 
 // Complex questions also get sonar-pro in Perplexity (not just "deep research" phrase)
-const isComplexQuestion = (question: string): boolean =>
-  OPUS_SIGNALS.some((p) => p.test(question));
+const isComplexQuestion = (question: string): boolean => OPUS_SIGNALS.some((p) => p.test(question));
 
 type AnthrContent = { type: "text"; text: string };
 type AnthrMessage = { role: "user" | "assistant"; content: string };
@@ -386,8 +384,10 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       ? payload.clipboardContext.trim().slice(0, 800)
       : null;
 
-  // Initialize persistent memory store (idempotent)
-  initDb(join(projectStateDir, "state"));
+  // Initialize persistent memory store (idempotent; skip when no state dir)
+  if (projectStateDir) {
+    initDb(join(projectStateDir, "state"));
+  }
 
   const vaultDir = resolveVaultDir();
   const notes = vaultDir ? await retrieveContext(vaultDir, question, 6) : [];
@@ -509,7 +509,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   // Live and general knowledge questions go directly to Perplexity (fast, web-grounded).
   // Personal questions (my projects, my tasks, etc.) always use Claude + vault instead.
-  if (!isExplicitOllama && !isPersonalQuestion(question) && Date.now() >= perplexityUnavailableUntil && (isLiveQuestion(question) || shouldEnrichWithWeb(question))) {
+  if (
+    !isExplicitOllama &&
+    !isPersonalQuestion(question) &&
+    Date.now() >= perplexityUnavailableUntil &&
+    (isLiveQuestion(question) || shouldEnrichWithWeb(question))
+  ) {
     const deep = isDeepResearchRequest(question) || isComplexQuestion(question);
     const perp = await askViaPerplexity(question, deep);
     if (perp) {
@@ -523,7 +528,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
           answer: perp.answer,
           sources,
           citations: perp.citations,
-          via: deep ? "perplexity-sonar-pro" : "perplexity-sonar",
+          via: "perplexity-sonar",
         },
         corsOrigin,
       );
@@ -558,7 +563,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
       const autoModel = selectClaudeModel(question);
-      const claudeResult = await askViaClaude(question, claudeContextWithRecall, history, autoModel);
+      const claudeResult = await askViaClaude(
+        question,
+        claudeContextWithRecall,
+        history,
+        autoModel,
+      );
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
@@ -580,7 +590,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         // request, so no need to bypass Claude for 5 minutes on a transient error.
       }
     }
-    const perpResult = Date.now() >= perplexityUnavailableUntil ? await askViaPerplexity(question, false) : null;
+    const perpResult =
+      Date.now() >= perplexityUnavailableUntil ? await askViaPerplexity(question, false) : null;
     if (perpResult) {
       if (vaultDir) appendConversationTurn(vaultDir, question, perpResult.answer);
       recordTurn(question, perpResult.answer);
@@ -617,9 +628,11 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       {
         available: false,
         reason: "no-chat-model",
-        hint: model
-          ? `The local model '${model}' did not respond. Check that Ollama is running and the model is pulled: \`ollama pull ${model}\`.`
-          : "No AI provider could answer. Check ANTHROPIC_API_KEY / PERPLEXITY_API_KEY in .env, or pull an Ollama model: `ollama pull qwen2.5:7b`.",
+        hint: process.env.ANTHROPIC_API_KEY?.trim()
+          ? "All providers failed to respond — try again. If this persists, check ANTHROPIC_API_KEY / PERPLEXITY_API_KEY in .env."
+          : model
+          ? `The local model '${model}' did not respond. Check that Ollama is running: \`ollama pull ${model}\`.`
+          : "No AI provider could answer. Add ANTHROPIC_API_KEY / PERPLEXITY_API_KEY to .env, or pull an Ollama model: `ollama pull qwen2.5:7b`.",
         sources,
       },
       corsOrigin,
