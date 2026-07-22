@@ -1,26 +1,30 @@
-﻿import { describe, it, expect } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
+  type AgentArchetype,
+  type AgentProfile,
+  findBestAgent,
   matchAgentToTask,
   rankAgentsForTask,
-  findBestAgent,
-  type AgentProfile,
-  type AgentArchetype,
 } from "../src/createApiServer/agent/agentMatcher";
+import {
+  getLoopCapability,
+  isSuitableForIterativeExecution,
+  rankByLoopCapability,
+} from "../src/createApiServer/agent/domainLoopCapability";
 import { classifyTask } from "../src/createApiServer/agent/taskClassifier";
-import { getLoopCapability, rankByLoopCapability, isSuitableForIterativeExecution } from "../src/createApiServer/agent/domainLoopCapability";
 import type { TaskInput } from "../src/createApiServer/agent/taskClassifier";
 
 const createMockAgent = (
   archetype: AgentArchetype,
   overrides?: Partial<AgentProfile>,
 ): AgentProfile => ({
-  id: `agent-${ archetype }`,
-  name: `Mock ${ archetype }`,
+  id: `agent-${archetype}`,
+  name: `Mock ${archetype}`,
   archetype,
   specialties: [archetype],
   loopCapabilityScore: 0.75,
   reliabilityScore: 0.85,
-  speedScore: 0.70,
+  speedScore: 0.7,
   ...overrides,
 });
 
@@ -136,10 +140,7 @@ describe("Agent Matcher", () => {
     });
 
     it("ranks best agent first", () => {
-      const agents = [
-        createMockAgent("operations-lead"),
-        createMockAgent("senior-developer"),
-      ];
+      const agents = [createMockAgent("operations-lead"), createMockAgent("senior-developer")];
 
       const task: TaskInput = {
         title: "Fix bug in code",
@@ -156,10 +157,7 @@ describe("Agent Matcher", () => {
 
   describe("findBestAgent", () => {
     it("returns best agent", () => {
-      const agents = [
-        createMockAgent("junior-developer"),
-        createMockAgent("senior-developer"),
-      ];
+      const agents = [createMockAgent("junior-developer"), createMockAgent("senior-developer")];
 
       const task: TaskInput = {
         title: "Complex engineering task",
@@ -231,20 +229,13 @@ describe("Domain Loop Capability", () => {
     });
 
     it("returns false for unsuitable pairs", () => {
-      const suitable = isSuitableForIterativeExecution(
-        "engineering",
-        "content-creator",
-      );
+      const suitable = isSuitableForIterativeExecution("engineering", "content-creator");
 
       expect(suitable).toBe(false);
     });
 
     it("respects custom threshold", () => {
-      const suitable = isSuitableForIterativeExecution(
-        "research",
-        "research-analyst",
-        0.99,
-      );
+      const suitable = isSuitableForIterativeExecution("research", "research-analyst", 0.99);
 
       expect(suitable).toBe(false);
     });

@@ -1,18 +1,18 @@
-﻿import { describe, it, expect, beforeEach } from "vitest";
+﻿import { beforeEach, describe, expect, it } from "vitest";
 import {
-  classifyTask,
-  generateTaskHash,
-  clearClassificationCache,
-  getClassificationCacheStats,
-  determineLoopStrategy,
   type TaskInput,
+  classifyTask,
+  clearClassificationCache,
+  determineLoopStrategy,
+  generateTaskHash,
+  getClassificationCacheStats,
 } from "../src/createApiServer/agent/taskClassifier";
 import {
   buildLoopStrategy,
-  requiresIterativeExecution,
-  estimateLoopTotalTime,
-  shouldTerminateLoopEarly,
   describeLoopStrategy,
+  estimateLoopTotalTime,
+  requiresIterativeExecution,
+  shouldTerminateLoopEarly,
 } from "../src/createApiServer/agent/taskLoopStrategy";
 
 describe("Task Classifier", () => {
@@ -440,56 +440,31 @@ describe("Task Loop Strategy", () => {
 
   describe("shouldTerminateLoopEarly", () => {
     it("terminates when max iterations reached", () => {
-      const should = shouldTerminateLoopEarly(
-        5,
-        5,
-        [0.7, 0.75, 0.8, 0.82, 0.83],
-        0.3,
-      );
+      const should = shouldTerminateLoopEarly(5, 5, [0.7, 0.75, 0.8, 0.82, 0.83], 0.3);
 
       expect(should).toBe(true);
     });
 
     it("terminates when quality decreases significantly", () => {
-      const should = shouldTerminateLoopEarly(
-        3,
-        5,
-        [0.8, 0.75, 0.5],
-        0.3,
-      );
+      const should = shouldTerminateLoopEarly(3, 5, [0.8, 0.75, 0.5], 0.3);
 
       expect(should).toBe(true);
     });
 
     it("terminates when quality falls below fallback threshold", () => {
-      const should = shouldTerminateLoopEarly(
-        2,
-        5,
-        [0.8, 0.25],
-        0.3,
-      );
+      const should = shouldTerminateLoopEarly(2, 5, [0.8, 0.25], 0.3);
 
       expect(should).toBe(true);
     });
 
     it("terminates when quality is stable and high", () => {
-      const should = shouldTerminateLoopEarly(
-        3,
-        5,
-        [0.7, 0.88, 0.87],
-        0.3,
-      );
+      const should = shouldTerminateLoopEarly(3, 5, [0.7, 0.88, 0.87], 0.3);
 
       expect(should).toBe(true);
     });
 
     it("continues when quality is improving", () => {
-      const should = shouldTerminateLoopEarly(
-        2,
-        5,
-        [0.7, 0.8],
-        0.3,
-      );
+      const should = shouldTerminateLoopEarly(2, 5, [0.7, 0.8], 0.3);
 
       expect(should).toBe(false);
     });

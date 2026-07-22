@@ -121,10 +121,7 @@ function getDomainProfile(domain: string): Partial<TaskLoopStrategy> {
 /**
  * Apply complexity adjustments to iteration count.
  */
-function applyComplexityAdjustment(
-  baseIterations: number,
-  complexity: string,
-): number {
+function applyComplexityAdjustment(baseIterations: number, complexity: string): number {
   const multiplier = COMPLEXITY_ITERATION_MULTIPLIERS[complexity] || 1.0;
   return Math.ceil(baseIterations * multiplier);
 }
@@ -132,10 +129,7 @@ function applyComplexityAdjustment(
 /**
  * Apply time constraint adjustments to observation interval.
  */
-function applyTimeConstraintAdjustment(
-  baseIntervalMs: number,
-  timeConstraint: string,
-): number {
+function applyTimeConstraintAdjustment(baseIntervalMs: number, timeConstraint: string): number {
   const multiplier = TIME_CONSTRAINT_MULTIPLIERS[timeConstraint] || 1.0;
   return Math.round(baseIntervalMs * multiplier);
 }
@@ -144,9 +138,7 @@ function applyTimeConstraintAdjustment(
  * Calculate quality-based fallback threshold.
  * Lower threshold = more aggressive continuation despite quality dips.
  */
-function calculateFallbackThreshold(
-  classification: TaskClassification,
-): number {
+function calculateFallbackThreshold(classification: TaskClassification): number {
   const { qualityBar, complexity } = classification;
 
   // Production-critical tasks are more tolerant of quality dips (continue longer)
@@ -170,9 +162,7 @@ function calculateFallbackThreshold(
  * Build a complete loop strategy for a task.
  * Combines domain profiles, complexity adjustments, and time constraints.
  */
-export function buildLoopStrategy(
-  classification: TaskClassification,
-): TaskLoopStrategy {
+export function buildLoopStrategy(classification: TaskClassification): TaskLoopStrategy {
   const domainProfile = getDomainProfile(classification.domain);
   const baseMaxIterations = domainProfile.maxIterations || 2;
   const adjustedMaxIterations = applyComplexityAdjustment(
@@ -242,7 +232,9 @@ export function shouldTerminateLoopEarly(
   }
 
   // If quality is decreasing significantly, stop
-  const recentQualityDelta = qualityProgression[qualityProgression.length - 1]! - qualityProgression[qualityProgression.length - 2]!;
+  const recentQualityDelta =
+    qualityProgression[qualityProgression.length - 1]! -
+    qualityProgression[qualityProgression.length - 2]!;
   if (recentQualityDelta < -0.15) {
     return true;
   }
@@ -256,7 +248,7 @@ export function shouldTerminateLoopEarly(
   // If quality is high and stable (>0.85 for 2 iterations), stop
   if (qualityProgression.length >= 2) {
     const recent = qualityProgression.slice(-2);
-    if (recent.every(q => q > 0.85) && Math.abs(recent[1]! - recent[0]!) < 0.05) {
+    if (recent.every((q) => q > 0.85) && Math.abs(recent[1]! - recent[0]!) < 0.05) {
       return true;
     }
   }
@@ -273,11 +265,11 @@ export function describeLoopStrategy(strategy: TaskLoopStrategy): string {
   }
 
   const lines = [
-    `Iterative execution with up to ${ strategy.maxIterations } iterations`,
-    `Reflection depth: ${ strategy.reflectionDepth }`,
-    `Self-correction: ${ strategy.selfCorrectionMode }`,
-    `Observation interval: ${ strategy.observationIntervalMs }ms`,
-    `Quality fallback threshold: ${ (strategy.fallbackThreshold * 100).toFixed(0) }%`,
+    `Iterative execution with up to ${strategy.maxIterations} iterations`,
+    `Reflection depth: ${strategy.reflectionDepth}`,
+    `Self-correction: ${strategy.selfCorrectionMode}`,
+    `Observation interval: ${strategy.observationIntervalMs}ms`,
+    `Quality fallback threshold: ${(strategy.fallbackThreshold * 100).toFixed(0)}%`,
   ];
 
   return lines.join(" | ");

@@ -33,13 +33,10 @@ class LoopMetricsCollector {
   /**
    * Record a single iteration within a loop.
    */
-  recordLoopIteration(
-    deploymentId: string,
-    _snapshot: IterationSnapshot,
-  ): void {
+  recordLoopIteration(deploymentId: string, _snapshot: IterationSnapshot): void {
     const loop = this.activeLoops.get(deploymentId);
     if (!loop) {
-      console.warn(`Loop not found for deployment: ${ deploymentId }`);
+      console.warn(`Loop not found for deployment: ${deploymentId}`);
       return;
     }
 
@@ -50,10 +47,7 @@ class LoopMetricsCollector {
   /**
    * Complete recording a loop execution.
    */
-  recordLoopComplete(
-    deploymentId: string,
-    metrics: AgentLoopMetrics,
-  ): void {
+  recordLoopComplete(deploymentId: string, metrics: AgentLoopMetrics): void {
     this.completedLoops.push(metrics);
     this.activeLoops.delete(deploymentId);
   }
@@ -67,7 +61,7 @@ class LoopMetricsCollector {
       return loop.metrics;
     }
 
-    return this.completedLoops.find(m => m.strategy); // Simplified lookup
+    return this.completedLoops.find((m) => m.strategy); // Simplified lookup
   }
 
   /**

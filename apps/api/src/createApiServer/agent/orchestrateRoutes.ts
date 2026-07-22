@@ -5,51 +5,40 @@
  * otherwise single-pass deployment.
  */
 
-import type { IncomingMessage, ServerResponse } from "node:http";
-import type { RouteHandlerContext } from "../routeHelpers";
-import { writeJson } from "../routeHelpers";
-import { classifyTask } from "./taskClassifier";
+import type { ApiRouteHandler } from "../routeHelpers";
+import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "../routeHelpers";
 import { executeAgentLoop } from "./execution/agentLoopExecutor";
 import { globalLoopMetricsCollector } from "./metrics/loopMetricsCollector";
+import { classifyTask } from "./taskClassifier";
 import type { TaskInput } from "./taskClassifier";
 
 /**
- * Handle orchestration requests.
- * Route tasks through classification -> loop execution (if needed) -> metrics.
+ * Handle agent loop requests at POST /api/agent-loop.
+ * Classifies the task, runs it through the iterative loop executor, and returns the result.
  */
-export async function handleOrchestrateRoute(
-  request: IncomingMessage,
-  response: ServerResponse,
-  context: RouteHandlerContext,
-): Promise<boolean> {
-  if (request.method !== "POST") {
-    response.writeHead(405);
-    response.end();
-    return true;
-  }
-
-  if (!request.url?.startsWith("/api/orchestrate")) {
+export const handleAgentLoopRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  _dependencies,
+) => {
+  if (!requestUrl.pathname.startsWith("/api/agent-loop")) {
     return false;
   }
 
-  try {
-    // Parse request body
-    let body = "";
-    await new Promise<void>((resolve, reject) => {
-      request.on("data", chunk => {
-        body += chunk;
-      });
-      request.on("end", resolve);
-      request.on("error", reject);
-    });
+  if (request.method !== "POST") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
 
-    const payload = JSON.parse(body) as unknown;
-    if (!payload || typeof payload !== "object") {
-      writeJson(response, 400, { error: "Invalid payload" }, context.corsOrigin);
+  try {
+    const bodyReadResult = await readJsonBodyOrWriteError(request, response, corsOrigin);
+    if (!bodyReadResult.ok) return true;
+
+    const taskPayload = bodyReadResult.payload as Record<string, unknown> | null;
+    if (!taskPayload || typeof taskPayload !== "object") {
+      writeJson(response, 400, { error: "Invalid payload" }, corsOrigin);
       return true;
     }
 
-    const taskPayload = payload as Record<string, unknown>;
     const task: TaskInput = {
       title: String(taskPayload.title || ""),
       ...(taskPayload.description ? { description: String(taskPayload.description) } : {}),
@@ -57,91 +46,82 @@ export async function handleOrchestrateRoute(
       ...(taskPayload.complexity ? { complexity: String(taskPayload.complexity) } : {}),
       ...(taskPayload.timeConstraint ? { timeConstraint: String(taskPayload.timeConstraint) } : {}),
       ...(taskPayload.qualityBar ? { qualityBar: String(taskPayload.qualityBar) } : {}),
-      ...(taskPayload.estimatedDurationMinutes ? { estimatedDurationMinutes: Number(taskPayload.estimatedDurationMinutes) } : {}),
+      ...(taskPayload.estimatedDurationMinutes
+        ? { estimatedDurationMinutes: Number(taskPayload.estimatedDurationMinutes) }
+        : {}),
       ...(taskPayload.context ? { context: taskPayload.context as Record<string, unknown> } : {}),
     };
 
     if (!task.title) {
-      writeJson(response, 400, { error: "Missing required field: title" }, context.corsOrigin);
+      writeJson(response, 400, { error: "Missing required field: title" }, corsOrigin);
       return true;
     }
 
-    // Classify task
-    const classification = classifyTask(task);
-
-    // Generate deployment ID
-    const deploymentId = `deploy-${ Date.now() }-${ Math.random().toString(36).slice(2, 9) }`;
-
-    // Start metrics collection
-    globalLoopMetricsCollector.recordLoopStart(deploymentId);
-
-    // Determine execution strategy
-    const requiresLoop = classification.loopStrategy?.requiresLoop ?? false;
-
-    let executionResult: unknown;
-    let executionMetrics: unknown;
-
-    if (requiresLoop) {
-      // Execute with loop
-      const agentContext = {
-        taskId: classification.taskId,
-        deploymentId,
-        agentArchetype: "research-analyst", // Default; would be determined by agent matching
-        taskDescription: task.description || task.title,
-        complexity: classification.complexity,
-        maxDurationMs: classification.estimatedDurationMinutes * 60 * 1000,
-      };
-
-      const loopResult = await executeAgentLoop(
-        agentContext,
-        classification.loopStrategy!,
-      );
-
-      executionResult = {
-        type: "loop-execution",
-        finalOutput: loopResult.finalOutput,
-        succeeded: loopResult.succeeded,
-        iterationCount: loopResult.metrics.totalIterations,
-        earlyTermination: loopResult.earlyTermination,
-        terminationReason: loopResult.terminationReason,
-      };
-
-      executionMetrics = loopResult.metrics;
-
-      globalLoopMetricsCollector.recordLoopComplete(deploymentId, loopResult.metrics);
-    } else {
-      // Single-pass execution
-      executionResult = {
-        type: "single-pass-execution",
-        result: "Single-pass execution placeholder",
-        succeeded: true,
-      };
-
-      executionMetrics = null;
+    if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+      writeJson(response, 503, { error: "ANTHROPIC_API_KEY not configured" }, corsOrigin);
+      return true;
     }
 
-    // Build response
-    const responsePayload = {
+    // Classify task to determine loop strategy
+    const classification = classifyTask(task);
+
+    const deploymentId = `deploy-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    globalLoopMetricsCollector.recordLoopStart(deploymentId);
+
+    const agentContext = {
+      taskId: classification.taskId,
       deploymentId,
-      classification,
-      execution: executionResult,
-      metrics: executionMetrics,
-      timestamp: new Date().toISOString(),
+      agentArchetype: (taskPayload.agentArchetype as string | undefined) ?? "research-analyst",
+      taskDescription: task.description ?? task.title,
+      complexity: classification.complexity,
+      maxDurationMs: classification.estimatedDurationMinutes * 60 * 1000,
     };
 
-    writeJson(response, 200, responsePayload, context.corsOrigin);
+    // Always go through executeAgentLoop — it handles single-pass vs multi-iteration internally
+    const strategy = classification.loopStrategy ?? {
+      requiresLoop: false,
+      maxIterations: 1,
+      fallbackThreshold: 0.5,
+      observationIntervalMs: 0,
+      reflectionDepth: "shallow" as const,
+      selfCorrectionMode: "disabled" as const,
+    };
+
+    const loopResult = await executeAgentLoop(agentContext, strategy);
+
+    globalLoopMetricsCollector.recordLoopComplete(deploymentId, loopResult.metrics);
+
+    writeJson(
+      response,
+      200,
+      {
+        deploymentId,
+        classification,
+        execution: {
+          type: strategy.requiresLoop ? "loop-execution" : "single-pass-execution",
+          finalOutput: loopResult.finalOutput,
+          succeeded: loopResult.succeeded,
+          iterationCount: loopResult.metrics.totalIterations,
+          earlyTermination: loopResult.earlyTermination,
+          terminationReason: loopResult.terminationReason,
+        },
+        metrics: loopResult.metrics,
+        timestamp: new Date().toISOString(),
+      },
+      corsOrigin,
+    );
     return true;
   } catch (error) {
-    console.error("Orchestration error:", error);
+    console.error("Agent loop error:", error);
     writeJson(
       response,
       500,
       {
-        error: "Orchestration failed",
+        error: "Agent loop failed",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      context.corsOrigin,
+      corsOrigin,
     );
     return true;
   }
-}
+};

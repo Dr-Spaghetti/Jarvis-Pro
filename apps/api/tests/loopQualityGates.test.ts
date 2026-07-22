@@ -1,11 +1,11 @@
-﻿import { describe, it, expect } from "vitest";
-import {
-  evaluateLoopEfficacyGate,
-  describeGateResult,
-  applyGateWeight,
-  GATE_WEIGHT,
-} from "../src/createApiServer/agent/metrics/loopQualityEvaluator";
+﻿import { describe, expect, it } from "vitest";
 import type { AgentLoopMetrics } from "../src/createApiServer/agent/metrics/loopMetricsTypes";
+import {
+  GATE_WEIGHT,
+  applyGateWeight,
+  describeGateResult,
+  evaluateLoopEfficacyGate,
+} from "../src/createApiServer/agent/metrics/loopQualityEvaluator";
 
 const createMockMetrics = (overrides?: Partial<AgentLoopMetrics>): AgentLoopMetrics => ({
   strategy: {
@@ -40,7 +40,7 @@ describe("Loop Quality Evaluator", () => {
       const result = evaluateLoopEfficacyGate(metrics);
 
       expect(result.passed).toBe(true);
-      expect(result.checks.every(c => c.passed)).toBe(true);
+      expect(result.checks.every((c) => c.passed)).toBe(true);
     });
 
     it("fails when exceeding max iterations", () => {
@@ -52,7 +52,7 @@ describe("Loop Quality Evaluator", () => {
 
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const iterationCheck = result.checks.find(c => c.name === "Iteration Limit");
+      const iterationCheck = result.checks.find((c) => c.name === "Iteration Limit");
       expect(iterationCheck?.passed).toBe(false);
     });
 
@@ -63,7 +63,7 @@ describe("Loop Quality Evaluator", () => {
 
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const qualityCheck = result.checks.find(c => c.name === "Quality Improvement");
+      const qualityCheck = result.checks.find((c) => c.name === "Quality Improvement");
       expect(qualityCheck?.passed).toBe(false);
     });
 
@@ -74,7 +74,7 @@ describe("Loop Quality Evaluator", () => {
 
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const confidenceCheck = result.checks.find(c => c.name === "Confidence Stability");
+      const confidenceCheck = result.checks.find((c) => c.name === "Confidence Stability");
       expect(confidenceCheck?.passed).toBe(false);
     });
 
@@ -86,7 +86,7 @@ describe("Loop Quality Evaluator", () => {
 
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const correctionCheck = result.checks.find(c => c.name === "Self-Correction Rate");
+      const correctionCheck = result.checks.find((c) => c.name === "Self-Correction Rate");
       expect(correctionCheck?.passed).toBe(false);
     });
 
@@ -102,7 +102,7 @@ describe("Loop Quality Evaluator", () => {
       const metrics = createMockMetrics();
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const checkNames = result.checks.map(c => c.name);
+      const checkNames = result.checks.map((c) => c.name);
       expect(checkNames).toContain("Iteration Limit");
       expect(checkNames).toContain("Quality Improvement");
       expect(checkNames).toContain("Confidence Stability");
@@ -116,7 +116,7 @@ describe("Loop Quality Evaluator", () => {
 
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const qualityCheck = result.checks.find(c => c.name === "Quality Improvement");
+      const qualityCheck = result.checks.find((c) => c.name === "Quality Improvement");
       expect(qualityCheck?.passed).toBe(true);
     });
 
@@ -127,7 +127,7 @@ describe("Loop Quality Evaluator", () => {
 
       const result = evaluateLoopEfficacyGate(metrics);
 
-      const confidenceCheck = result.checks.find(c => c.name === "Confidence Stability");
+      const confidenceCheck = result.checks.find((c) => c.name === "Confidence Stability");
       expect(confidenceCheck?.passed).toBe(true);
     });
   });

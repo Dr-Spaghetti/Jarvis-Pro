@@ -44,83 +44,83 @@ export interface MatchResult {
 const DOMAIN_AFFINITY: Record<string, Record<AgentArchetype, number>> = {
   engineering: {
     "senior-developer": 0.95,
-    "junior-developer": 0.70,
-    "data-scientist": 0.60,
-    "research-analyst": 0.70,
-    "ceo-strategist": 0.40,
-    "content-creator": 0.20,
-    "operations-lead": 0.50,
-    generalist: 0.50,
+    "junior-developer": 0.7,
+    "data-scientist": 0.6,
+    "research-analyst": 0.7,
+    "ceo-strategist": 0.4,
+    "content-creator": 0.2,
+    "operations-lead": 0.5,
+    generalist: 0.5,
   },
   analysis: {
     "research-analyst": 0.95,
-    "data-scientist": 0.90,
-    "senior-developer": 0.70,
+    "data-scientist": 0.9,
+    "senior-developer": 0.7,
     "ceo-strategist": 0.65,
-    "operations-lead": 0.60,
-    "content-creator": 0.40,
-    "junior-developer": 0.50,
-    generalist: 0.50,
+    "operations-lead": 0.6,
+    "content-creator": 0.4,
+    "junior-developer": 0.5,
+    generalist: 0.5,
   },
   research: {
     "research-analyst": 0.95,
     "data-scientist": 0.85,
-    "ceo-strategist": 0.60,
-    "senior-developer": 0.70,
-    "operations-lead": 0.40,
-    "content-creator": 0.50,
-    "junior-developer": 0.40,
-    generalist: 0.50,
+    "ceo-strategist": 0.6,
+    "senior-developer": 0.7,
+    "operations-lead": 0.4,
+    "content-creator": 0.5,
+    "junior-developer": 0.4,
+    generalist: 0.5,
   },
   content: {
     "content-creator": 0.95,
     "ceo-strategist": 0.65,
-    "research-analyst": 0.50,
-    "senior-developer": 0.40,
-    "operations-lead": 0.50,
-    "data-scientist": 0.30,
+    "research-analyst": 0.5,
+    "senior-developer": 0.4,
+    "operations-lead": 0.5,
+    "data-scientist": 0.3,
     "junior-developer": 0.35,
-    generalist: 0.60,
+    generalist: 0.6,
   },
   strategy: {
     "ceo-strategist": 0.95,
-    "research-analyst": 0.70,
-    "senior-developer": 0.60,
-    "operations-lead": 0.70,
-    "content-creator": 0.40,
-    "data-scientist": 0.50,
-    "junior-developer": 0.30,
-    generalist: 0.50,
+    "research-analyst": 0.7,
+    "senior-developer": 0.6,
+    "operations-lead": 0.7,
+    "content-creator": 0.4,
+    "data-scientist": 0.5,
+    "junior-developer": 0.3,
+    generalist: 0.5,
   },
   operations: {
     "operations-lead": 0.95,
     "ceo-strategist": 0.65,
-    "senior-developer": 0.70,
-    "data-scientist": 0.50,
-    "research-analyst": 0.40,
-    "content-creator": 0.30,
-    "junior-developer": 0.40,
-    generalist: 0.50,
+    "senior-developer": 0.7,
+    "data-scientist": 0.5,
+    "research-analyst": 0.4,
+    "content-creator": 0.3,
+    "junior-developer": 0.4,
+    generalist: 0.5,
   },
   creative: {
-    "content-creator": 0.90,
-    "ceo-strategist": 0.60,
-    "research-analyst": 0.40,
-    "senior-developer": 0.50,
-    "operations-lead": 0.30,
+    "content-creator": 0.9,
+    "ceo-strategist": 0.6,
+    "research-analyst": 0.4,
+    "senior-developer": 0.5,
+    "operations-lead": 0.3,
     "data-scientist": 0.35,
-    "junior-developer": 0.40,
-    generalist: 0.60,
+    "junior-developer": 0.4,
+    generalist: 0.6,
   },
   planning: {
     "ceo-strategist": 0.85,
     "operations-lead": 0.75,
     "senior-developer": 0.55,
-    "research-analyst": 0.50,
+    "research-analyst": 0.5,
     "content-creator": 0.45,
     "data-scientist": 0.45,
     "junior-developer": 0.35,
-    generalist: 0.60,
+    generalist: 0.6,
   },
 };
 
@@ -130,7 +130,7 @@ const DOMAIN_AFFINITY: Record<string, Record<AgentArchetype, number>> = {
  */
 const LOOP_CAPABILITY_BONUSES: Record<AgentArchetype, number> = {
   "research-analyst": 0.15, // Excellent at iterative analysis
-  "senior-developer": 0.10, // Good at debugging/refining
+  "senior-developer": 0.1, // Good at debugging/refining
   "ceo-strategist": 0.12, // Strong iterative strategy
   "data-scientist": 0.12, // Iterative model improvement
   "content-creator": 0.05, // Limited iteration capability
@@ -144,13 +144,13 @@ const LOOP_CAPABILITY_BONUSES: Record<AgentArchetype, number> = {
  */
 const COMPLEXITY_TOLERANCE: Record<AgentArchetype, number> = {
   "research-analyst": 0.95, // Handles expert complexity
-  "senior-developer": 0.90,
+  "senior-developer": 0.9,
   "ceo-strategist": 0.85,
-  "data-scientist": 0.90,
-  "content-creator": 0.50,
-  "operations-lead": 0.60,
-  "junior-developer": 0.50,
-  generalist: 0.60,
+  "data-scientist": 0.9,
+  "content-creator": 0.5,
+  "operations-lead": 0.6,
+  "junior-developer": 0.5,
+  generalist: 0.6,
 };
 
 /**
@@ -159,53 +159,50 @@ const COMPLEXITY_TOLERANCE: Record<AgentArchetype, number> = {
 const TIME_CONSTRAINT_SUITABILITY: Record<string, Record<AgentArchetype, number>> = {
   immediate: {
     "senior-developer": 0.95, // Fast on urgent fixes
-    "operations-lead": 0.90,
-    "ceo-strategist": 0.70,
-    "research-analyst": 0.50,
-    "data-scientist": 0.40,
-    "content-creator": 0.30,
-    "junior-developer": 0.50,
-    generalist: 0.60,
+    "operations-lead": 0.9,
+    "ceo-strategist": 0.7,
+    "research-analyst": 0.5,
+    "data-scientist": 0.4,
+    "content-creator": 0.3,
+    "junior-developer": 0.5,
+    generalist: 0.6,
   },
   standard: {
-    "senior-developer": 0.90,
-    "research-analyst": 0.80,
+    "senior-developer": 0.9,
+    "research-analyst": 0.8,
     "ceo-strategist": 0.85,
     "operations-lead": 0.85,
     "data-scientist": 0.75,
-    "content-creator": 0.80,
-    "junior-developer": 0.70,
+    "content-creator": 0.8,
+    "junior-developer": 0.7,
     generalist: 0.75,
   },
   flexible: {
     "research-analyst": 0.95, // Thrives with time
-    "data-scientist": 0.90,
-    "ceo-strategist": 0.80,
+    "data-scientist": 0.9,
+    "ceo-strategist": 0.8,
     "senior-developer": 0.75,
     "content-creator": 0.85,
-    "operations-lead": 0.70,
+    "operations-lead": 0.7,
     "junior-developer": 0.65,
-    generalist: 0.70,
+    generalist: 0.7,
   },
   unknown: {
-    "senior-developer": 0.70,
-    "research-analyst": 0.70,
-    "ceo-strategist": 0.70,
-    "data-scientist": 0.70,
-    "content-creator": 0.70,
-    "operations-lead": 0.70,
-    "junior-developer": 0.60,
-    generalist: 0.70,
+    "senior-developer": 0.7,
+    "research-analyst": 0.7,
+    "ceo-strategist": 0.7,
+    "data-scientist": 0.7,
+    "content-creator": 0.7,
+    "operations-lead": 0.7,
+    "junior-developer": 0.6,
+    generalist: 0.7,
   },
 };
 
 /**
  * Calculate domain score for an agent.
  */
-function calculateDomainScore(
-  agent: AgentProfile,
-  classification: TaskClassification,
-): number {
+function calculateDomainScore(agent: AgentProfile, classification: TaskClassification): number {
   const affinityMap = DOMAIN_AFFINITY[classification.domain];
   if (!affinityMap) return 0.5;
 
@@ -215,10 +212,7 @@ function calculateDomainScore(
 /**
  * Calculate complexity score for an agent.
  */
-function calculateComplexityScore(
-  agent: AgentProfile,
-  classification: TaskClassification,
-): number {
+function calculateComplexityScore(agent: AgentProfile, classification: TaskClassification): number {
   const tolerance = COMPLEXITY_TOLERANCE[agent.archetype] || 0.5;
   const complexityMap: Record<string, number> = {
     low: 1.0,
@@ -279,15 +273,11 @@ export function matchAgentToTask(
   const loopBonus = calculateLoopCapabilityBonus(agent, classification);
 
   // Final score: weighted average of factors
-  const baseScore =
-    domainScore * 0.4 +
-    complexityScore * 0.35 +
-    timeConstraintScore * 0.25;
+  const baseScore = domainScore * 0.4 + complexityScore * 0.35 + timeConstraintScore * 0.25;
 
   const finalScore = Math.min(1.0, baseScore + loopBonus);
   const recommendedForLoop =
-    (classification.loopStrategy?.requiresLoop ?? false) &&
-    agent.loopCapabilityScore > 0.6;
+    (classification.loopStrategy?.requiresLoop ?? false) && agent.loopCapabilityScore > 0.6;
 
   return {
     agentId: agent.id,
@@ -309,7 +299,7 @@ export function rankAgentsForTask(
   classification: TaskClassification,
 ): MatchResult[] {
   return agents
-    .map(agent => matchAgentToTask(agent, classification))
+    .map((agent) => matchAgentToTask(agent, classification))
     .sort((a, b) => b.finalScore - a.finalScore);
 }
 

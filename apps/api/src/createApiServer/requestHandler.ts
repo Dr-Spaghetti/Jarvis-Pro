@@ -69,6 +69,8 @@ import {
   handleDeckTodoToggleRoute,
   handleDeckVaultFileRoute,
 } from "./deckRoutes";
+import { handleAgentLoopRoute } from "./agent/orchestrateRoutes";
+import { handleEmailIngestSettingsRoute, handleEmailIngestStatusRoute } from "./emailIngestRoutes";
 import {
   handleGeneratorAnimateRoute,
   handleGeneratorAssetRoute,
@@ -355,6 +357,8 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ["tentacles", [handleTentacleGitRoute, handleTentacleGitPullRequestRoute]],
   ["code-intel", [handleCodeIntelEventsRoute]],
   ["gmail", [handleGmailStatusRoute, handleGmailAuthRoute, handleGmailCallbackRoute]],
+  ["agent-loop", [handleAgentLoopRoute]],
+  ["email-ingest", [handleEmailIngestStatusRoute, handleEmailIngestSettingsRoute]],
   [
     "voice",
     [

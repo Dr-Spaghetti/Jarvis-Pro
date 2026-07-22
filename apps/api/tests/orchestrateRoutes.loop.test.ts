@@ -1,13 +1,40 @@
-﻿import { describe, it, expect, beforeEach } from "vitest";
-import { classifyTask } from "../src/createApiServer/agent/taskClassifier";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executeAgentLoop } from "../src/createApiServer/agent/execution/agentLoopExecutor";
 import { globalLoopMetricsCollector } from "../src/createApiServer/agent/metrics/loopMetricsCollector";
 import { evaluateLoopEfficacyGate } from "../src/createApiServer/agent/metrics/loopQualityEvaluator";
+import { classifyTask } from "../src/createApiServer/agent/taskClassifier";
 import type { TaskInput } from "../src/createApiServer/agent/taskClassifier";
+
+// Mock fetch so tests don't require real API keys or network
+const makeFetchMock = () =>
+  vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+    const body =
+      typeof init?.body === "string" ? (JSON.parse(init.body) as { messages?: unknown[] }) : null;
+    const isReflection =
+      typeof init?.body === "string" && init.body.includes("analyzing iteration");
+
+    const text = isReflection
+      ? JSON.stringify({
+          observation: "Iteration complete. Quality is improving.",
+          qualityScore: 0.8,
+          confidenceLevel: 0.75,
+          shouldContinue: false,
+        })
+      : "This is the agent iteration result for the task. Analysis complete.";
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ content: [{ type: "text", text }] }),
+      text: async () => text,
+    } as Response;
+  });
 
 describe("Orchestration Loop E2E", () => {
   beforeEach(() => {
     globalLoopMetricsCollector.clear();
+    process.env.ANTHROPIC_API_KEY = "test-key-for-mocking";
+    vi.stubGlobal("fetch", makeFetchMock());
   });
 
   describe("Task Classification -> Loop Execution -> Metrics", () => {
@@ -128,7 +155,7 @@ describe("Orchestration Loop E2E", () => {
       expect(classification.loopStrategy?.maxIterations).toBeGreaterThanOrEqual(3);
 
       // Step 2: Execute loop
-      const deploymentId = `pipeline-test-${ Date.now() }`;
+      const deploymentId = `pipeline-test-${Date.now()}`;
       const context = {
         taskId: classification.taskId,
         deploymentId,
@@ -222,7 +249,7 @@ describe("Orchestration Loop E2E", () => {
 
       for (const task of tasks) {
         const classification = classifyTask(task);
-        const deploymentId = `multi-task-${ task.title.replace(/\s/g, "-") }`;
+        const deploymentId = `multi-task-${task.title.replace(/\s/g, "-")}`;
 
         globalLoopMetricsCollector.recordLoopStart(deploymentId);
 

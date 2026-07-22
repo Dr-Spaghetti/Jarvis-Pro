@@ -110,11 +110,9 @@ function detectDomain(task: TaskInput): TaskDomain {
     }
   }
 
-  const text = `${ task.title } ${ task.description || "" }`.toLowerCase();
+  const text = `${task.title} ${task.description || ""}`.toLowerCase();
 
-  if (
-    text.match(/code|implement|debug|refactor|api|database|backend|frontend|architecture/)
-  ) {
+  if (text.match(/code|implement|debug|refactor|api|database|backend|frontend|architecture/)) {
     return "engineering";
   }
   if (text.match(/analyze|evaluate|assess|metrics|performance|data|report|insight/)) {
@@ -150,8 +148,9 @@ function detectComplexity(task: TaskInput): ComplexityLevel {
     }
   }
 
-  const text = `${ task.title } ${ task.description || "" }`.toLowerCase();
-  const hasMultipleDependencies = (text.match(/depend|integration|cross|multi-/g) || []).length >= 2;
+  const text = `${task.title} ${task.description || ""}`.toLowerCase();
+  const hasMultipleDependencies =
+    (text.match(/depend|integration|cross|multi-/g) || []).length >= 2;
   const hasAdvancedTech = text.match(
     /machine[\s-]learning|\bai\b|distributed|blockchain|quantum|microservices/,
   );
@@ -181,7 +180,7 @@ function detectTimeConstraint(task: TaskInput): TimeConstraint {
     }
   }
 
-  const text = `${ task.title } ${ task.description || "" }`.toLowerCase();
+  const text = `${task.title} ${task.description || ""}`.toLowerCase();
 
   if (text.match(/urgent|asap|critical|blocker|now|immediately/)) {
     return "immediate";
@@ -224,7 +223,7 @@ function detectQualityBar(task: TaskInput): QualityBar {
     }
   }
 
-  const text = `${ task.title } ${ task.description || "" }`.toLowerCase();
+  const text = `${task.title} ${task.description || ""}`.toLowerCase();
 
   if (text.match(/production|critical|security|compliance|release|ship/)) {
     return "production-critical";
@@ -290,8 +289,7 @@ export function determineLoopStrategy(classification: TaskClassification): TaskL
   const observationIntervalMs = Math.floor(baseObservationMs * timeMultiplier);
 
   return {
-    requiresLoop:
-      requiresIteration || (isHighIterationDomain && complexity !== "low"),
+    requiresLoop: requiresIteration || (isHighIterationDomain && complexity !== "low"),
     maxIterations,
     fallbackThreshold:
       complexity === "expert"
@@ -315,15 +313,9 @@ function estimateDurationMinutes(task: TaskInput, complexity: ComplexityLevel): 
     return task.estimatedDurationMinutes;
   }
 
-  const textLength = `${ task.title } ${ task.description || "" }`.length;
+  const textLength = `${task.title} ${task.description || ""}`.length;
   const baseDuration =
-    complexity === "expert"
-      ? 120
-      : complexity === "high"
-        ? 60
-        : complexity === "medium"
-          ? 30
-          : 15;
+    complexity === "expert" ? 120 : complexity === "high" ? 60 : complexity === "medium" ? 30 : 15;
 
   // Adjust based on text length (heuristic: longer descriptions = more complex)
   const lengthFactor = Math.min(2, 1 + textLength / 1000);
@@ -335,7 +327,10 @@ function estimateDurationMinutes(task: TaskInput, complexity: ComplexityLevel): 
  * Classify a task into domain, complexity, time constraint, and data needs.
  * Returns cached result if available and valid.
  */
-export function classifyTask(task: TaskInput, _context?: Record<string, unknown>): TaskClassification {
+export function classifyTask(
+  task: TaskInput,
+  _context?: Record<string, unknown>,
+): TaskClassification {
   const taskHash = generateTaskHash(task);
 
   // Check cache
@@ -356,7 +351,8 @@ export function classifyTask(task: TaskInput, _context?: Record<string, unknown>
     (complexity === "high" || complexity === "expert") &&
     (domain === "research" || domain === "analysis" || domain === "engineering");
 
-  const requiresSelfCorrection = complexity === "expert" || (requiresIteration && qualityBar !== "acceptable");
+  const requiresSelfCorrection =
+    complexity === "expert" || (requiresIteration && qualityBar !== "acceptable");
 
   const classification: TaskClassification = {
     taskId: task.title.slice(0, 50).replace(/[^a-z0-9]/gi, "-"),

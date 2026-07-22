@@ -5,12 +5,10 @@
  * Orchestrates iterative agent execution with quality tracking and early termination.
  */
 
+import { AGENT_ARCHETYPES } from "../../../agentArsenal";
+import type { AgentLoopMetrics, IterationSnapshot } from "../metrics/loopMetricsTypes";
 import type { TaskLoopStrategy } from "../taskClassifier";
 import { reflectOnIteration } from "./reflectOnIteration";
-import type {
-  IterationSnapshot,
-  AgentLoopMetrics,
-} from "../metrics/loopMetricsTypes";
 
 export interface AgentExecutionContext {
   taskId: string;
@@ -30,25 +28,70 @@ export interface AgentLoopExecutorResult {
 }
 
 /**
- * Execute a single iteration of agent work.
+ * Execute a single iteration of agent work via Claude API.
  */
 async function executeAgentIteration(
   context: AgentExecutionContext,
-  _iterationNum: number,
+  iterationNum: number,
+  previousOutput?: unknown,
 ): Promise<{ output: unknown; durationMs: number }> {
   const startTime = Date.now();
 
-  // Placeholder for actual agent execution.
-  // In production, this would dispatch to the agent framework.
-  const output = {
-    status: "completed",
-    result: `Iteration execution placeholder for task: ${ context.taskId }`,
-    timestamp: new Date().toISOString(),
-  };
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY not configured");
+  }
+
+  const archetype = AGENT_ARCHETYPES.find((a) => a.id === context.agentArchetype);
+  const systemPrompt =
+    archetype?.systemPrompt ??
+    "You are a helpful AI assistant. Complete the task thoroughly and accurately.";
+
+  let userContent = `Task: ${context.taskDescription}`;
+  if (iterationNum > 1 && previousOutput) {
+    const prevStr =
+      typeof previousOutput === "object" && previousOutput !== null
+        ? JSON.stringify(
+            (previousOutput as Record<string, unknown>).result ?? previousOutput,
+            null,
+            2,
+          ).slice(0, 1500)
+        : String(previousOutput).slice(0, 1500);
+    userContent += `\n\nPrevious iteration output:\n${prevStr}\n\nThis is iteration ${iterationNum}. Refine, expand, and improve upon the previous result.`;
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userContent }],
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
 
   const durationMs = Date.now() - startTime;
 
-  return { output, durationMs };
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Agent API error ${res.status}: ${errText}`);
+  }
+
+  const data = (await res.json()) as {
+    content?: Array<{ type: string; text?: string }>;
+  };
+  const resultText = data.content?.find((c) => c.type === "text")?.text ?? "";
+
+  return {
+    output: { status: "completed", result: resultText, timestamp: new Date().toISOString() },
+    durationMs,
+  };
 }
 
 /**
@@ -137,7 +180,7 @@ function adaptLoopParameters(
  * Wait for the observation interval before the next iteration.
  */
 async function waitForObservationInterval(intervalMs: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, intervalMs));
+  return new Promise((resolve) => setTimeout(resolve, intervalMs));
 }
 
 /**
@@ -156,37 +199,17 @@ export async function executeAgentLoop(
 
   if (!strategy.requiresLoop) {
     // Single-pass execution
-    const { output, durationMs } = await executeAgentIteration(context, 1);
-    const reflection = await reflectOnIteration(
-      context.taskDescription,
-      output,
-      context,
-      1,
-      1,
-    );
+    const { output, durationMs } = await executeAgentIteration(context, 1, undefined);
+    const reflection = await reflectOnIteration(context.taskDescription, output, context, 1, 1);
 
-    iterations.push(
-      recordIterationMetrics(
-        1,
-        durationMs,
-        output,
-        reflection,
-        [],
-        [],
-      ),
-    );
+    iterations.push(recordIterationMetrics(1, durationMs, output, reflection, [], []));
 
     qualityProgression.push(reflection.qualityScore);
     finalOutput = output;
 
     return {
       finalOutput,
-      metrics: buildAgentLoopMetrics(
-        strategy,
-        iterations,
-        selfCorrectionCount,
-        0,
-      ),
+      metrics: buildAgentLoopMetrics(strategy, iterations, selfCorrectionCount, 0),
       succeeded: reflection.qualityScore > 0.6,
       earlyTermination: false,
       terminationReason: "single-pass execution completed",
@@ -196,7 +219,7 @@ export async function executeAgentLoop(
   // Multi-iteration loop
   for (let iterNum = 1; iterNum <= currentStrategy.maxIterations; iterNum++) {
     // === EXECUTE ===
-    const { output, durationMs } = await executeAgentIteration(context, iterNum);
+    const { output, durationMs } = await executeAgentIteration(context, iterNum, finalOutput);
 
     // === REFLECT ===
     const reflection = await reflectOnIteration(
@@ -244,25 +267,16 @@ export async function executeAgentLoop(
     if (!shouldContinue && iterNum < currentStrategy.maxIterations) {
       return {
         finalOutput,
-        metrics: buildAgentLoopMetrics(
-          strategy,
-          iterations,
-          selfCorrectionCount,
-          0,
-        ),
+        metrics: buildAgentLoopMetrics(strategy, iterations, selfCorrectionCount, 0),
         succeeded: reflection.qualityScore > 0.6,
         earlyTermination: true,
-        terminationReason: `Quality-based early termination at iteration ${ iterNum }`,
+        terminationReason: `Quality-based early termination at iteration ${iterNum}`,
       };
     }
 
     if (iterNum < currentStrategy.maxIterations) {
       // === ADAPT ===
-      currentStrategy = adaptLoopParameters(
-        currentStrategy,
-        qualityProgression,
-        iterNum,
-      );
+      currentStrategy = adaptLoopParameters(currentStrategy, qualityProgression, iterNum);
 
       // === WAIT ===
       await waitForObservationInterval(currentStrategy.observationIntervalMs);
@@ -271,16 +285,10 @@ export async function executeAgentLoop(
 
   return {
     finalOutput,
-    metrics: buildAgentLoopMetrics(
-      strategy,
-      iterations,
-      selfCorrectionCount,
-      0,
-    ),
-    succeeded:
-      (qualityProgression[qualityProgression.length - 1] ?? 0) > 0.6,
+    metrics: buildAgentLoopMetrics(strategy, iterations, selfCorrectionCount, 0),
+    succeeded: (qualityProgression[qualityProgression.length - 1] ?? 0) > 0.6,
     earlyTermination: false,
-    terminationReason: `Completed all ${ currentStrategy.maxIterations } iterations`,
+    terminationReason: `Completed all ${currentStrategy.maxIterations} iterations`,
   };
 }
 
@@ -293,8 +301,8 @@ function buildAgentLoopMetrics(
   selfCorrectionCount: number,
   _reflectionQualityAvg: number,
 ): AgentLoopMetrics {
-  const qualityProgression = iterations.map(it => it.reflection.qualityScore);
-  const confidenceProgression = iterations.map(it => it.reflection.confidenceLevel);
+  const qualityProgression = iterations.map((it) => it.reflection.qualityScore);
+  const confidenceProgression = iterations.map((it) => it.reflection.confidenceLevel);
 
   return {
     strategy,
