@@ -208,9 +208,31 @@ const selectClaudeModel = (question: string): string => {
 // Complex questions also get sonar-pro in Perplexity (not just "deep research" phrase)
 const isComplexQuestion = (question: string): boolean => OPUS_SIGNALS.some((p) => p.test(question));
 
-type AnthrContent = { type: "text"; text: string };
-type AnthrMessage = { role: "user" | "assistant"; content: string };
-type AnthrResponse = { stop_reason: string; content: AnthrContent[] };
+type AnthrTextBlock = { type: "text"; text: string };
+type AnthrToolUseBlock = {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+};
+type AnthrToolResultBlock = { type: "tool_result"; tool_use_id: string; content: string };
+type AnthrContentBlock = AnthrTextBlock | AnthrToolUseBlock;
+type AnthrMessage =
+  | { role: "user"; content: string }
+  | { role: "user"; content: AnthrToolResultBlock[] }
+  | { role: "assistant"; content: string }
+  | { role: "assistant"; content: AnthrContentBlock[] };
+type AnthrResponse = { stop_reason: string; content: AnthrContentBlock[] };
+
+type AnthropicTool = {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties: Record<string, { type: string; description: string }>;
+    required: string[];
+  };
+};
 
 const JARVIS_VOICE_SYSTEM =
   "You are Jarvis, Nick's sharp personal AI. Be concise and conversational — like a " +
@@ -225,9 +247,50 @@ const JARVIS_VOICE_SYSTEM =
   "just answer normally — your reply will be spoken. Never tell him you lack audio capabilities.";
 
 type ClaudeResult =
-  | { ok: true; answer: string }
+  | { ok: true; answer: string; toolsUsed?: string[] }
   | { ok: false; status: number; hint: string }
   | null;
+
+// Tools Claude can call to get live or personal context.
+// web_search → Perplexity sonar API  |  read_notes → vault semantic search
+const JARVIS_TOOLS: AnthropicTool[] = [
+  {
+    name: "web_search",
+    description:
+      "Search the web for current information: news, prices, weather, recent events, " +
+      "stock data, or any fact that may have changed since your knowledge cutoff. " +
+      "Call this whenever the user needs real-time or up-to-date data.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "A concise, specific search query" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "read_notes",
+    description:
+      "Search Nick's personal knowledge vault — his notes, projects, clients, and saved " +
+      "context. Call this when the question relates to Nick's own work, ongoing projects, " +
+      "clients, preferences, or anything he may have previously documented.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "What to search for in Nick's notes" },
+      },
+      required: ["query"],
+    },
+  },
+];
+
+const getClaudeErrorHint = (status: number, model: string): string => {
+  if (status === 401) return "Invalid or expired ANTHROPIC_API_KEY — check .env";
+  if (status === 403) return "API key lacks permission for this model";
+  if (status === 429) return "Anthropic rate limit hit — try again in a moment";
+  if (status === 404) return `Model "${model}" not found — check model ID`;
+  return `Anthropic API returned HTTP ${status}`;
+};
 
 const askViaClaude = async (
   question: string,
@@ -283,6 +346,125 @@ const askViaClaude = async (
   return textBlock?.type === "text"
     ? { ok: true, answer: stripToolMarkup(textBlock.text) }
     : { ok: false, status: 200, hint: "Empty response from Claude API" };
+};
+
+// Tool-capable variant of askViaClaude. Runs the Anthropic tool-use loop until
+// Claude reaches end_turn or the 4-round cap. Tools available: web_search, read_notes.
+const MAX_TOOL_ROUNDS = 4;
+
+const askViaClaudeWithTools = async (
+  question: string,
+  context: string,
+  history: ConversationTurn[],
+  model: string,
+  vaultDir: string | null,
+): Promise<{ ok: true; answer: string; toolsUsed: string[] } | { ok: false; status: number; hint: string } | null> => {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) return { ok: false, status: 0, hint: "ANTHROPIC_API_KEY is not set in .env" };
+
+  const messages: AnthrMessage[] = [];
+  for (const turn of history) {
+    messages.push({ role: "user", content: turn.question });
+    messages.push({ role: "assistant", content: turn.answer });
+  }
+  messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
+
+  const toolsUsed: string[] = [];
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+    const isLastRound = round === MAX_TOOL_ROUNDS;
+
+    const fetchRes = await fetchWithTimeout(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          system: ASK_SYSTEM_PROMPT,
+          // Drop tools on the final round so Claude is forced to produce text
+          ...(isLastRound ? {} : { tools: JARVIS_TOOLS }),
+          messages,
+        }),
+      },
+      15000,
+    );
+
+    if (!fetchRes) return null;
+    if (!fetchRes.ok) {
+      return { ok: false, status: fetchRes.status, hint: getClaudeErrorHint(fetchRes.status, model) };
+    }
+
+    const response = (await fetchRes.json().catch(() => null)) as AnthrResponse | null;
+    if (!response) return null;
+
+    const textBlock = response.content.find((b): b is AnthrTextBlock => b.type === "text");
+
+    // Done — return whatever text Claude produced
+    if (response.stop_reason === "end_turn" || isLastRound) {
+      if (textBlock) return { ok: true, answer: stripToolMarkup(textBlock.text), toolsUsed };
+      return { ok: false, status: 200, hint: "Empty response from Claude API" };
+    }
+
+    // Non-tool stop — return text if present, otherwise error
+    if (response.stop_reason !== "tool_use") {
+      if (textBlock) return { ok: true, answer: stripToolMarkup(textBlock.text), toolsUsed };
+      return { ok: false, status: 200, hint: `Unexpected stop_reason: ${response.stop_reason}` };
+    }
+
+    // Claude wants to call tools — push assistant turn and execute
+    messages.push({ role: "assistant", content: response.content });
+
+    const toolUseBlocks = response.content.filter((b): b is AnthrToolUseBlock => b.type === "tool_use");
+
+    const toolResults = await Promise.all(
+      toolUseBlocks.map(async (block): Promise<AnthrToolResultBlock> => {
+        toolsUsed.push(block.name);
+        let content = "";
+
+        try {
+          if (block.name === "web_search") {
+            const query =
+              typeof block.input.query === "string" ? block.input.query : question;
+            const result = await askViaPerplexity(query, false);
+            content = result
+              ? result.answer +
+                (result.citations.length > 0
+                  ? "\n\nSources: " + result.citations.map((c) => c.url).join(", ")
+                  : "")
+              : "Web search returned no results.";
+          } else if (block.name === "read_notes") {
+            const query =
+              typeof block.input.query === "string" ? block.input.query : question;
+            if (vaultDir) {
+              const notes = await retrieveContext(vaultDir, query, 4);
+              content =
+                notes.length > 0
+                  ? notes.map((n) => `### ${n.title}\n${n.body}`).join("\n\n")
+                  : "No relevant notes found.";
+            } else {
+              content = "No vault configured.";
+            }
+          } else {
+            content = `Unknown tool: ${block.name}`;
+          }
+        } catch {
+          content = `Tool '${block.name}' failed.`;
+        }
+
+        return { type: "tool_result", tool_use_id: block.id, content };
+      }),
+    );
+
+    messages.push({ role: "user", content: toolResults });
+  }
+
+  return { ok: false, status: 200, hint: "Tool loop exhausted without final answer" };
 };
 
 // Read-only retrieval for context: semantic (using the existing index) when
@@ -599,20 +781,25 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
       const autoModel = selectClaudeModel(question);
-      const claudeResult = await askViaClaude(
+      // Use tool-capable Claude in auto mode — Claude decides when to search or read notes
+      const claudeResult = await askViaClaudeWithTools(
         question,
         claudeContextWithRecall,
         history,
         autoModel,
+        vaultDir ?? null,
       );
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
         recordTurn(question, claudeResult.answer);
+        const uniqueTools = [...new Set(claudeResult.toolsUsed)];
+        const via =
+          uniqueTools.length > 0 ? `claude+${uniqueTools.join("+")}` : `claude-${autoModel}`;
         writeJson(
           response,
           200,
-          { available: true, answer: claudeResult.answer, sources, model: autoModel },
+          { available: true, answer: claudeResult.answer, sources, model: autoModel, via },
           corsOrigin,
         );
         return true;
