@@ -177,8 +177,9 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          archetypeId: loopState.archetypeId,
-          taskDescription: loopState.task || `Run ${archetype.name} agent loop`,
+          title: loopState.task || `Run ${archetype.name} agent loop`,
+          agentArchetype: loopState.archetypeId,
+          description: loopState.task || undefined,
         }),
       });
 
@@ -190,10 +191,11 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
         return;
       }
 
-      const result = (await res.json()) as { succeeded?: boolean; metrics?: { totalIterations?: number; finalQuality?: number } };
+      const result = (await res.json()) as { execution?: { succeeded?: boolean }; metrics?: { totalIterations?: number; finalQuality?: number } };
+      const succeeded = result.execution?.succeeded ?? true;
       const iters = result.metrics?.totalIterations ?? "?";
       const quality = result.metrics?.finalQuality != null ? `${Math.round(result.metrics.finalQuality * 100)}%` : "?";
-      showToast(`${archetype.name} loop complete — ${iters} iter · ${quality} quality`, result.succeeded ? "ok" : "error");
+      showToast(`${archetype.name} loop complete — ${iters} iter · ${quality} quality`, succeeded ? "ok" : "error");
       setLoopState(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Loop failed";

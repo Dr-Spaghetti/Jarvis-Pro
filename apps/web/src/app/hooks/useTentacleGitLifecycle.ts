@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import { apiFetch } from "../../runtime/apiClient";
@@ -146,16 +146,12 @@ export const useTentacleGitLifecycle = ({
   const [gitStatusLoadingByTentacleId, setGitStatusLoadingByTentacleId] = useState<
     Record<string, boolean>
   >({});
-  const [gitStatusAttemptedTentacleIds, setGitStatusAttemptedTentacleIds] = useState<
-    Record<string, boolean>
-  >({});
+  const gitStatusAttemptedRef = useRef<Set<string>>(new Set());
+  const pullRequestAttemptedRef = useRef<Set<string>>(new Set());
   const [pullRequestByTentacleId, setPullRequestByTentacleId] = useState<
     Record<string, TentaclePullRequestSnapshot>
   >({});
   const [pullRequestLoadingByTentacleId, setPullRequestLoadingByTentacleId] = useState<
-    Record<string, boolean>
-  >({});
-  const [pullRequestAttemptedTentacleIds, setPullRequestAttemptedTentacleIds] = useState<
     Record<string, boolean>
   >({});
   const [openGitTentacleId, setOpenGitTentacleId] = useState<string | null>(null);
@@ -261,22 +257,18 @@ export const useTentacleGitLifecycle = ({
         Object.entries(current).filter(([tentacleId]) => activeTentacleIds.has(tentacleId)),
       ),
     );
-    setGitStatusAttemptedTentacleIds((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([tentacleId]) => activeTentacleIds.has(tentacleId)),
-      ),
-    );
+    for (const id of [...gitStatusAttemptedRef.current]) {
+      if (!activeTentacleIds.has(id)) gitStatusAttemptedRef.current.delete(id);
+    }
+    for (const id of [...pullRequestAttemptedRef.current]) {
+      if (!activeTentacleIds.has(id)) pullRequestAttemptedRef.current.delete(id);
+    }
     setPullRequestByTentacleId((current) =>
       Object.fromEntries(
         Object.entries(current).filter(([tentacleId]) => activeTentacleIds.has(tentacleId)),
       ),
     );
     setPullRequestLoadingByTentacleId((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([tentacleId]) => activeTentacleIds.has(tentacleId)),
-      ),
-    );
-    setPullRequestAttemptedTentacleIds((current) =>
       Object.fromEntries(
         Object.entries(current).filter(([tentacleId]) => activeTentacleIds.has(tentacleId)),
       ),
@@ -290,35 +282,29 @@ export const useTentacleGitLifecycle = ({
 
   useEffect(() => {
     for (const tentacleId of worktreeTentacleIds) {
-      if (gitStatusAttemptedTentacleIds[tentacleId]) {
+      if (gitStatusAttemptedRef.current.has(tentacleId)) {
         continue;
       }
 
-      setGitStatusAttemptedTentacleIds((current) => ({
-        ...current,
-        [tentacleId]: true,
-      }));
+      gitStatusAttemptedRef.current.add(tentacleId);
       void fetchTentacleGitStatus(tentacleId).catch((error: unknown) => {
         console.warn(`[git] Failed to fetch status for tentacle ${tentacleId}:`, error);
       });
     }
-  }, [fetchTentacleGitStatus, gitStatusAttemptedTentacleIds, worktreeTentacleIds]);
+  }, [fetchTentacleGitStatus, worktreeTentacleIds]);
 
   useEffect(() => {
     for (const tentacleId of worktreeTentacleIds) {
-      if (pullRequestAttemptedTentacleIds[tentacleId]) {
+      if (pullRequestAttemptedRef.current.has(tentacleId)) {
         continue;
       }
 
-      setPullRequestAttemptedTentacleIds((current) => ({
-        ...current,
-        [tentacleId]: true,
-      }));
+      pullRequestAttemptedRef.current.add(tentacleId);
       void fetchTentaclePullRequest(tentacleId).catch((error: unknown) => {
         console.warn(`[git] Failed to fetch pull request for tentacle ${tentacleId}:`, error);
       });
     }
-  }, [fetchTentaclePullRequest, pullRequestAttemptedTentacleIds, worktreeTentacleIds]);
+  }, [fetchTentaclePullRequest, worktreeTentacleIds]);
 
   const openTentacleGitActions = useCallback(
     (tentacleId: string) => {
