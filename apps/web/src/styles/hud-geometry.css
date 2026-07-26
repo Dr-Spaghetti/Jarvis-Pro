@@ -3,8 +3,6 @@
 
 /* ── Panel with 4-corner L-bracket decorations ── */
 /* .hud-panel: adds 4-corner L-bracket decoration only — no position/border/bg override */
-.hud-panel {
-}
 
 .hud-panel::before {
   content: "";

@@ -358,7 +358,11 @@ const askViaClaudeWithTools = async (
   history: ConversationTurn[],
   model: string,
   vaultDir: string | null,
-): Promise<{ ok: true; answer: string; toolsUsed: string[] } | { ok: false; status: number; hint: string } | null> => {
+): Promise<
+  | { ok: true; answer: string; toolsUsed: string[] }
+  | { ok: false; status: number; hint: string }
+  | null
+> => {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) return { ok: false, status: 0, hint: "ANTHROPIC_API_KEY is not set in .env" };
 
@@ -371,8 +375,8 @@ const askViaClaudeWithTools = async (
 
   const toolsUsed: string[] = [];
 
-  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const isLastRound = round === MAX_TOOL_ROUNDS;
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const isLastRound = round === MAX_TOOL_ROUNDS - 1;
 
     const fetchRes = await fetchWithTimeout(
       "https://api.anthropic.com/v1/messages",
@@ -397,7 +401,11 @@ const askViaClaudeWithTools = async (
 
     if (!fetchRes) return null;
     if (!fetchRes.ok) {
-      return { ok: false, status: fetchRes.status, hint: getClaudeErrorHint(fetchRes.status, model) };
+      return {
+        ok: false,
+        status: fetchRes.status,
+        hint: getClaudeErrorHint(fetchRes.status, model),
+      };
     }
 
     const response = (await fetchRes.json().catch(() => null)) as AnthrResponse | null;
@@ -420,7 +428,9 @@ const askViaClaudeWithTools = async (
     // Claude wants to call tools — push assistant turn and execute
     messages.push({ role: "assistant", content: response.content });
 
-    const toolUseBlocks = response.content.filter((b): b is AnthrToolUseBlock => b.type === "tool_use");
+    const toolUseBlocks = response.content.filter(
+      (b): b is AnthrToolUseBlock => b.type === "tool_use",
+    );
 
     const toolResults = await Promise.all(
       toolUseBlocks.map(async (block): Promise<AnthrToolResultBlock> => {
@@ -429,18 +439,16 @@ const askViaClaudeWithTools = async (
 
         try {
           if (block.name === "web_search") {
-            const query =
-              typeof block.input.query === "string" ? block.input.query : question;
+            const query = typeof block.input.query === "string" ? block.input.query : question;
             const result = await askViaPerplexity(query, false);
             content = result
               ? result.answer +
                 (result.citations.length > 0
-                  ? "\n\nSources: " + result.citations.map((c) => c.url).join(", ")
+                  ? `\n\nSources: ${result.citations.map((c) => c.url).join(", ")}`
                   : "")
               : "Web search returned no results.";
           } else if (block.name === "read_notes") {
-            const query =
-              typeof block.input.query === "string" ? block.input.query : question;
+            const query = typeof block.input.query === "string" ? block.input.query : question;
             if (vaultDir) {
               const notes = await retrieveContext(vaultDir, query, 4);
               content =
@@ -707,18 +715,15 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   const recallLearnings = vaultDir ? [] : searchLearnings(question, 3); // vault already injects Memory.md via memoryBlock
   let recallBlock = "";
   if (recallTurns.length > 0) {
-    recallBlock +=
-      "\n\nPast conversations on this topic:\n" +
-      recallTurns
-        .map(
-          (t) =>
-            `- [${t.role === "user" ? "You asked" : "Jarvis answered"}, ${new Date(t.timestamp).toLocaleDateString()}] "${t.content.slice(0, 200)}"`,
-        )
-        .join("\n");
+    recallBlock += `\n\nPast conversations on this topic:\n${recallTurns
+      .map(
+        (t) =>
+          `- [${t.role === "user" ? "You asked" : "Jarvis answered"}, ${new Date(t.timestamp).toLocaleDateString()}] "${t.content.slice(0, 200)}"`,
+      )
+      .join("\n")}`;
   }
   if (recallLearnings.length > 0) {
-    recallBlock +=
-      "\n\nLearned facts about Nick:\n" + recallLearnings.map((l) => `- ${l.content}`).join("\n");
+    recallBlock += `\n\nLearned facts about Nick:\n${recallLearnings.map((l) => `- ${l.content}`).join("\n")}`;
   }
   if (clipboardContext) {
     recallBlock += `\n\nNick just copied this to his clipboard:\n${clipboardContext}`;
@@ -854,8 +859,8 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         hint: process.env.ANTHROPIC_API_KEY?.trim()
           ? "All providers failed to respond — try again. If this persists, check ANTHROPIC_API_KEY / PERPLEXITY_API_KEY in .env."
           : model
-          ? `The local model '${model}' did not respond. Check that Ollama is running: \`ollama pull ${model}\`.`
-          : "No AI provider could answer. Add ANTHROPIC_API_KEY / PERPLEXITY_API_KEY to .env, or pull an Ollama model: `ollama pull qwen2.5:7b`.",
+            ? `The local model '${model}' did not respond. Check that Ollama is running: \`ollama pull ${model}\`.`
+            : "No AI provider could answer. Add ANTHROPIC_API_KEY / PERPLEXITY_API_KEY to .env, or pull an Ollama model: `ollama pull qwen2.5:7b`.",
         sources,
       },
       corsOrigin,

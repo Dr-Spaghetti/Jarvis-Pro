@@ -138,8 +138,8 @@ function shouldContinueLoop(
 
   // Check for quality degradation
   if (qualityProgression.length >= 2) {
-    const lastQuality = qualityProgression[qualityProgression.length - 1]!;
-    const prevQuality = qualityProgression[qualityProgression.length - 2]!;
+    const lastQuality = qualityProgression[qualityProgression.length - 1] ?? 0;
+    const prevQuality = qualityProgression[qualityProgression.length - 2] ?? 0;
 
     if (lastQuality < prevQuality - 0.15) {
       return false; // Quality dropped significantly
@@ -163,7 +163,8 @@ function adaptLoopParameters(
 ): TaskLoopStrategy {
   // If quality is consistently improving, we could be more aggressive
   if (qualityProgression.length >= 2) {
-    const trend = qualityProgression[qualityProgression.length - 1]! - qualityProgression[0]!;
+    const trend =
+      (qualityProgression[qualityProgression.length - 1] ?? 0) - (qualityProgression[0] ?? 0);
     if (trend > 0.2) {
       // Strong improvement — could continue longer if needed
       return {
@@ -250,7 +251,7 @@ export async function executeAgentLoop(
     if (
       currentStrategy.selfCorrectionMode === "automatic" &&
       iterNum > 1 &&
-      reflection.qualityScore > qualityProgression[iterNum - 2]!
+      reflection.qualityScore > (qualityProgression[iterNum - 2] ?? 0)
     ) {
       selfCorrections = ["quality improved — continuation justified"];
       selfCorrectionCount += 1;

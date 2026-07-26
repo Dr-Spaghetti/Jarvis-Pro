@@ -334,8 +334,9 @@ export function classifyTask(
   const taskHash = generateTaskHash(task);
 
   // Check cache
-  if (classificationCache.has(taskHash) && isCacheValid(taskHash)) {
-    return classificationCache.get(taskHash)!;
+  const cached = classificationCache.get(taskHash);
+  if (cached !== undefined && isCacheValid(taskHash)) {
+    return cached;
   }
 
   // Detect characteristics

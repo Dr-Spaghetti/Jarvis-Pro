@@ -359,6 +359,14 @@ export const useTentacleGitLifecycle = ({
         });
 
         if (!response.ok) {
+          if (response.status === 409) {
+            const errorMessage = await parseGitError(
+              response,
+              `Conflict during ${action} — another operation may be in progress. Wait a moment and retry.`,
+            );
+            setGitDialogError(errorMessage);
+            return null;
+          }
           const errorMessage = await parseGitError(
             response,
             `Unable to ${action} (${response.status}).`,
@@ -409,6 +417,14 @@ export const useTentacleGitLifecycle = ({
         });
 
         if (!response.ok) {
+          if (response.status === 409) {
+            const errorMessage = await parseGitError(
+              response,
+              "Merge conflict detected — resolve conflicts and retry.",
+            );
+            setGitDialogError(errorMessage);
+            return;
+          }
           const errorMessage = await parseGitError(
             response,
             `Unable to merge pull request (${response.status}).`,

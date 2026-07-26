@@ -191,11 +191,20 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
         return;
       }
 
-      const result = (await res.json()) as { execution?: { succeeded?: boolean }; metrics?: { totalIterations?: number; finalQuality?: number } };
+      const result = (await res.json()) as {
+        execution?: { succeeded?: boolean };
+        metrics?: { totalIterations?: number; finalQuality?: number };
+      };
       const succeeded = result.execution?.succeeded ?? true;
       const iters = result.metrics?.totalIterations ?? "?";
-      const quality = result.metrics?.finalQuality != null ? `${Math.round(result.metrics.finalQuality * 100)}%` : "?";
-      showToast(`${archetype.name} loop complete — ${iters} iter · ${quality} quality`, succeeded ? "ok" : "error");
+      const quality =
+        result.metrics?.finalQuality != null
+          ? `${Math.round(result.metrics.finalQuality * 100)}%`
+          : "?";
+      showToast(
+        `${archetype.name} loop complete — ${iters} iter · ${quality} quality`,
+        succeeded ? "ok" : "error",
+      );
       setLoopState(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Loop failed";
@@ -392,9 +401,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                     }
                     disabled={loopState.isRunning}
                   />
-                  {loopState.error && (
-                    <p className="arsenal-deploy-error">{loopState.error}</p>
-                  )}
+                  {loopState.error && <p className="arsenal-deploy-error">{loopState.error}</p>}
                   <div className="arsenal-deploy-actions">
                     <button
                       type="button"
@@ -420,7 +427,10 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                     type="button"
                     className="arsenal-btn arsenal-btn--deploy"
                     onClick={() => handleDeployClick(a.id)}
-                    disabled={(deployState !== null && deployState.archetypeId !== a.id) || loopState !== null}
+                    disabled={
+                      (deployState !== null && deployState.archetypeId !== a.id) ||
+                      loopState !== null
+                    }
                   >
                     Deploy
                   </button>
@@ -428,7 +438,9 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                     type="button"
                     className="arsenal-btn arsenal-btn--ghost"
                     onClick={() => handleLoopClick(a.id)}
-                    disabled={(deployState !== null) || (loopState !== null && loopState.archetypeId !== a.id)}
+                    disabled={
+                      deployState !== null || (loopState !== null && loopState.archetypeId !== a.id)
+                    }
                     title="Run iterative agent loop"
                   >
                     ⟳ Loop

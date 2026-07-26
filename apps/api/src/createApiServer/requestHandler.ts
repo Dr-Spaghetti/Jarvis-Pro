@@ -10,6 +10,7 @@ import type { CodexUsageSnapshot } from "../codexUsage";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
+import { handleAgentLoopRoute } from "./agent/orchestrateRoutes";
 import {
   handleAgentAlertConfigRoute,
   handleAgentAlertsRoute,
@@ -69,7 +70,6 @@ import {
   handleDeckTodoToggleRoute,
   handleDeckVaultFileRoute,
 } from "./deckRoutes";
-import { handleAgentLoopRoute } from "./agent/orchestrateRoutes";
 import { handleEmailIngestSettingsRoute, handleEmailIngestStatusRoute } from "./emailIngestRoutes";
 import {
   handleGeneratorAnimateRoute,

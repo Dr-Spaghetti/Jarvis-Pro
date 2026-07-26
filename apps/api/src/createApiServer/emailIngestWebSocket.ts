@@ -12,8 +12,8 @@ export const createEmailIngestWebSocket = (projectStateDir: string) => {
   const connect = () => {
     if (stopped) return;
 
-    const apiKey = process.env["AGENTMAIL_API_KEY"];
-    const inboxId = process.env["AGENTMAIL_INBOX"] ?? "niggims@agentmail.to";
+    const apiKey = process.env.AGENTMAIL_API_KEY;
+    const inboxId = process.env.AGENTMAIL_INBOX ?? "niggims@agentmail.to";
     if (!apiKey) return;
 
     ws = new WebSocket(`${WS_URL}?api_key=${encodeURIComponent(apiKey)}`);

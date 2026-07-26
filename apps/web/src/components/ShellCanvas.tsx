@@ -68,8 +68,9 @@ export const ShellCanvas = () => {
       // Draw connections
       for (let i = 0; i < N; i++) {
         for (let j = i + 1; j < N; j++) {
-          const a = nodes[i]!;
-          const b = nodes[j]!;
+          const a = nodes[i];
+          const b = nodes[j];
+          if (!a || !b) continue;
           const dx = a.x - b.x;
           const dy = a.y - b.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -116,7 +117,6 @@ export const ShellCanvas = () => {
         zIndex: 0,
         display: "block",
       }}
-      aria-hidden="true"
     />
   );
 };

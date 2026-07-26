@@ -45,8 +45,8 @@ export const initDb = (stateDir: string): void => {
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
-const turnsPath = (): string => join(memoryDir!, "turns.jsonl");
-const learningsPath = (): string => join(memoryDir!, "learnings.jsonl");
+const turnsPath = (): string => join(memoryDir ?? "", "turns.jsonl");
+const learningsPath = (): string => join(memoryDir ?? "", "learnings.jsonl");
 
 const loadTurns = (): DbTurn[] => {
   if (turnsCache !== null) return turnsCache;
@@ -158,7 +158,7 @@ const scoreAgainst = (content: string, queryTokens: string[]): number => {
 export const insertTurn = (turn: DbTurn): void => {
   if (!memoryDir) return;
   try {
-    appendFileSync(turnsPath(), JSON.stringify(turn) + "\n", "utf8");
+    appendFileSync(turnsPath(), `${JSON.stringify(turn)}\n`, "utf8");
     if (turnsCache !== null) turnsCache.push(turn);
   } catch {
     // Never block the caller if persistence fails
@@ -168,7 +168,7 @@ export const insertTurn = (turn: DbTurn): void => {
 export const insertLearning = (learning: DbLearning): void => {
   if (!memoryDir) return;
   try {
-    appendFileSync(learningsPath(), JSON.stringify(learning) + "\n", "utf8");
+    appendFileSync(learningsPath(), `${JSON.stringify(learning)}\n`, "utf8");
     if (learningsCache !== null) learningsCache.push(learning);
   } catch {
     // Never block the caller

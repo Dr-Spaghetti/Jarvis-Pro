@@ -17,6 +17,7 @@ export const usePollingData = <T>(options: UsePollingDataOptions<T>) => {
   const isInFlightRef = useRef(false);
   const isDisposedRef = useRef(false);
   const hasQueuedRefreshRef = useRef(false);
+  const backoffUntilRef = useRef<number>(0);
 
   const normalizeRef = useRef(options.normalize);
   normalizeRef.current = options.normalize;
@@ -26,6 +27,7 @@ export const usePollingData = <T>(options: UsePollingDataOptions<T>) => {
   const sync = useCallback(
     async (force = false) => {
       if (isDisposedRef.current) return;
+      if (!force && Date.now() < backoffUntilRef.current) return;
       if (isInFlightRef.current) {
         if (force) {
           hasQueuedRefreshRef.current = true;
@@ -40,7 +42,14 @@ export const usePollingData = <T>(options: UsePollingDataOptions<T>) => {
           headers: { Accept: "application/json" },
           cache: "no-store",
         });
-        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        if (!response.ok) {
+          if (response.status === 409) {
+            backoffUntilRef.current = Date.now() + 30_000;
+            console.warn(`[polling] ${fetchUrl} 409 conflict — backing off 30s`);
+            return;
+          }
+          throw new Error(`Request failed (${response.status})`);
+        }
         const parsed = normalizeRef.current(await response.json());
         if (!isDisposedRef.current) setData(parsed ?? fallbackRef.current());
       } catch (error) {

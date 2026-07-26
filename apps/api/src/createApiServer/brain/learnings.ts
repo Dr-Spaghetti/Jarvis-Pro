@@ -27,7 +27,8 @@ export const handleBrainLearningsRoute: ApiRouteHandler = async (
   }
 
   // Item route — DELETE /:id
-  const id: string = itemMatch![1] as string;
+  const id = itemMatch?.[1];
+  if (!id) return false;
   if (request.method !== "DELETE") {
     writeMethodNotAllowed(response, corsOrigin);
     return true;

@@ -233,14 +233,14 @@ export function shouldTerminateLoopEarly(
 
   // If quality is decreasing significantly, stop
   const recentQualityDelta =
-    qualityProgression[qualityProgression.length - 1]! -
-    qualityProgression[qualityProgression.length - 2]!;
+    (qualityProgression[qualityProgression.length - 1] ?? 0) -
+    (qualityProgression[qualityProgression.length - 2] ?? 0);
   if (recentQualityDelta < -0.15) {
     return true;
   }
 
   // If we've hit the fallback threshold (quality too low), stop
-  const currentQuality = qualityProgression[qualityProgression.length - 1]!;
+  const currentQuality = qualityProgression[qualityProgression.length - 1] ?? 0;
   if (currentQuality < fallbackThreshold) {
     return true;
   }
@@ -248,7 +248,7 @@ export function shouldTerminateLoopEarly(
   // If quality is high and stable (>0.85 for 2 iterations), stop
   if (qualityProgression.length >= 2) {
     const recent = qualityProgression.slice(-2);
-    if (recent.every((q) => q > 0.85) && Math.abs(recent[1]! - recent[0]!) < 0.05) {
+    if (recent.every((q) => q > 0.85) && Math.abs((recent[1] ?? 0) - (recent[0] ?? 0)) < 0.05) {
       return true;
     }
   }

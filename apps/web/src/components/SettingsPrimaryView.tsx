@@ -119,7 +119,7 @@ const EmailInboxPanel = () => {
               }}
             >
               {status.lastErrors.map((e, i) => (
-                <div key={i} style={{ color: "rgba(255,180,0,0.9)" }}>
+                <div key={`err-${i}-${e.slice(0, 20)}`} style={{ color: "rgba(255,180,0,0.9)" }}>
                   {e}
                 </div>
               ))}

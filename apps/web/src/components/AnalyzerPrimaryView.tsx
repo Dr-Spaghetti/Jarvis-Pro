@@ -457,9 +457,9 @@ const UrlResult = ({
           Sources
         </p>
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 3 }}>
-          {result.citations.map((c, i) => (
+          {result.citations.map((c) => (
             <a
-              key={i}
+              key={c}
               href={c}
               target="_blank"
               rel="noopener noreferrer"
