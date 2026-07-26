@@ -10,6 +10,7 @@ import {
   buildDeployAgentUrl,
   buildWorkspaceSetupUrl,
 } from "../runtime/runtimeEndpoints";
+import { AgentLivePanel } from "./AgentLivePanel";
 import { WorkspaceSetupCard } from "./WorkspaceSetupCard";
 import { useToasts } from "./ui/ToastProvider";
 
@@ -451,6 +452,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
           );
         })}
       </div>
+      <AgentLivePanel />
     </section>
   );
 };

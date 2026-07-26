@@ -36,9 +36,12 @@ import { TelemetryTape } from "./components/TelemetryTape";
 import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader";
+import { agentStateStore } from "./app/agentStateStore";
+import { setAgentWsSend } from "./app/agentWebSocketClient";
 import { apiFetch, getWsAuthProtocols } from "./runtime/apiClient";
 
 import {
+  buildAgentEventsSocketUrl,
   buildDeckTentacleSwarmUrl,
   buildNotificationsUrl,
   buildTerminalEventsSocketUrl,
@@ -301,6 +304,56 @@ const AppContent = () => {
       activeSocket?.close();
     };
   }, [refreshColumns, runtimeStateStore, sortTerminalSnapshots]);
+
+  useEffect(() => {
+    let destroyed = false;
+    let reconnectDelay = 1000;
+    let reconnectTimer: number | null = null;
+    let activeSocket: WebSocket | null = null;
+
+    const connect = () => {
+      if (destroyed) return;
+      const socket = new WebSocket(buildAgentEventsSocketUrl(), getWsAuthProtocols());
+      activeSocket = socket;
+
+      socket.addEventListener("open", () => {
+        reconnectDelay = 1000;
+        setAgentWsSend((msg) => socket.send(msg));
+      });
+
+      socket.addEventListener("message", (event) => {
+        if (typeof event.data !== "string") return;
+        try {
+          const message = JSON.parse(event.data) as { type?: unknown };
+          if (message.type === "snapshot" || message.type === "event") {
+            agentStateStore.applyServerMessage(message as Parameters<typeof agentStateStore.applyServerMessage>[0]);
+          }
+        } catch {
+          // ignore malformed frames
+        }
+      });
+
+      const scheduleReconnect = () => {
+        if (destroyed) return;
+        setAgentWsSend(null);
+        const delay = Math.min(reconnectDelay, 30000);
+        reconnectDelay = Math.min(delay * 2, 30000);
+        reconnectTimer = window.setTimeout(connect, delay);
+      };
+
+      socket.addEventListener("close", scheduleReconnect);
+      socket.addEventListener("error", scheduleReconnect);
+    };
+
+    connect();
+
+    return () => {
+      destroyed = true;
+      setAgentWsSend(null);
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      activeSocket?.close();
+    };
+  }, []);
 
   const { codexUsageSnapshot, refreshCodexUsage } = useCodexUsagePolling();
   const { claudeUsageSnapshot, isRefreshingClaudeUsage, refreshClaudeUsage } =

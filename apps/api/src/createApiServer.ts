@@ -13,6 +13,7 @@ import { createCodeIntelStore } from "./codeIntelStore";
 import { readCodexUsageSnapshot as readCodexUsageSnapshotDefault } from "./codexUsage";
 import { createBriefScheduler } from "./createApiServer/briefScheduler";
 import { createEmailIngestWebSocket } from "./createApiServer/emailIngestWebSocket";
+import { createAgentWebSocketServer } from "./createApiServer/agentWebSocketServer";
 import { createApiRequestHandler } from "./createApiServer/requestHandler";
 import { resolveAuthTokenFromEnv } from "./createApiServer/security";
 import type { CreateApiServerOptions } from "./createApiServer/types";
@@ -142,6 +143,7 @@ export const createApiServer = ({
   });
 
   const server = createServer(requestHandler);
+  const agentWss = createAgentWebSocketServer();
 
   server.on(
     "upgrade",
@@ -149,6 +151,7 @@ export const createApiServer = ({
       runtime,
       allowRemoteAccess,
       authToken: resolvedAuthToken,
+      agentWss,
     }),
   );
 
@@ -175,6 +178,7 @@ export const createApiServer = ({
     async stop() {
       briefScheduler.stop();
       emailIngestWs.stop();
+      agentWss.close();
       await runtime.close();
       await new Promise<void>((resolveStop, rejectStop) => {
         server.close((error) => {

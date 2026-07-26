@@ -8,6 +8,11 @@ type RuntimeLike = {
   handleUpgrade: (request: IncomingMessage, socket: Socket, head: Buffer) => boolean;
 };
 
+const agentWss = {
+  handleUpgrade: vi.fn(),
+  close: vi.fn(),
+} as never;
+
 const buildRequest = (url?: string): IncomingMessage =>
   ({
     url: url ?? "/api/terminal-events/ws",
@@ -33,6 +38,7 @@ describe("createUpgradeHandler", () => {
       runtime: runtime as never,
       allowRemoteAccess: true,
       authToken: null,
+      agentWss,
     });
     const socket = buildSocket();
 
@@ -46,6 +52,7 @@ describe("createUpgradeHandler", () => {
       runtime: { handleUpgrade } as never,
       allowRemoteAccess: true,
       authToken: "secret-token",
+      agentWss,
     });
     const socket = buildSocket();
 
@@ -61,6 +68,7 @@ describe("createUpgradeHandler", () => {
       runtime: { handleUpgrade } as never,
       allowRemoteAccess: true,
       authToken: "secret-token",
+      agentWss,
     });
     const socket = buildSocket();
 
@@ -76,6 +84,7 @@ describe("createUpgradeHandler", () => {
       runtime: { handleUpgrade } as never,
       allowRemoteAccess: true,
       authToken: "secret-token",
+      agentWss,
     });
     const socket = buildSocket();
 
@@ -91,6 +100,7 @@ describe("createUpgradeHandler", () => {
       runtime: { handleUpgrade } as never,
       allowRemoteAccess: true,
       authToken: null,
+      agentWss,
     });
     const socket = buildSocket();
 

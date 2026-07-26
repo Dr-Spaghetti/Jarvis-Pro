@@ -7,6 +7,7 @@ import {
   isAuthorizedRequest,
   readHeaderValue,
 } from "./security";
+import type { AgentWebSocketServer } from "./agentWebSocketServer";
 
 type TerminalRuntime = ReturnType<typeof import("../terminalRuntime").createTerminalRuntime>;
 
@@ -14,12 +15,14 @@ type CreateUpgradeHandlerOptions = {
   runtime: TerminalRuntime;
   allowRemoteAccess: boolean;
   authToken: string | null;
+  agentWss: AgentWebSocketServer;
 };
 
 export const createUpgradeHandler = ({
   runtime,
   allowRemoteAccess,
   authToken,
+  agentWss,
 }: CreateUpgradeHandlerOptions) => {
   return (request: IncomingMessage, socket: Socket, head: Buffer) => {
     const originHeader = readHeaderValue(request.headers.origin);
@@ -39,6 +42,11 @@ export const createUpgradeHandler = ({
     const requestUrl = new URL(request.url ?? "/", "http://localhost");
     if (!isAuthorizedRequest(authToken, request, requestUrl)) {
       socket.destroy();
+      return;
+    }
+
+    if (requestUrl.pathname === "/ws/agents") {
+      agentWss.handleUpgrade(request, socket, head);
       return;
     }
 

@@ -744,3 +744,19 @@ export const buildGeneratorDeleteUrl = (id: string, runtimeBaseUrl = readRuntime
 
 export const buildAgentLoopUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   buildBrainUrl("/api/agent-loop", runtimeBaseUrl);
+
+export const buildAgentEventsSocketUrl = (
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+  location: LocationLike = window.location,
+) => {
+  if (!runtimeBaseUrl) {
+    return localRuntimeWebSocketUrl(location, "/ws/agents");
+  }
+
+  const websocketBase = toWebSocketBase(runtimeBaseUrl);
+  if (!websocketBase) {
+    return localRuntimeWebSocketUrl(location, "/ws/agents");
+  }
+
+  return buildAbsoluteUrl(websocketBase, "/ws/agents");
+};

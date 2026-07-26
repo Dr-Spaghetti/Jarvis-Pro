@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 
 import { agenticAsk } from "../agenticAsk";
+import { agentEventBus } from "../agentEventBus";
+import { agentRegistry } from "../agentRegistry";
 import { classifyBrainQuestion } from "../classifyBrainQuestion";
 import { initDb, insertTurn, searchLearnings, searchTurns } from "../db";
 import { chatViaOllama, getChatModel, isOllamaRunning, listOllamaChatModels } from "../ollamaChat";
@@ -101,14 +103,28 @@ const shouldEnrichWithWeb = (question: string): boolean => {
 type PerplexityCitation = { title: string; url: string };
 export type PerplexityResult = { answer: string; citations: PerplexityCitation[] };
 
+const combineSignals = (ms: number, cancelSignal?: AbortSignal): AbortSignal => {
+  const timeout = AbortSignal.timeout(ms);
+  if (!cancelSignal) return timeout;
+  const ctrl = new AbortController();
+  const abort = () => ctrl.abort();
+  timeout.addEventListener("abort", abort, { once: true });
+  cancelSignal.addEventListener("abort", abort, { once: true });
+  return ctrl.signal;
+};
+
 const fetchWithTimeout = async (
   url: string,
   init: RequestInit,
   ms: number,
+  cancelSignal?: AbortSignal,
 ): Promise<Response | null> => {
   try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
-  } catch {
+    return await fetch(url, { ...init, signal: combineSignals(ms, cancelSignal) });
+  } catch (err) {
+    if (cancelSignal?.aborted && err instanceof Error && err.name === "AbortError") {
+      throw err;
+    }
     return null;
   }
 };
@@ -358,6 +374,8 @@ const askViaClaudeWithTools = async (
   history: ConversationTurn[],
   model: string,
   vaultDir: string | null,
+  agentId?: string,
+  cancelSignal?: AbortSignal,
 ): Promise<
   | { ok: true; answer: string; toolsUsed: string[] }
   | { ok: false; status: number; hint: string }
@@ -374,105 +392,180 @@ const askViaClaudeWithTools = async (
   messages.push({ role: "user", content: `${context}\n\nQuestion: ${question}` });
 
   const toolsUsed: string[] = [];
+  const startedAt = Date.now();
 
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const isLastRound = round === MAX_TOOL_ROUNDS - 1;
+  const markDone = (state: "done" | "cancelled" | "error", errorMsg?: string) => {
+    if (!agentId) return;
+    agentRegistry.setState(agentId, state);
+    if (state === "done") {
+      agentEventBus.emit({ type: "agent_done", agentId, durationMs: Date.now() - startedAt, ts: Date.now() });
+    } else if (state === "cancelled") {
+      agentEventBus.emit({ type: "agent_cancelled", agentId, ts: Date.now() });
+    } else {
+      agentEventBus.emit({ type: "agent_error", agentId, error: errorMsg ?? "unknown", ts: Date.now() });
+    }
+    agentRegistry.scheduleCleanup(agentId, state === "cancelled" ? 5_000 : 30_000);
+  };
 
-    const fetchRes = await fetchWithTimeout(
-      "https://api.anthropic.com/v1/messages",
-      {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
+  try {
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      if (cancelSignal?.aborted) {
+        markDone("cancelled");
+        return { ok: false, status: 499, hint: "Cancelled" };
+      }
+
+      if (agentId) {
+        agentRegistry.setRound(agentId, round);
+        agentEventBus.emit({ type: "round_started", agentId, round, maxRounds: MAX_TOOL_ROUNDS, ts: Date.now() });
+      }
+
+      const isLastRound = round === MAX_TOOL_ROUNDS - 1;
+
+      const fetchRes = await fetchWithTimeout(
+        "https://api.anthropic.com/v1/messages",
+        {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 1024,
+            system: ASK_SYSTEM_PROMPT,
+            // Drop tools on the final round so Claude is forced to produce text
+            ...(isLastRound ? {} : { tools: JARVIS_TOOLS }),
+            messages,
+          }),
         },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1024,
-          system: ASK_SYSTEM_PROMPT,
-          // Drop tools on the final round so Claude is forced to produce text
-          ...(isLastRound ? {} : { tools: JARVIS_TOOLS }),
-          messages,
-        }),
-      },
-      15000,
-    );
+        15000,
+        cancelSignal,
+      );
 
-    if (!fetchRes) return null;
-    if (!fetchRes.ok) {
-      return {
-        ok: false,
-        status: fetchRes.status,
-        hint: getClaudeErrorHint(fetchRes.status, model),
-      };
-    }
+      if (!fetchRes) {
+        markDone("error", "API request timed out");
+        return null;
+      }
+      if (!fetchRes.ok) {
+        markDone("error", `HTTP ${fetchRes.status}`);
+        return {
+          ok: false,
+          status: fetchRes.status,
+          hint: getClaudeErrorHint(fetchRes.status, model),
+        };
+      }
 
-    const response = (await fetchRes.json().catch(() => null)) as AnthrResponse | null;
-    if (!response) return null;
+      const response = (await fetchRes.json().catch(() => null)) as AnthrResponse | null;
+      if (!response) {
+        markDone("error", "Empty API response");
+        return null;
+      }
 
-    const textBlock = response.content.find((b): b is AnthrTextBlock => b.type === "text");
+      const textBlock = response.content.find((b): b is AnthrTextBlock => b.type === "text");
 
-    // Done — return whatever text Claude produced
-    if (response.stop_reason === "end_turn" || isLastRound) {
-      if (textBlock) return { ok: true, answer: stripToolMarkup(textBlock.text), toolsUsed };
-      return { ok: false, status: 200, hint: "Empty response from Claude API" };
-    }
-
-    // Non-tool stop — return text if present, otherwise error
-    if (response.stop_reason !== "tool_use") {
-      if (textBlock) return { ok: true, answer: stripToolMarkup(textBlock.text), toolsUsed };
-      return { ok: false, status: 200, hint: `Unexpected stop_reason: ${response.stop_reason}` };
-    }
-
-    // Claude wants to call tools — push assistant turn and execute
-    messages.push({ role: "assistant", content: response.content });
-
-    const toolUseBlocks = response.content.filter(
-      (b): b is AnthrToolUseBlock => b.type === "tool_use",
-    );
-
-    const toolResults = await Promise.all(
-      toolUseBlocks.map(async (block): Promise<AnthrToolResultBlock> => {
-        toolsUsed.push(block.name);
-        let content = "";
-
-        try {
-          if (block.name === "web_search") {
-            const query = typeof block.input.query === "string" ? block.input.query : question;
-            const result = await askViaPerplexity(query, false);
-            content = result
-              ? result.answer +
-                (result.citations.length > 0
-                  ? `\n\nSources: ${result.citations.map((c) => c.url).join(", ")}`
-                  : "")
-              : "Web search returned no results.";
-          } else if (block.name === "read_notes") {
-            const query = typeof block.input.query === "string" ? block.input.query : question;
-            if (vaultDir) {
-              const notes = await retrieveContext(vaultDir, query, 4);
-              content =
-                notes.length > 0
-                  ? notes.map((n) => `### ${n.title}\n${n.body}`).join("\n\n")
-                  : "No relevant notes found.";
-            } else {
-              content = "No vault configured.";
-            }
-          } else {
-            content = `Unknown tool: ${block.name}`;
-          }
-        } catch {
-          content = `Tool '${block.name}' failed.`;
+      // Done — return whatever text Claude produced
+      if (response.stop_reason === "end_turn" || isLastRound) {
+        if (textBlock) {
+          markDone("done");
+          return { ok: true, answer: stripToolMarkup(textBlock.text), toolsUsed };
         }
+        markDone("error", "Empty response content");
+        return { ok: false, status: 200, hint: "Empty response from Claude API" };
+      }
 
-        return { type: "tool_result", tool_use_id: block.id, content };
-      }),
-    );
+      // Non-tool stop — return text if present, otherwise error
+      if (response.stop_reason !== "tool_use") {
+        if (textBlock) {
+          markDone("done");
+          return { ok: true, answer: stripToolMarkup(textBlock.text), toolsUsed };
+        }
+        markDone("error", `stop_reason: ${response.stop_reason}`);
+        return { ok: false, status: 200, hint: `Unexpected stop_reason: ${response.stop_reason}` };
+      }
 
-    messages.push({ role: "user", content: toolResults });
+      // Claude wants to call tools — push assistant turn and execute
+      messages.push({ role: "assistant", content: response.content });
+
+      const toolUseBlocks = response.content.filter(
+        (b): b is AnthrToolUseBlock => b.type === "tool_use",
+      );
+
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (block): Promise<AnthrToolResultBlock> => {
+          toolsUsed.push(block.name);
+          let content = "";
+
+          if (agentId) {
+            agentRegistry.setTool(agentId, block.name);
+            agentEventBus.emit({ type: "tool_start", agentId, tool: block.name, round, ts: Date.now() });
+          }
+
+          const toolStartedAt = Date.now();
+
+          // Mark as blocked if tool takes longer than 8 seconds
+          let blockTimer: ReturnType<typeof setTimeout> | undefined;
+          if (agentId) {
+            blockTimer = setTimeout(() => {
+              agentRegistry.setState(agentId!, "blocked");
+            }, 8_000);
+          }
+
+          try {
+            if (block.name === "web_search") {
+              const query = typeof block.input.query === "string" ? block.input.query : question;
+              const result = await askViaPerplexity(query, false);
+              content = result
+                ? result.answer +
+                  (result.citations.length > 0
+                    ? `\n\nSources: ${result.citations.map((c) => c.url).join(", ")}`
+                    : "")
+                : "Web search returned no results.";
+            } else if (block.name === "read_notes") {
+              const query = typeof block.input.query === "string" ? block.input.query : question;
+              if (vaultDir) {
+                const notes = await retrieveContext(vaultDir, query, 4);
+                content =
+                  notes.length > 0
+                    ? notes.map((n) => `### ${n.title}\n${n.body}`).join("\n\n")
+                    : "No relevant notes found.";
+              } else {
+                content = "No vault configured.";
+              }
+            } else {
+              content = `Unknown tool: ${block.name}`;
+            }
+          } catch {
+            content = `Tool '${block.name}' failed.`;
+          } finally {
+            if (blockTimer) clearTimeout(blockTimer);
+            if (agentId) {
+              const currentState = agentRegistry.get(agentId)?.state;
+              if (currentState === "blocked") {
+                agentRegistry.setState(agentId, "working");
+              }
+              agentRegistry.setTool(agentId, undefined);
+              agentEventBus.emit({ type: "tool_done", agentId, tool: block.name, durationMs: Date.now() - toolStartedAt, ts: Date.now() });
+            }
+          }
+
+          return { type: "tool_result", tool_use_id: block.id, content };
+        }),
+      );
+
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    markDone("error", "Tool loop exhausted");
+    return { ok: false, status: 200, hint: "Tool loop exhausted without final answer" };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      markDone("cancelled");
+      return { ok: false, status: 499, hint: "Cancelled" };
+    }
+    markDone("error", String(err));
+    throw err;
   }
-
-  return { ok: false, status: 200, hint: "Tool loop exhausted without final answer" };
 };
 
 // Read-only retrieval for context: semantic (using the existing index) when
@@ -786,6 +879,9 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   if (!model) {
     if (Date.now() >= claudeUnavailableUntil) {
       const autoModel = selectClaudeModel(question);
+      // Register this invocation for live tracking; cancelSignal wires cancel from the WS
+      const agentId = randomUUID();
+      const cancelSignal = agentRegistry.register(agentId, question, autoModel);
       // Use tool-capable Claude in auto mode — Claude decides when to search or read notes
       const claudeResult = await askViaClaudeWithTools(
         question,
@@ -793,7 +889,13 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         history,
         autoModel,
         vaultDir ?? null,
+        agentId,
+        cancelSignal,
       );
+      if (claudeResult && !claudeResult.ok && claudeResult.status === 499) {
+        writeJson(response, 200, { available: false, reason: "cancelled", hint: "Request was cancelled" }, corsOrigin);
+        return true;
+      }
       if (claudeResult?.ok) {
         claudeUnavailableUntil = 0;
         if (vaultDir) appendConversationTurn(vaultDir, question, claudeResult.answer);
