@@ -1,8 +1,7 @@
 # Credits
 
-Octogent + Skills is a combination of two open-source projects, fused into a
-single tool: a multi-agent orchestration dashboard whose tentacle agents come
-with a ready-to-use library of practical skills.
+Jarvis is Nick's personal OS. The orchestration engine (PTY terminals, tentacles,
+local API) comes from Octogent; the bundled Claude Code skills come from rm-skills.
 
 ## Upstream projects
 

@@ -12,11 +12,11 @@ workforce, and a library of work skills. This guide gets you from a zip file to 
 
 ## What you need first (one-time installs)
 
-1. **Node.js (version 20 or newer)** — the runtime the app is built on.
+1. **Node.js (version 22 or newer)** — the runtime the app is built on.
    Download: https://nodejs.org (get the "LTS" version, run the installer).
 2. **pnpm** — the package manager. After Node is installed, open a terminal (PowerShell on
    Windows / Terminal on Mac) and run: `corepack enable` (this turns on pnpm; it ships with Node).
-3. **(Optional) Ollama** — only if you want the free *local* AI models. Download from
+3. **(Optional) Ollama** — only if you want free *local* AI models. Download from
    https://ollama.com . Skip it if you'll use cloud AI (Claude/Perplexity) instead.
 
 ---
@@ -76,11 +76,18 @@ On Windows you can also just double-click **`Start Jarvis.bat`** instead of Step
 ---
 
 ## What you get
-A 9-page dashboard (press keys 1–9 to navigate):
-- **Jarvis** — ask questions, voice, quick-capture, live tiles
-- **Agents / Deck** — deploy AI agents from an arsenal; run skills
-- **Monitor** — live surveillance of running agents
-- **Activity / Conversations / Prompts / Code Intel / Settings**
+A 9-tab dashboard (press keys 1–9 left to right):
+- **1 Jarvis HQ** — ask questions, optional voice
+- **2 Agent Arsenal** — deploy a real Claude Code agent
+- **3 Surveillance** — watch running agents
+- **4 Workflows** — multi-step Ask checklists
+- **5 Recent Convos** — history
+- **6 Content Analyzer** — files, URLs, emailed links
+- **7 Ideas** — scratchpad into your notes
+- **8 Settings** — keys, Gmail, email ingest, voice
+- **9 Terminal** — launch Claude or Codex
+
+Daily use is three flows: **Ask**, **Analyze**, **Deploy**.
 
 ## If something doesn't work
 - **A change/feature isn't showing** → fully quit and relaunch (`Ctrl+C` in the terminal,

@@ -4,18 +4,12 @@ import type { PrimaryNavIndex } from "../app/constants";
 import { AgentArsenalPanel } from "./AgentArsenalPanel";
 import { AnalyzerPrimaryView } from "./AnalyzerPrimaryView";
 import { ConversationsPrimaryView } from "./ConversationsPrimaryView";
-import { GeneratorPrimaryView } from "./GeneratorPrimaryView";
 import { IdeasPrimaryView } from "./IdeasPrimaryView";
 import { JarvisHomePrimaryView } from "./JarvisHomePrimaryView";
 import { SettingsPrimaryView } from "./SettingsPrimaryView";
 import { SurveillancePanel } from "./SurveillancePanel";
 import { TerminalPrimaryView } from "./TerminalPrimaryView";
 import { WorkflowsPrimaryView } from "./WorkflowsPrimaryView";
-
-type CanvasPrimaryViewProps = {
-  onSpawnSwarm?: (tentacleId: string, workspaceMode: "shared" | "worktree") => Promise<void>;
-  onSolveTodoItem?: (tentacleId: string, itemIndex: number) => Promise<void>;
-};
 
 type PrimaryViewRouterProps = {
   activePrimaryNav: PrimaryNavIndex;
@@ -25,7 +19,6 @@ type PrimaryViewRouterProps = {
   onConversationsActionPanel: (content: ReactNode) => void;
   onPrimaryNavChange: (index: PrimaryNavIndex) => void;
   isMonitorEnabled?: boolean;
-  canvasPrimaryViewProps?: CanvasPrimaryViewProps;
 };
 
 export const PrimaryViewRouter = ({
@@ -44,7 +37,7 @@ export const PrimaryViewRouter = ({
 
   // 1 — Agent Arsenal (archetype grid + deploy)
   if (activePrimaryNav === 1) {
-    return <AgentArsenalPanel />;
+    return <AgentArsenalPanel onDeployed={() => onPrimaryNavChange(2)} />;
   }
 
   // 2 — Surveillance (live CCTV agent monitor)
@@ -88,10 +81,5 @@ export const PrimaryViewRouter = ({
     return <TerminalPrimaryView />;
   }
 
-  // 10 — Generator
-  if (activePrimaryNav === 10) {
-    return <GeneratorPrimaryView />;
-  }
-
-  return null;
+  return <JarvisHomePrimaryView onNavigate={onPrimaryNavChange} />;
 };

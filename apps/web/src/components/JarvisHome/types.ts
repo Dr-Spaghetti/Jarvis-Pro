@@ -40,6 +40,10 @@ export type JarvisIntentResolution = {
         target:
           | "agents"
           | "deck"
+          | "workflows"
+          | "analyzer"
+          | "ideas"
+          | "terminal"
           | "activity"
           | "code-intel"
           | "monitor"

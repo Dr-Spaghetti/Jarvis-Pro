@@ -4,6 +4,10 @@ export type JarvisVoiceIntent =
       target:
         | "agents"
         | "deck"
+        | "workflows"
+        | "analyzer"
+        | "ideas"
+        | "terminal"
         | "activity"
         | "code-intel"
         | "monitor"
@@ -264,7 +268,7 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
     runSkillCandidate &&
     runSkillCandidate.length >= 3 &&
     !/\b(agent|terminal|session|tentacle)\b/.test(runSkillCandidate) &&
-    !/^(deck|agents?|activity|code.intel|monitor|conversations?|prompts?|settings?|jarvis|skills?)$/.test(
+    !/^(deck|agents?|activity|code.intel|monitor|conversations?|prompts?|settings?|jarvis|skills?|workflows?|analyzer|ideas?|terminal)$/.test(
       runSkillCandidate,
     )
   ) {
@@ -278,10 +282,22 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
   if (/\b(deck|skills?|skill library)\b/.test(command)) {
     return { transcript, commandText, intent: { type: "navigate", target: "deck" } };
   }
-  if (/\b(agent|agents|canvas)\b/.test(command)) {
+  if (/\b(agent|agents|canvas|arsenal)\b/.test(command)) {
     return { transcript, commandText, intent: { type: "navigate", target: "agents" } };
   }
-  if (/\b(activity|usage|telemetry)\b/.test(command)) {
+  if (/\b(workflow|workflows)\b/.test(command)) {
+    return { transcript, commandText, intent: { type: "navigate", target: "workflows" } };
+  }
+  if (/\b(analyzer|content analyzer|analyses)\b/.test(command)) {
+    return { transcript, commandText, intent: { type: "navigate", target: "analyzer" } };
+  }
+  if (/\b(ideas?)\b/.test(command)) {
+    return { transcript, commandText, intent: { type: "navigate", target: "ideas" } };
+  }
+  if (/\b(terminal|terminals)\b/.test(command)) {
+    return { transcript, commandText, intent: { type: "navigate", target: "terminal" } };
+  }
+  if (/\b(activity|usage|telemetry|surveillance)\b/.test(command)) {
     return { transcript, commandText, intent: { type: "navigate", target: "activity" } };
   }
   if (/\b(code intel|code intelligence|code map)\b/.test(command)) {

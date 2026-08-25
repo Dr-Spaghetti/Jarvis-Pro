@@ -1,6 +1,8 @@
 import { type TerminalSnapshot, buildTerminalList, isAgentRuntimeState } from "@octogent/core";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
+import { agentStateStore } from "./app/agentStateStore";
+import { setAgentWsSend } from "./app/agentWebSocketClient";
 import { useBackendLivenessPolling } from "./app/hooks/useBackendLivenessPolling";
 import { useClaudeUsagePolling } from "./app/hooks/useClaudeUsagePolling";
 import { useCodexUsagePolling } from "./app/hooks/useCodexUsagePolling";
@@ -36,13 +38,10 @@ import { TelemetryTape } from "./components/TelemetryTape";
 import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader";
-import { agentStateStore } from "./app/agentStateStore";
-import { setAgentWsSend } from "./app/agentWebSocketClient";
 import { apiFetch, getWsAuthProtocols } from "./runtime/apiClient";
 
 import {
   buildAgentEventsSocketUrl,
-  buildDeckTentacleSwarmUrl,
   buildNotificationsUrl,
   buildTerminalEventsSocketUrl,
   buildTerminalSnapshotsUrl,
@@ -326,7 +325,9 @@ const AppContent = () => {
         try {
           const message = JSON.parse(event.data) as { type?: unknown };
           if (message.type === "snapshot" || message.type === "event") {
-            agentStateStore.applyServerMessage(message as Parameters<typeof agentStateStore.applyServerMessage>[0]);
+            agentStateStore.applyServerMessage(
+              message as Parameters<typeof agentStateStore.applyServerMessage>[0],
+            );
           }
         } catch {
           // ignore malformed frames
@@ -388,17 +389,6 @@ const AppContent = () => {
   const { heatmapData, isLoadingHeatmap, refreshHeatmap } = useUsageHeatmapPolling({
     enabled: isUiStateHydrated && (activePrimaryNav === 2 || isRuntimeStatusStripVisible),
   });
-
-  const handleSpawnSwarm = useCallback(
-    async (tentacleId: string, workspaceMode: "shared" | "worktree") => {
-      await apiFetch(buildDeckTentacleSwarmUrl(tentacleId), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceMode }),
-      });
-    },
-    [],
-  );
 
   const toggleShortcutsOverlay = useCallback(() => setIsShortcutsOverlayOpen((open) => !open), []);
   useConsoleKeyboardShortcuts({
@@ -538,7 +528,6 @@ const AppContent = () => {
             activePrimaryNav={activePrimaryNav}
             onPrimaryNavChange={setActivePrimaryNav}
             isMonitorEnabled={isMonitorVisible}
-            canvasPrimaryViewProps={{ onSpawnSwarm: handleSpawnSwarm }}
             settingsPrimaryViewProps={{
               isMonitorVisible,
               isRuntimeStatusStripVisible,

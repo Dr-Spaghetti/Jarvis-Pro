@@ -13,6 +13,7 @@ describe("hotkeys helpers", () => {
     expect(parsePrimaryNavKey("2")).toBe(1);
     expect(parsePrimaryNavKey("3")).toBe(2);
     expect(parsePrimaryNavKey("5")).toBe(4);
+    expect(parsePrimaryNavKey("9")).toBe(8);
   });
 
   it("returns null for unsupported nav keys", () => {

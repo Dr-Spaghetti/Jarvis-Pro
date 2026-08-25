@@ -209,9 +209,9 @@ export const SettingsPrimaryView = ({
         ))}
         <div className="settings-sidebar-spacer" />
         <div className="settings-sidebar-ver">
-          Jarvis v5.0 · ULTRA
+          Jarvis
           <br />
-          <span className="settings-sidebar-build">build e57a06c</span>
+          <span className="settings-sidebar-build">local</span>
         </div>
       </nav>
 

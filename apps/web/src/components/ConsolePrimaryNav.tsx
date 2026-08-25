@@ -43,7 +43,7 @@ export const ConsolePrimaryNav = ({
           <br />
           HQ
         </div>
-        <div className="console-primary-nav-version">V 5.0 · ULTRA</div>
+        <div className="console-primary-nav-version">LOCAL</div>
       </div>
       <div className="console-primary-nav-tabs">
         {PRIMARY_NAV_ITEMS.map((item, position) => {
@@ -96,7 +96,7 @@ export const ConsolePrimaryNav = ({
           type="button"
         >
           <span className="console-primary-nav-initiate-dot" aria-hidden="true" />
-          INITIATE PROTOCOL
+          JARVIS HQ
         </button>
       </div>
     </nav>

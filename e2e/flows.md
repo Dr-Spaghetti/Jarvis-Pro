@@ -46,12 +46,8 @@ This is the living coverage map for E2E tests. Update it whenever a new tab, fea
 ├── TERMINAL TAB [aria-label*="Terminal"]
 │   - Terminal renders and accepts keystrokes
 │
-├── MONITOR TAB [aria-label*="Surveillance"]
-│   - Panel renders (or shows disabled state gracefully)
-│
-└── GENERATOR TAB [aria-label*="Generator"]
-    - Generator UI renders
-    - No broken image placeholders in gallery
+└── MONITOR TAB [aria-label*="Surveillance"]
+    - Panel renders (or shows disabled state gracefully)
 ```
 
 ## Surfaces Not Yet Tested (future)

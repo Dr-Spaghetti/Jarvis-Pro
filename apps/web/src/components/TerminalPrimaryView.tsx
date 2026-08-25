@@ -64,7 +64,15 @@ export const TerminalPrimaryView = () => {
     }
   }, [provider, claudeModel, sessions.length]);
 
-  const closeSession = useCallback((id: string) => {
+  const closeSession = useCallback(async (id: string) => {
+    try {
+      await apiFetch(`/api/terminals/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+    } catch {
+      // Still drop the tab if the process is already gone.
+    }
     setSessions((prev) => {
       const next = prev.filter((s) => s.id !== id);
       setActiveId((cur) => {
@@ -240,7 +248,7 @@ export const TerminalPrimaryView = () => {
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  closeSession(s.id);
+                  void closeSession(s.id);
                 }}
                 aria-label={`Close ${s.label}`}
               >

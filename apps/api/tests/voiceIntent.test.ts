@@ -38,6 +38,14 @@ describe("resolveJarvisVoiceIntent", () => {
       type: "navigate",
       target: "jarvis",
     });
+    expect(resolveJarvisVoiceIntent("jarvis open workflows").intent).toEqual({
+      type: "navigate",
+      target: "workflows",
+    });
+    expect(resolveJarvisVoiceIntent("jarvis open the analyzer").intent).toEqual({
+      type: "navigate",
+      target: "analyzer",
+    });
   });
 
   it("still routes agent creation commands", () => {
