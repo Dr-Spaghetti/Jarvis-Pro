@@ -1,38 +1,19 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createApiServer } from "./createApiServer";
+import { loadEnvFile } from "./loadEnvFile";
 
-// Load .env into process.env (shell exports take priority).
-// Walks up from this file's directory so the same path works in both
-// dev (apps/api/src/) and production (dist/api/).
+// Load .env into process.env (shell exports take priority). Walk up from cwd
+// so `OCTOGENT_*` keys are available the same way they are in the CLI.
 {
-  let envPath: string | null = null;
-  for (let d = dirname(fileURLToPath(import.meta.url)); d !== dirname(d); d = dirname(d)) {
-    const candidate = join(d, ".env");
-    if (existsSync(candidate)) {
-      envPath = candidate;
+  let envCwd = process.cwd();
+  for (let directory = envCwd; directory !== dirname(directory); directory = dirname(directory)) {
+    if (existsSync(join(directory, ".env"))) {
+      envCwd = directory;
       break;
     }
   }
-  if (envPath) {
-    for (const line of readFileSync(envPath, "utf-8").split("\n")) {
-      const t = line.trim();
-      if (!t || t.startsWith("#")) continue;
-      const eq = t.indexOf("=");
-      if (eq === -1) continue;
-      const key = t.slice(0, eq).trim();
-      if (!key || key.startsWith("OCTOGENT_") || process.env[key] !== undefined) continue;
-      let val = t.slice(eq + 1).trim();
-      if (
-        (val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))
-      ) {
-        val = val.slice(1, -1);
-      }
-      process.env[key] = val;
-    }
-  }
+  loadEnvFile(envCwd);
 }
 
 const parsePort = (value: string | undefined, fallback: number) => {

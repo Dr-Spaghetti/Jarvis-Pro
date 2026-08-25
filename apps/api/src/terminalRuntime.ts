@@ -762,6 +762,10 @@ export const createTerminalRuntime = ({
       }
 
       for (const terminalId of prunedTerminalIds) {
+        const terminal = terminals.get(terminalId);
+        if (terminal?.workspaceMode === "worktree") {
+          worktreeManager.removeTentacleWorktree(terminal.worktreeId ?? terminal.tentacleId);
+        }
         terminals.delete(terminalId);
       }
 

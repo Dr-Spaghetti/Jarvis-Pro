@@ -4,12 +4,23 @@ import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 
+const PTY_ENV_DENY_LIST = [
+  "GMAIL_CLIENT_SECRET",
+  "GMAIL_REFRESH_TOKEN",
+  "GMAIL_ACCESS_TOKEN",
+  "GMAIL_CLIENT_ID",
+  "TELEGRAM_BOT_TOKEN",
+] as const;
+
 export const createShellEnvironment = (options?: { octogentSessionId?: string }) => {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (typeof value === "string") {
       env[key] = value;
     }
+  }
+  for (const key of PTY_ENV_DENY_LIST) {
+    delete env[key];
   }
   env.TERM = "xterm-256color";
   env.COLORTERM = "truecolor";

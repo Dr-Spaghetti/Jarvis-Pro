@@ -1,15 +1,21 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../src/App";
 import { jsonResponse, notFoundResponse, resetAppTestHarness } from "./test-utils/appTestHarness";
 
-const mockShellRequests = () => {
+const mockShellRequests = (mode: "ok" | "fail" | "hang" = "ok") => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
     const method = init?.method ?? "GET";
 
     if (url.endsWith("/api/terminal-snapshots") && method === "GET") {
+      if (mode === "hang") {
+        return new Promise<Response>(() => {});
+      }
+      if (mode === "fail") {
+        return new Response("unavailable", { status: 500 });
+      }
       return jsonResponse([]);
     }
 
@@ -52,7 +58,7 @@ const mockShellRequests = () => {
 
     if (url.endsWith("/api/voice/config") && method === "GET") {
       return jsonResponse({
-        wake: { phrases: ["yo jarvis", "heyo jarvis", "jarvis"] },
+        wake: { phrases: ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis"] },
         transcription: {
           configured: false,
           defaultModel: "gpt-4o-mini-transcribe",
@@ -69,6 +75,7 @@ const mockShellRequests = () => {
 
 describe("App shell and navigation", () => {
   afterEach(() => {
+    delete document.body.dataset.hydrated;
     cleanup();
     resetAppTestHarness();
   });
@@ -151,5 +158,47 @@ describe("App shell and navigation", () => {
     expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
 
     input.remove();
+  });
+
+  it("shows Connecting… while snapshots have not loaded and keeps the HUD visible", () => {
+    mockShellRequests("hang");
+
+    render(<App />);
+
+    expect(screen.getByText("Connecting…")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Main content canvas")).toBeInTheDocument();
+  });
+
+  it("surfaces a boot error when terminal snapshots cannot be loaded", async () => {
+    mockShellRequests("fail");
+
+    render(<App />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Agent data is currently unavailable.",
+    );
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+  });
+
+  it("shows the Active Agents sidebar only on Recent Convos", async () => {
+    mockShellRequests();
+
+    render(<App />);
+    await screen.findByRole("navigation", { name: "Primary navigation" });
+    await waitFor(() => expect(document.body.dataset.hydrated).toBe("true"));
+
+    expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
+    expect(document.querySelector(".workspace-shell")).toHaveClass("workspace-shell--full");
+
+    fireEvent.click(screen.getByRole("button", { name: "Recent Convos (5)" }));
+
+    expect(await screen.findByLabelText("Active Agents sidebar")).toBeInTheDocument();
+    expect(document.querySelector(".workspace-shell")).not.toHaveClass("workspace-shell--full");
+
+    fireEvent.click(screen.getByRole("button", { name: "Agent Arsenal (2)" }));
+
+    expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
+    expect(document.querySelector(".workspace-shell")).toHaveClass("workspace-shell--full");
   });
 });

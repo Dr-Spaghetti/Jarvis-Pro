@@ -205,6 +205,9 @@ const RATE_LIMIT_MAX = 30; // requests per window per IP
 const EXPENSIVE_ROUTE_PREFIXES = new Set(["voice", "brain", "skills", "orchestrate"]);
 const rateLimitCounters = new Map<string, { count: number; windowStart: number }>();
 
+const AUTH_FAIL_LIMIT = 20;
+const authFailCounters = new Map<string, { count: number; windowStart: number }>();
+
 const isRateLimited = (ip: string, routePrefix: string): boolean => {
   if (!EXPENSIVE_ROUTE_PREFIXES.has(routePrefix)) return false;
   const now = Date.now();
@@ -216,6 +219,17 @@ const isRateLimited = (ip: string, routePrefix: string): boolean => {
   }
   entry.count += 1;
   return entry.count > RATE_LIMIT_MAX;
+};
+
+const isAuthFailLimited = (ip: string): boolean => {
+  const now = Date.now();
+  const entry = authFailCounters.get(ip);
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    authFailCounters.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > AUTH_FAIL_LIMIT;
 };
 
 // Normalize a single trailing slash before the exempt lookup so that
@@ -501,6 +515,17 @@ export const createApiRequestHandler = ({
         !isAuthExemptPath(requestUrl.pathname) &&
         !isAuthorizedRequest(authToken, request, requestUrl)
       ) {
+        const ip = request.socket.remoteAddress ?? "unknown";
+        if (isAuthFailLimited(ip)) {
+          writeJson(
+            response,
+            429,
+            { error: "Too many failed authentication attempts." },
+            corsOrigin,
+          );
+          logRequest(request.method ?? "?", requestUrl.pathname, 429, startTime);
+          return;
+        }
         writeJson(response, 401, { error: "Authentication required." }, corsOrigin);
         logRequest(request.method ?? "?", requestUrl.pathname, 401, startTime);
         return;

@@ -23,7 +23,7 @@ const mockJarvisHomeFetch = () =>
     }
     if (url.includes("/api/voice/config")) {
       return jsonResponse({
-        wake: { phrases: ["yo jarvis", "heyo jarvis", "jarvis"] },
+        wake: { phrases: ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis"] },
         transcription: {
           configured: true,
           defaultModel: "gpt-4o-mini-transcribe",

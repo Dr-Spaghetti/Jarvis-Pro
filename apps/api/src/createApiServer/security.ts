@@ -29,14 +29,34 @@ const parseHostname = (value: string, withScheme: boolean): string | null => {
   }
 };
 
+const isExtensionOrigin = (origin: string) =>
+  origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://");
+
+const parseExtensionOriginAllowlist = (): Set<string> | null => {
+  const raw = process.env.OCTOGENT_EXTENSION_ORIGINS;
+  if (raw === undefined) {
+    return null;
+  }
+
+  const origins = raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (origins.length === 0) {
+    return null;
+  }
+
+  return new Set(origins);
+};
+
 export const isAllowedOriginHeader = (origin: string | undefined, allowRemoteAccess: boolean) => {
   if (allowRemoteAccess || origin === undefined) {
     return true;
   }
 
-  // Allow browser extension origins (chrome-extension://, moz-extension://)
-  if (origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://")) {
-    return true;
+  if (isExtensionOrigin(origin)) {
+    const allowlist = parseExtensionOriginAllowlist();
+    return allowlist === null || allowlist.has(origin);
   }
 
   const hostname = parseHostname(origin, true);

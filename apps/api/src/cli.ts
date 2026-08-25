@@ -170,6 +170,15 @@ const resolveRuntimeApiBase = () => {
   return `http://127.0.0.1:${readPreferredStartPort()}`;
 };
 
+const localApiHeaders = (headers: Record<string, string> = {}): Record<string, string> => {
+  const nextHeaders = { ...headers };
+  const token = process.env.OCTOGENT_AUTH_TOKEN?.trim();
+  if (token) {
+    nextHeaders.Authorization = `Bearer ${token}`;
+  }
+  return nextHeaders;
+};
+
 const apiError = () => {
   console.error(
     `Error: Could not reach API at ${resolveRuntimeApiBase()}. Start Octogent in this project first.`,
@@ -369,7 +378,7 @@ const tentacleCreate = async () => {
   try {
     const response = await fetch(`${apiBase}/api/deck/tentacles`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: localApiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ name, description, color, octopus }),
     });
     const data = (await response.json()) as Record<string, unknown>;
@@ -387,7 +396,9 @@ const tentacleList = async () => {
   const apiBase = resolveRuntimeApiBase();
 
   try {
-    const response = await fetch(`${apiBase}/api/deck/tentacles`);
+    const response = await fetch(`${apiBase}/api/deck/tentacles`, {
+      headers: localApiHeaders(),
+    });
     if (!response.ok) {
       console.error("Error: failed to fetch tentacles.");
       process.exit(1);
@@ -438,7 +449,7 @@ const terminalCreate = async () => {
   try {
     const response = await fetch(`${apiBase}/api/terminals`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: localApiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     const data = (await response.json()) as Record<string, unknown>;
@@ -457,7 +468,7 @@ const terminalList = async () => {
 
   try {
     const response = await fetch(`${apiBase}/api/terminal-snapshots`, {
-      headers: { Accept: "application/json" },
+      headers: localApiHeaders({ Accept: "application/json" }),
     });
     if (!response.ok) {
       console.error("Error: failed to fetch terminals.");
@@ -500,7 +511,7 @@ const terminalAction = async (action: "stop" | "kill") => {
       `${apiBase}/api/terminals/${encodeURIComponent(terminalId)}/${action}`,
       {
         method: "POST",
-        headers: { Accept: "application/json" },
+        headers: localApiHeaders({ Accept: "application/json" }),
       },
     );
     const data = (await response.json()) as Record<string, unknown>;
@@ -520,7 +531,7 @@ const terminalPrune = async () => {
   try {
     const response = await fetch(`${apiBase}/api/terminals/prune`, {
       method: "POST",
-      headers: { Accept: "application/json" },
+      headers: localApiHeaders({ Accept: "application/json" }),
     });
     const data = (await response.json()) as { prunedTerminalIds?: string[]; error?: unknown };
     if (!response.ok) {
@@ -575,7 +586,7 @@ const channelSend = async () => {
       `${apiBase}/api/channels/${encodeURIComponent(terminalId)}/messages`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: localApiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ fromTerminalId, content: message }),
       },
     );
@@ -601,6 +612,9 @@ const channelList = async () => {
   try {
     const response = await fetch(
       `${apiBase}/api/channels/${encodeURIComponent(terminalId)}/messages`,
+      {
+        headers: localApiHeaders(),
+      },
     );
     const data = (await response.json()) as Record<string, unknown>;
     if (!response.ok) {
@@ -771,6 +785,8 @@ const skillsDoctor = async () => {
 };
 
 const main = async () => {
+  loadEnvFile(process.cwd());
+
   if (!command || command === "start") {
     return startServer();
   }

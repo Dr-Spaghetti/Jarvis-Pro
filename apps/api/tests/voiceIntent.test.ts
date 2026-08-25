@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { resolveJarvisVoiceIntent } from "../src/voiceIntent";
+import { getJarvisWakePhrases, resolveJarvisVoiceIntent } from "../src/voiceIntent";
+
+describe("getJarvisWakePhrases", () => {
+  it("does not treat a bare jarvis as a wake phrase", () => {
+    expect(getJarvisWakePhrases()).toEqual([
+      "yo jarvis",
+      "heyo jarvis",
+      "hey jarvis",
+      "okay jarvis",
+    ]);
+  });
+});
 
 describe("resolveJarvisVoiceIntent", () => {
   it("routes a conversational question to the Ask-Jarvis brain", () => {
@@ -20,36 +31,36 @@ describe("resolveJarvisVoiceIntent", () => {
   });
 
   it("treats leftover non-command speech as a question by default", () => {
-    const { intent } = resolveJarvisVoiceIntent("jarvis remind me about the proposal later");
+    const { intent } = resolveJarvisVoiceIntent("hey jarvis remind me about the proposal later");
     expect(intent.type).toBe("ask");
   });
 
   it("still routes explicit brain search commands", () => {
-    const { intent } = resolveJarvisVoiceIntent("jarvis search my brain for pricing");
+    const { intent } = resolveJarvisVoiceIntent("hey jarvis search my brain for pricing");
     expect(intent).toEqual({ type: "brain-search", query: "pricing" });
   });
 
   it("still routes navigation commands", () => {
-    expect(resolveJarvisVoiceIntent("jarvis open settings").intent).toEqual({
+    expect(resolveJarvisVoiceIntent("hey jarvis open settings").intent).toEqual({
       type: "navigate",
       target: "settings",
     });
-    expect(resolveJarvisVoiceIntent("jarvis go home").intent).toEqual({
+    expect(resolveJarvisVoiceIntent("hey jarvis go home").intent).toEqual({
       type: "navigate",
       target: "jarvis",
     });
-    expect(resolveJarvisVoiceIntent("jarvis open workflows").intent).toEqual({
+    expect(resolveJarvisVoiceIntent("hey jarvis open workflows").intent).toEqual({
       type: "navigate",
       target: "workflows",
     });
-    expect(resolveJarvisVoiceIntent("jarvis open the analyzer").intent).toEqual({
+    expect(resolveJarvisVoiceIntent("hey jarvis open the analyzer").intent).toEqual({
       type: "navigate",
       target: "analyzer",
     });
   });
 
   it("still routes agent creation commands", () => {
-    const { intent } = resolveJarvisVoiceIntent("jarvis start a new agent");
+    const { intent } = resolveJarvisVoiceIntent("hey jarvis start a new agent");
     expect(intent.type).toBe("create-terminal");
   });
 
@@ -59,23 +70,23 @@ describe("resolveJarvisVoiceIntent", () => {
   });
 
   it("returns unknown with empty text when only the wake word is heard", () => {
-    const { intent } = resolveJarvisVoiceIntent("jarvis");
+    const { intent } = resolveJarvisVoiceIntent("hey jarvis");
     expect(intent).toEqual({ type: "unknown", text: "" });
   });
 
   describe("remember (teach/correct) intent", () => {
     it("routes 'always …' to remember", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis always answer in one sentence");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis always answer in one sentence");
       expect(intent).toEqual({ type: "remember", text: "answer in one sentence" });
     });
 
     it("routes 'from now on …' to remember", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis from now on call me boss");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis from now on call me boss");
       expect(intent).toEqual({ type: "remember", text: "call me boss" });
     });
 
     it("routes 'remember that …' to remember (not capture)", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis remember that I prefer email only");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis remember that I prefer email only");
       expect(intent.type).toBe("remember");
       if (intent.type === "remember") {
         expect(intent.text).toBe("i prefer email only");
@@ -83,29 +94,33 @@ describe("resolveJarvisVoiceIntent", () => {
     });
 
     it("keeps 'remember this …' as a quick capture, not a durable rule", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis remember this invoice park place");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis remember this invoice park place");
       expect(intent.type).toBe("brain-capture");
     });
 
     it("routes 'correction …' to remember", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis correction the venue contact is rachel");
+      const { intent } = resolveJarvisVoiceIntent(
+        "hey jarvis correction the venue contact is rachel",
+      );
       expect(intent).toEqual({ type: "remember", text: "the venue contact is rachel" });
     });
   });
 
   describe("run-skill intent", () => {
     it("routes explicit 'run skill [name]' to run-skill", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis run skill daily brief");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis run skill daily brief");
       expect(intent).toEqual({ type: "run-skill", skillName: "daily brief" });
     });
 
     it("routes 'execute skill [name]' to run-skill", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis execute skill review repair outreach");
+      const { intent } = resolveJarvisVoiceIntent(
+        "hey jarvis execute skill review repair outreach",
+      );
       expect(intent).toEqual({ type: "run-skill", skillName: "review repair outreach" });
     });
 
     it("routes implicit 'run [name]' to run-skill when name is not a nav target", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis run morning report");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis run morning report");
       expect(intent.type).toBe("run-skill");
       if (intent.type === "run-skill") {
         expect(intent.skillName).toBe("morning report");
@@ -113,12 +128,12 @@ describe("resolveJarvisVoiceIntent", () => {
     });
 
     it("does not treat 'run new agent' as run-skill (terminal guard)", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis run new agent");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis run new agent");
       expect(intent.type).toBe("create-terminal");
     });
 
     it("does not treat 'run deck' as run-skill (nav word guard)", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis run deck");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis run deck");
       expect(intent.type).toBe("navigate");
     });
 
@@ -128,12 +143,12 @@ describe("resolveJarvisVoiceIntent", () => {
     });
 
     it("does not treat 'run the skill' (no name) as run-skill", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis run the skill");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis run the skill");
       expect(intent.type).not.toBe("run-skill");
     });
 
     it("does not treat 'run skills' as run-skill", () => {
-      const { intent } = resolveJarvisVoiceIntent("jarvis run skills");
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis run skills");
       expect(intent.type).not.toBe("run-skill");
     });
   });

@@ -13,6 +13,7 @@ vi.mock("node-pty", () => ({
 }));
 
 import { createApiServer } from "../src/createApiServer";
+import { isAllowedOriginHeader } from "../src/createApiServer/security";
 import type { GitHubRepoSummarySnapshot } from "../src/githubRepoSummary";
 import { MAX_CHILDREN_PER_PARENT } from "../src/terminalRuntime";
 import type { GitClient } from "../src/terminalRuntime";
@@ -828,7 +829,7 @@ describe("createApiServer", () => {
       await expect(response.json()).resolves.toEqual({
         wake: {
           provider: "browser-speech-recognition",
-          phrases: ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis", "jarvis"],
+          phrases: ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis"],
         },
         transcription: {
           provider: "openai",
@@ -1344,6 +1345,64 @@ describe("createApiServer", () => {
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it("allows chrome-extension origins on loopback by default", async () => {
+    const baseUrl = await startServer();
+    const origin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
+
+    const response = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Origin: origin,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+  });
+
+  it("restricts extension origins to OCTOGENT_EXTENSION_ORIGINS when set", async () => {
+    const allowed = "chrome-extension://allowedidallowedidallowedidallow";
+    const blocked = "chrome-extension://blockedidblockedidblockedidblock";
+    vi.stubEnv("OCTOGENT_EXTENSION_ORIGINS", `${allowed}, moz-extension://firefox-id`);
+    const baseUrl = await startServer();
+
+    try {
+      const allowedResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Origin: allowed,
+        },
+      });
+      expect(allowedResponse.status).toBe(200);
+      expect(allowedResponse.headers.get("access-control-allow-origin")).toBe(allowed);
+
+      const blockedResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Origin: blocked,
+        },
+      });
+      expect(blockedResponse.status).toBe(403);
+
+      const loopbackResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Origin: "http://127.0.0.1:5173",
+        },
+      });
+      expect(loopbackResponse.status).toBe(200);
+      expect(loopbackResponse.headers.get("access-control-allow-origin")).toBe(
+        "http://127.0.0.1:5173",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("rejects websocket upgrades from non-local origins", async () => {
@@ -3931,6 +3990,53 @@ describe("createApiServer", () => {
     await expect(listResponse.json()).resolves.toEqual([]);
   });
 
+  it("removes worktree metadata when pruning a stopped worktree terminal", async () => {
+    const workspaceCwd = mkdtempSync(join(tmpdir(), "octogent-api-test-"));
+    temporaryDirectories.push(workspaceCwd);
+    const gitClient = new FakeGitClient();
+    const baseUrl = await startServer({
+      workspaceCwd,
+      gitClient,
+    });
+
+    const createResponse = await fetch(`${baseUrl}/api/terminals`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        workspaceMode: "worktree",
+      }),
+    });
+    expect(createResponse.status).toBe(201);
+
+    const expectedWorktreePath = join(workspaceCwd, ".octogent", "worktrees", "terminal-1");
+    expect(gitClient.getWorktree(expectedWorktreePath)).toEqual(
+      expect.objectContaining({
+        cwd: workspaceCwd,
+        branchName: "octogent/terminal-1",
+      }),
+    );
+
+    const stopResponse = await fetch(`${baseUrl}/api/terminals/terminal-1/stop`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(stopResponse.status).toBe(200);
+
+    const pruneResponse = await fetch(`${baseUrl}/api/terminals/prune`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(pruneResponse.status).toBe(200);
+    await expect(pruneResponse.json()).resolves.toEqual({
+      prunedTerminalIds: ["terminal-1"],
+    });
+    expect(gitClient.getWorktree(expectedWorktreePath)).toBeNull();
+    expect(gitClient.hasBranch("octogent/terminal-1")).toBe(false);
+  });
+
   // ---------------------------------------------------------------------------
   // Deck — opened / pinned routes
   // ---------------------------------------------------------------------------
@@ -4299,5 +4405,30 @@ describe("createApiServer", () => {
     });
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({ error: expect.any(String) });
+  });
+});
+
+describe("isAllowedOriginHeader", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("allows any chrome-extension and moz-extension origin when the allowlist is empty", () => {
+    expect(isAllowedOriginHeader("chrome-extension://abc", false)).toBe(true);
+    expect(isAllowedOriginHeader("moz-extension://xyz", false)).toBe(true);
+    expect(isAllowedOriginHeader("http://localhost:5173", false)).toBe(true);
+  });
+
+  it("allows only listed extension origins when OCTOGENT_EXTENSION_ORIGINS is set", () => {
+    vi.stubEnv(
+      "OCTOGENT_EXTENSION_ORIGINS",
+      "chrome-extension://allowed, moz-extension://firefox-id",
+    );
+
+    expect(isAllowedOriginHeader("chrome-extension://allowed", false)).toBe(true);
+    expect(isAllowedOriginHeader("moz-extension://firefox-id", false)).toBe(true);
+    expect(isAllowedOriginHeader("chrome-extension://other", false)).toBe(false);
+    expect(isAllowedOriginHeader("http://127.0.0.1:5173", false)).toBe(true);
+    expect(isAllowedOriginHeader("https://attacker.example", false)).toBe(false);
   });
 });

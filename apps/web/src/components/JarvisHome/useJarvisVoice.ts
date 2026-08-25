@@ -1007,7 +1007,12 @@ export const useJarvisVoice = ({
     }
     setVoiceError(null);
     const recognition = new Recognition();
-    const phrases = voiceConfig?.wake.phrases ?? ["jarvis", "yo jarvis", "heyo jarvis"];
+    const phrases = voiceConfig?.wake.phrases ?? [
+      "yo jarvis",
+      "heyo jarvis",
+      "hey jarvis",
+      "okay jarvis",
+    ];
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = "en-US";

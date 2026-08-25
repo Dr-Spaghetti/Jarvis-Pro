@@ -35,6 +35,7 @@ import { RuntimeStatusStrip } from "./components/RuntimeStatusStrip";
 import { ShellCanvas } from "./components/ShellCanvas";
 import { SidebarActionPanel } from "./components/SidebarActionPanel";
 import { TelemetryTape } from "./components/TelemetryTape";
+import { PanelState } from "./components/ui/PanelState";
 import { ShortcutsOverlay } from "./components/ui/ShortcutsOverlay";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { HttpTerminalSnapshotReader } from "./runtime/HttpTerminalSnapshotReader";
@@ -503,26 +504,26 @@ const AppContent = () => {
       )}
 
       <section className="console-main-canvas" aria-label="Main content canvas">
+        {loadError ? (
+          <div role="alert">
+            <PanelState state="error" message={loadError} />
+          </div>
+        ) : isLoading && terminals.length === 0 ? (
+          <PanelState state="loading" message="Connecting…" />
+        ) : null}
         <div
-          className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 5 && activePrimaryNav !== 7 && activePrimaryNav !== 9 ? "" : " workspace-shell--full"}`}
+          className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav === 4 ? "" : " workspace-shell--full"}`}
         >
-          {isAgentsSidebarVisible &&
-            activePrimaryNav !== 1 &&
-            activePrimaryNav !== 3 &&
-            activePrimaryNav !== 5 &&
-            activePrimaryNav !== 7 &&
-            activePrimaryNav !== 9 && (
-              <ActiveAgentsSidebar
-                sidebarWidth={sidebarWidth}
-                onSidebarWidthChange={(width) => {
-                  setSidebarWidth(clampSidebarWidth(width));
-                }}
-                actionPanel={sidebarActionPanel}
-                bodyContent={
-                  activePrimaryNav === 4 ? (conversationsSidebarContent ?? undefined) : undefined
-                }
-              />
-            )}
+          {isAgentsSidebarVisible && activePrimaryNav === 4 && (
+            <ActiveAgentsSidebar
+              sidebarWidth={sidebarWidth}
+              onSidebarWidthChange={(width) => {
+                setSidebarWidth(clampSidebarWidth(width));
+              }}
+              actionPanel={sidebarActionPanel}
+              bodyContent={conversationsSidebarContent ?? undefined}
+            />
+          )}
 
           <PrimaryViewRouter
             activePrimaryNav={activePrimaryNav}

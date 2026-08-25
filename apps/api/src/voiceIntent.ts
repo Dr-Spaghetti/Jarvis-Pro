@@ -32,7 +32,7 @@ export type JarvisVoiceIntentResolution = {
   intent: JarvisVoiceIntent;
 };
 
-const WAKE_PHRASES = ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis", "jarvis"];
+const WAKE_PHRASES = ["yo jarvis", "heyo jarvis", "hey jarvis", "okay jarvis"];
 
 export const getJarvisWakePhrases = (): string[] => [...WAKE_PHRASES];
 
