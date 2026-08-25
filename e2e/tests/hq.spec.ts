@@ -13,6 +13,8 @@ test.describe("Jarvis HQ", () => {
     await expect(page.locator(".nc-hq-console")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByLabel("Today")).toBeVisible();
     await expect(page.getByRole("form", { name: "Capture" })).toBeVisible();
+    await expect(page.getByLabel("Mail")).toBeVisible();
+    await expect(page.getByLabel("Agenda")).toBeVisible();
   });
 
   test("chat input is present and accepts text", async ({ page }) => {

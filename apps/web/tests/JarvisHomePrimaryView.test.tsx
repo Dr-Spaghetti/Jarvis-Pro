@@ -51,6 +51,13 @@ const mockJarvisHomeFetch = () =>
     if (url.includes("/api/brief/config")) {
       return jsonResponse({ enabled: false, time: "08:00", lastBriefDate: null });
     }
+    if (url.includes("/api/today")) {
+      return jsonResponse({
+        mail: { status: "ok", items: [], unread: 0 },
+        agenda: { status: "ok", items: [] },
+        approvals: [],
+      });
+    }
     return jsonResponse({});
   });
 

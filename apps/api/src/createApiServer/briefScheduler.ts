@@ -160,6 +160,22 @@ export const renderBriefMarkdown = (digest: BrainDigest, generatedAt: string): s
   return lines.join("\n");
 };
 
+export const appendLiveBriefSections = (
+  markdown: string,
+  live: { mail: string[]; agenda: string[] },
+): string => {
+  const extra: string[] = [];
+  extra.push("## Mail");
+  extra.push("");
+  extra.push(formatList(live.mail, "No recent inbox items."));
+  extra.push("");
+  extra.push("## Calendar");
+  extra.push("");
+  extra.push(formatList(live.agenda, "Nothing on the calendar."));
+  extra.push("");
+  return `${markdown}${extra.join("\n")}`;
+};
+
 export type BriefRunResult =
   | { written: true; date: string; notePath: string }
   | { written: false; reason: "not-due" | "no-vault" | "already-exists" };

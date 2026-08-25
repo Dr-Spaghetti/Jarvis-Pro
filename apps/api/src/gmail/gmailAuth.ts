@@ -2,10 +2,11 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const GMAIL_SCOPES = [
+export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.modify",
+  "https://www.googleapis.com/auth/calendar.events",
 ].join(" ");
 
 const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -27,7 +28,7 @@ export const buildGmailAuthUrl = (clientId: string, redirectUri: string, state: 
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: GMAIL_SCOPES,
+    scope: GOOGLE_SCOPES,
     access_type: "offline",
     prompt: "consent",
     state,
@@ -101,6 +102,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
       body: body.toString(),
     });
     if (!response.ok) {
+      console.warn(`[gmail] token refresh failed (${response.status})`);
       return null;
     }
     const data = (await response.json()) as Record<string, unknown>;

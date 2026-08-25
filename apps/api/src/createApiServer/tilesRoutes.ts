@@ -62,7 +62,7 @@ const gmailTile = async (): Promise<HomeTile> => {
       title: "Gmail unread",
       status: "error",
       value: null,
-      detail: "Could not reach Gmail. Try reconnecting in Settings.",
+      detail: "Gmail token failed. Reconnect Gmail in Settings.",
     };
   }
   return { id: "gmail-unread", title: "Gmail unread", status: "ok", value: result.unread };

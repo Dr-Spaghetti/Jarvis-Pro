@@ -13,7 +13,9 @@ This is the living coverage map for E2E tests. Update it whenever a new tab, fea
 │   ★ Conversation panel visible
 │   ★ Chat input present and accepts text
 │   ★ Today panel visible (capture + open tasks)
+│   ★ Mail and agenda blocks render (or honest not-configured copy)
 │   - Capture note/remember/task confirms the vault path
+│   - Draft/Archive queues an approval instead of sending immediately
 │   - Send message → streaming response appears
 │   - Agent status updates during processing
 │   - New session clears history

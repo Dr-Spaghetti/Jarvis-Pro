@@ -17,6 +17,7 @@ import {
   appendConversationTurn,
   readConversationTurns,
 } from "./conversation";
+import { formatLifeContext } from "../../gmail/googleWorkspace";
 import { readMemorySections, selectMemorySlice } from "./memory";
 import { proposeMemoryFromQuestion } from "./proposeMemory";
 import { lexicalSearchNotes, loadSemanticIndex } from "./search";
@@ -715,6 +716,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   const history = vaultDir ? readConversationTurns(vaultDir, 10) : [];
   const sources = notes.map((note) => ({ title: note.title, path: note.rel }));
   const proposedMemories = proposeMemoryFromQuestion(question);
+  const lifeContext = await Promise.race([
+    formatLifeContext(question),
+    new Promise<string>((resolve) => {
+      setTimeout(() => resolve(""), 2500);
+    }),
+  ]);
 
   const memoryBlock = facts.length > 0 ? facts.map((f) => `- ${f}`).join("\n") : "(none)";
   const contextBlock =
@@ -722,7 +729,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
       ? notes.map((n) => `### ${n.title} (${n.rel})\n${n.body}`).join("\n\n")
       : "(no matching notes)";
 
-  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}`;
+  const claudeContext = `My saved memories:\n${memoryBlock}\n\nRelevant vault notes:\n${contextBlock}${lifeContext ? `\n\nLIVE MAIL/CALENDAR:\n${lifeContext}` : ""}`;
 
   // Unique ID for this Q&A pair — used to group turns and attribute learnings
   const sessionId = randomUUID();
@@ -973,7 +980,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     history.length > 0
       ? history.map((t) => `You: ${t.question}\nJarvis: ${t.answer}`).join("\n\n")
       : "(none)";
-  const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}${recallBlock}\n\nQUESTION: ${question}`;
+  const prompt = `RECENT CONVERSATION:\n${historyBlock}\n\nMEMORY:\n${memoryBlock}\n\nCONTEXT:\n${contextBlock}${lifeContext ? `\n\nLIVE MAIL/CALENDAR:\n${lifeContext}` : ""}${recallBlock}\n\nQUESTION: ${question}`;
   const ollamaAnswer = await chatViaOllama(prompt, {
     system: ASK_SYSTEM_PROMPT,
     signal: AbortSignal.timeout(60000),

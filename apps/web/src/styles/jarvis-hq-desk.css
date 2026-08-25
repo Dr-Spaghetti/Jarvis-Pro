@@ -355,6 +355,74 @@
   border-radius: 2px;
 }
 
+.jarvis-today-mail,
+.jarvis-today-agenda,
+.jarvis-today-approvals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jarvis-today-mail-item,
+.jarvis-today-approval,
+.jarvis-today-agenda li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.jarvis-today-mail-from,
+.jarvis-today-event-when {
+  color: rgba(200, 255, 200, 0.55);
+  font-size: 11px;
+}
+
+.jarvis-today-mail-item[data-unread="true"] .jarvis-today-mail-subject {
+  color: #39ff14;
+}
+
+.jarvis-today-mail-actions,
+.jarvis-today-approval-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.jarvis-today-mail-actions button,
+.jarvis-today-approval-actions button {
+  background: transparent;
+  border: 1px solid rgba(57, 255, 20, 0.28);
+  color: rgba(57, 255, 20, 0.85);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.jarvis-today-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.jarvis-today-reply textarea {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  color: #d8ffd0;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
 /* Nav: readable labels, less costume tracking */
 .console-primary-nav-wordmark {
   font-size: 1.05rem;

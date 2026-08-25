@@ -662,6 +662,32 @@ export const buildGmailAuthUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/auth");
 };
 
+export const buildTodayUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  runtimeBaseUrl ? buildAbsoluteUrl(runtimeBaseUrl, "/api/today") : "/api/today";
+
+export const buildGmailInboxUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  runtimeBaseUrl ? buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/inbox") : "/api/gmail/inbox";
+
+export const buildGmailReplyUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  runtimeBaseUrl ? buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/reply") : "/api/gmail/reply";
+
+export const buildGmailArchiveUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  runtimeBaseUrl ? buildAbsoluteUrl(runtimeBaseUrl, "/api/gmail/archive") : "/api/gmail/archive";
+
+export const buildCalendarAgendaUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
+  runtimeBaseUrl
+    ? buildAbsoluteUrl(runtimeBaseUrl, "/api/calendar/agenda")
+    : "/api/calendar/agenda";
+
+export const buildApprovalActionUrl = (
+  id: string,
+  action: "approve" | "dismiss",
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/approvals/${encodeURIComponent(id)}/${action}`;
+  return runtimeBaseUrl ? buildAbsoluteUrl(runtimeBaseUrl, path) : path;
+};
+
 export const buildEmailIngestStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) return "/api/email-ingest/status";
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/email-ingest/status");

@@ -56,12 +56,13 @@ describe("buildGmailAuthUrl", () => {
     expect(url.searchParams.get("state")).toBe("state-abc");
   });
 
-  it("requests gmail read, send and modify scopes", () => {
+  it("requests gmail read, send, modify, and calendar scopes", () => {
     const url = new URL(buildGmailAuthUrl("c", "http://localhost/callback", "s"));
     const scope = url.searchParams.get("scope") ?? "";
     expect(scope).toContain("gmail.readonly");
     expect(scope).toContain("gmail.send");
     expect(scope).toContain("gmail.modify");
+    expect(scope).toContain("calendar.events");
   });
 });
 

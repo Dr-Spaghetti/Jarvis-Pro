@@ -44,6 +44,13 @@ describe("JarvisTodayPanel", () => {
       if (url.endsWith("/api/tiles")) {
         return jsonResponse({ tiles: [], generatedAt: "2026-08-25T12:00:00.000Z" });
       }
+      if (url.endsWith("/api/today")) {
+        return jsonResponse({
+          mail: { status: "ok", items: [], unread: 0 },
+          agenda: { status: "ok", items: [] },
+          approvals: [],
+        });
+      }
       if (url.endsWith("/api/brain/capture") && method === "POST") {
         return jsonResponse({ ok: true, kind: "note", path: "Inbox/Quick Capture.md" }, 201);
       }

@@ -8,7 +8,7 @@ The runtime underneath is [Octogent](https://github.com/hesamsheikh/octogent) (P
 
 | Tab | What it does |
 |-----|----------------|
-| **Jarvis HQ** | Ask Jarvis (text + optional voice) plus a Today stack: capture notes/tasks/memory, open vault tasks, and live tiles. |
+| **Jarvis HQ** | Ask Jarvis (text + optional voice) plus Today: capture, vault tasks, mail, calendar, and approval-gated sends. |
 | **Agent Arsenal** | Deploy a real Claude Code session. “Brainstorm” is an in-API loop — it does **not** spawn a terminal. |
 | **Surveillance** | Live view of running terminals. |
 | **Workflows** | Multi-step Ask Jarvis checklists, not Zapier. |

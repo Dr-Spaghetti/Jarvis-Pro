@@ -64,7 +64,15 @@ export const computeJarvisHealth = (projectStateDir?: string): { items: HealthIt
       status: gmail.connected ? "ok" : "not-configured",
       detail: gmail.connected
         ? `Connected as ${gmail.email}`
-        : "Connect Gmail in Settings to enable mail tiles.",
+        : "Connect Gmail in Settings to enable mail.",
+    },
+    {
+      id: "calendar",
+      title: "Calendar",
+      status: gmail.connected ? "ok" : "not-configured",
+      detail: gmail.connected
+        ? "Uses the Gmail connection. Reconnect Gmail if agenda asks for access."
+        : "Connect Gmail in Settings to enable calendar.",
     },
     {
       id: "email-ingest",

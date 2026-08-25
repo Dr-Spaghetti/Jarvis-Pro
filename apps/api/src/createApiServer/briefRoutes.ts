@@ -1,7 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { listAgenda, listInbox } from "../gmail/googleWorkspace";
 import { computeBrainDigest, resolveVaultDir } from "./brainRoutes";
 import {
+  appendLiveBriefSections,
   parseBriefConfigPatch,
   readBriefConfig,
   renderBriefMarkdown,
@@ -37,7 +39,16 @@ export const handleBriefRunRoute: ApiRouteHandler = async (
   const notePath = join(vaultDir, noteRel);
 
   const digest = computeBrainDigest();
-  const markdown = renderBriefMarkdown(digest, now.toISOString());
+  let markdown = renderBriefMarkdown(digest, now.toISOString());
+  try {
+    const [mail, agenda] = await Promise.all([listInbox(8), listAgenda(8)]);
+    markdown = appendLiveBriefSections(markdown, {
+      mail: mail.items.map((item) => `${item.from} — ${item.subject}`),
+      agenda: agenda.items.map((item) => `${item.start} ${item.title}`),
+    });
+  } catch {
+    /* brief still writes vault digest if live sources fail */
+  }
   try {
     mkdirSync(dirname(notePath), { recursive: true });
     writeFileSync(notePath, markdown, "utf8");

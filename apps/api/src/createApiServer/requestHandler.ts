@@ -23,6 +23,7 @@ import {
   handleAnalyzerListRoute,
   handleAnalyzerVideoRoute,
 } from "./analyzerRoutes";
+import { handleApprovalItemRoute, handleApprovalsCollectionRoute } from "./approvalRoutes";
 import { handleArsenalDeployRoute, handleArsenalListRoute } from "./arsenalRoutes";
 import { handleAuthStatusRoute, handleAuthVerifyRoute } from "./authRoutes";
 import {
@@ -89,6 +90,14 @@ import {
   handleGmailStatusRoute,
 } from "./gmailRoutes";
 import { handleJarvisConversationTurnRoute } from "./jarvisConversationRoute";
+import {
+  handleCalendarAgendaRoute,
+  handleCalendarProposeRoute,
+  handleGmailArchiveRoute,
+  handleGmailInboxRoute,
+  handleGmailReplyRoute,
+  handleTodayRoute,
+} from "./lifeRoutes";
 import {
   handleChannelMessagesRoute,
   handleHookRoute,
@@ -375,7 +384,20 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ],
   ["tentacles", [handleTentacleGitRoute, handleTentacleGitPullRequestRoute]],
   ["code-intel", [handleCodeIntelEventsRoute]],
-  ["gmail", [handleGmailStatusRoute, handleGmailAuthRoute, handleGmailCallbackRoute]],
+  [
+    "gmail",
+    [
+      handleGmailInboxRoute,
+      handleGmailReplyRoute,
+      handleGmailArchiveRoute,
+      handleGmailStatusRoute,
+      handleGmailAuthRoute,
+      handleGmailCallbackRoute,
+    ],
+  ],
+  ["calendar", [handleCalendarAgendaRoute, handleCalendarProposeRoute]],
+  ["approvals", [handleApprovalItemRoute, handleApprovalsCollectionRoute]],
+  ["today", [handleTodayRoute]],
   ["agent-loop", [handleAgentLoopRoute]],
   ["email-ingest", [handleEmailIngestStatusRoute, handleEmailIngestSettingsRoute]],
   [
