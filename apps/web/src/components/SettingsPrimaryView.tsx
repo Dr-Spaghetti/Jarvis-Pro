@@ -26,6 +26,7 @@ type EmailIngestStatus = {
   processedCount: number;
   lastReceivedAt: string | null;
   lastErrors: string[];
+  inbox?: string | null;
 };
 
 const EmailInboxPanel = () => {
@@ -79,8 +80,17 @@ const EmailInboxPanel = () => {
       <header className="settings-panel-header">
         <h2>Email Inbox</h2>
         <p>
-          Email links or images to <code>niggims@agentmail.to</code> from your phone — Jarvis
-          analyzes them and drops results in the Content Analyzer tab instantly via WebSocket.
+          {status?.inbox ? (
+            <>
+              Email links to <code>{status.inbox}</code> from your phone — Jarvis analyzes them and
+              drops results in the Content Analyzer tab.
+            </>
+          ) : (
+            <>
+              Set <code>AGENTMAIL_INBOX</code> in <code>.env</code> to receive links from your phone
+              into the Content Analyzer tab.
+            </>
+          )}
         </p>
       </header>
 
@@ -255,9 +265,9 @@ export const SettingsPrimaryView = ({
             </header>
             <div className="settings-toggle-grid">
               <SettingsToggle
-                label="X Monitor"
-                description="Auto-fetch X feed and show monitor tab"
-                ariaLabel="Enable X Monitor"
+                label="Agent surveillance"
+                description="Surveillance room and bottom ticker. Does not by itself enable X/Twitter."
+                ariaLabel="Enable agent surveillance"
                 checked={isMonitorVisible}
                 onChange={onMonitorVisibilityChange}
               />

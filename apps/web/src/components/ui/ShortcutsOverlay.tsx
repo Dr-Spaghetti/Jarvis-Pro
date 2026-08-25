@@ -72,9 +72,9 @@ export const ShortcutsOverlay = ({ onClose }: ShortcutsOverlayProps) => {
         </header>
 
         <ul className="shortcuts-overlay-list">
-          {PRIMARY_NAV_ITEMS.map((item) => (
+          {PRIMARY_NAV_ITEMS.map((item, position) => (
             <li key={item.index} className="shortcuts-overlay-row">
-              <kbd className="shortcuts-overlay-key">{item.index}</kbd>
+              <kbd className="shortcuts-overlay-key">{position < 9 ? position + 1 : "click"}</kbd>
               <span className="shortcuts-overlay-desc">Go to {item.label}</span>
             </li>
           ))}

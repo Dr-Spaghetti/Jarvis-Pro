@@ -515,18 +515,25 @@ describe("createApiServer", () => {
       expect(wrongResponse.status).toBe(401);
     });
 
-    it("accepts the token via Authorization header and via ?token= query parameter", async () => {
+    it("accepts the token via Authorization header", async () => {
       const baseUrl = await startServer({ authToken: "test-secret-token" });
 
       const headerResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {
         headers: { Authorization: "Bearer test-secret-token" },
       });
       expect(headerResponse.status).toBe(200);
+    });
 
-      const queryResponse = await fetch(
+    it("rejects ?token= on ordinary API routes and accepts it on download paths", async () => {
+      const baseUrl = await startServer({ authToken: "test-secret-token" });
+
+      const snapshotsQuery = await fetch(
         `${baseUrl}/api/terminal-snapshots?token=test-secret-token`,
       );
-      expect(queryResponse.status).toBe(200);
+      expect(snapshotsQuery.status).toBe(401);
+
+      const exportQuery = await fetch(`${baseUrl}/api/settings/export?token=test-secret-token`);
+      expect(exportQuery.status).toBe(200);
     });
 
     it("keeps /api/auth/status public so the UI can discover the auth requirement", async () => {

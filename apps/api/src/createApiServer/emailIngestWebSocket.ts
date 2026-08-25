@@ -13,8 +13,8 @@ export const createEmailIngestWebSocket = (projectStateDir: string) => {
     if (stopped) return;
 
     const apiKey = process.env.AGENTMAIL_API_KEY;
-    const inboxId = process.env.AGENTMAIL_INBOX ?? "niggims@agentmail.to";
-    if (!apiKey) return;
+    const inboxId = process.env.AGENTMAIL_INBOX?.trim();
+    if (!apiKey || !inboxId) return;
 
     ws = new WebSocket(`${WS_URL}?api_key=${encodeURIComponent(apiKey)}`);
 

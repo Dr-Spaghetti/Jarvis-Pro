@@ -106,7 +106,7 @@ describe("App GitHub runtime views", () => {
     const { container } = render(<App />);
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Content Analyzer (5)",
+        name: "Content Analyzer (6)",
       }),
     );
 

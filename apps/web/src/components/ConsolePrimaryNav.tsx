@@ -46,28 +46,31 @@ export const ConsolePrimaryNav = ({
         <div className="console-primary-nav-version">V 5.0 · ULTRA</div>
       </div>
       <div className="console-primary-nav-tabs">
-        {PRIMARY_NAV_ITEMS.map((item) => (
-          <button
-            aria-current={item.index === activePrimaryNav ? "page" : undefined}
-            aria-label={`${item.label} (${item.index})`}
-            className="console-primary-nav-tab"
-            data-active={item.index === activePrimaryNav ? "true" : "false"}
-            key={item.index}
-            onClick={() => {
-              onPrimaryNavChange(item.index);
-            }}
-            title={`${item.label} — press ${item.index}`}
-            type="button"
-          >
-            <span className="console-primary-nav-tab-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span className="console-primary-nav-tab-label">{item.label}</span>
-            {item.index === RECENT_CONVOS_INDEX && hasNewTurn && (
-              <span className="console-primary-nav-badge" aria-label="New conversation" />
-            )}
-          </button>
-        ))}
+        {PRIMARY_NAV_ITEMS.map((item, position) => {
+          const shortcut = position < 9 ? String(position + 1) : null;
+          return (
+            <button
+              aria-current={item.index === activePrimaryNav ? "page" : undefined}
+              aria-label={shortcut ? `${item.label} (${shortcut})` : item.label}
+              className="console-primary-nav-tab"
+              data-active={item.index === activePrimaryNav ? "true" : "false"}
+              key={item.index}
+              onClick={() => {
+                onPrimaryNavChange(item.index);
+              }}
+              title={shortcut ? `${item.label} — press ${shortcut}` : item.label}
+              type="button"
+            >
+              <span className="console-primary-nav-tab-icon" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="console-primary-nav-tab-label">{item.label}</span>
+              {item.index === RECENT_CONVOS_INDEX && hasNewTurn && (
+                <span className="console-primary-nav-badge" aria-label="New conversation" />
+              )}
+            </button>
+          );
+        })}
       </div>
       <div className="console-primary-nav-bottom">
         <button

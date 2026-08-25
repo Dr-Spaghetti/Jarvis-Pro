@@ -88,7 +88,25 @@ const extractUrls = (text: string, html: string): string[] => {
 
 // ─── URL analysis ─────────────────────────────────────────────────────────────
 
+const isBlockedFetchUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return true;
+    const host = parsed.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "0.0.0.0") {
+      return true;
+    }
+    if (/^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return true;
+    return false;
+  } catch {
+    return true;
+  }
+};
+
 const fetchUrlMetadata = async (url: string): Promise<{ title: string; description: string }> => {
+  if (isBlockedFetchUrl(url)) {
+    return { title: "", description: "" };
+  }
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; Jarvis/1.0)" },
@@ -110,6 +128,9 @@ const fetchUrlMetadata = async (url: string): Promise<{ title: string; descripti
 };
 
 const analyzeUrl = async (url: string): Promise<UrlResearchResult | null> => {
+  if (isBlockedFetchUrl(url)) {
+    return null;
+  }
   try {
     const [meta, perplexityResult] = await Promise.all([
       fetchUrlMetadata(url),

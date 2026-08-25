@@ -85,17 +85,17 @@ describe("App shell and navigation", () => {
     expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
   });
 
-  it("supports keyboard-first primary navigation with number keys 1-8", async () => {
+  it("supports keyboard-first primary navigation with number keys 1-9", async () => {
     mockShellRequests();
 
     render(<App />);
     await screen.findByRole("navigation", { name: "Primary navigation" });
 
-    fireEvent.keyDown(window, { key: "4" });
+    fireEvent.keyDown(window, { key: "5" });
 
     expect(
       screen.getByRole("button", {
-        name: "Recent Convos (4)",
+        name: "Recent Convos (5)",
       }),
     ).toHaveAttribute("aria-current", "page");
   });
@@ -108,7 +108,7 @@ describe("App shell and navigation", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Settings (7)",
+        name: "Settings (8)",
       }),
     );
 
@@ -119,7 +119,7 @@ describe("App shell and navigation", () => {
     // Navigate to Surfaces section to check visibility toggles.
     fireEvent.click(screen.getByRole("button", { name: "Surfaces" }));
     expect(screen.getByRole("switch", { name: "Show runtime status strip" })).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable X Monitor" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Enable agent surveillance" })).toBeInTheDocument();
   });
 
   it("opens and closes the shortcuts overlay with the ? key", async () => {

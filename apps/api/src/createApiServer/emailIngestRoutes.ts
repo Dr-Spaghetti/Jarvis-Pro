@@ -11,7 +11,15 @@ export const handleEmailIngestStatusRoute: ApiRouteHandler = async (
     writeMethodNotAllowed(response, corsOrigin);
     return true;
   }
-  writeJson(response, 200, readEmailIngestState(projectStateDir), corsOrigin);
+  writeJson(
+    response,
+    200,
+    {
+      ...readEmailIngestState(projectStateDir),
+      inbox: process.env.AGENTMAIL_INBOX?.trim() || null,
+    },
+    corsOrigin,
+  );
   return true;
 };
 
@@ -30,6 +38,14 @@ export const handleEmailIngestSettingsRoute: ApiRouteHandler = async (
   const current = readEmailIngestState(projectStateDir);
   if (typeof patch.enabled === "boolean") current.enabled = patch.enabled;
   writeEmailIngestState(projectStateDir, current);
-  writeJson(response, 200, current, corsOrigin);
+  writeJson(
+    response,
+    200,
+    {
+      ...current,
+      inbox: process.env.AGENTMAIL_INBOX?.trim() || null,
+    },
+    corsOrigin,
+  );
   return true;
 };

@@ -31,7 +31,7 @@ This is the living coverage map for E2E tests. Update it whenever a new tab, fea
 │
 ├── SETTINGS TAB [aria-label*="Settings"]
 │   └── INTEGRATIONS section
-│       ★ "niggims@agentmail.to" visible
+│       ★ Email Inbox heading visible
 │       - Email inbox enable/disable toggle interactive
 │       - Processed email count visible
 │       - Last received time updates
@@ -56,5 +56,5 @@ This is the living coverage map for E2E tests. Update it whenever a new tab, fea
 
 ## Surfaces Not Yet Tested (future)
 
-- Mobile: niggims@agentmail.to → send email → analysis appears (requires AgentMail + live email)
+- Mobile: AgentMail inbox → send email → analysis appears (requires AgentMail + live email)
 - iOS companion app (if built): Xcode MCP test surface

@@ -203,7 +203,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
           ? `${Math.round(result.metrics.finalQuality * 100)}%`
           : "?";
       showToast(
-        `${archetype.name} loop complete — ${iters} iter · ${quality} quality`,
+        `${archetype.name} brainstorm complete — ${iters} iter · ${quality} quality`,
         succeeded ? "ok" : "error",
       );
       setLoopState(null);
@@ -389,7 +389,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
               ) : loopState?.archetypeId === a.id ? (
                 <div className="arsenal-deploy-form">
                   <label htmlFor={`arsenal-loop-${a.id}`} className="arsenal-deploy-label">
-                    Task for agent loop (optional)
+                    Task for API brainstorm (optional)
                   </label>
                   <textarea
                     id={`arsenal-loop-${a.id}`}
@@ -410,7 +410,7 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                       onClick={() => void handleRunLoop()}
                       disabled={loopState.isRunning}
                     >
-                      {loopState.isRunning ? "Running…" : "⟳ Run Loop"}
+                      {loopState.isRunning ? "Running…" : "Run brainstorm"}
                     </button>
                     <button
                       type="button"
@@ -442,9 +442,9 @@ export const AgentArsenalPanel = ({ onDeployed }: AgentArsenalPanelProps) => {
                     disabled={
                       deployState !== null || (loopState !== null && loopState.archetypeId !== a.id)
                     }
-                    title="Run iterative agent loop"
+                    title="API brainstorm — does not spawn a terminal"
                   >
-                    ⟳ Loop
+                    Brainstorm
                   </button>
                 </div>
               )}

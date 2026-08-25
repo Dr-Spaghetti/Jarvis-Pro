@@ -97,13 +97,13 @@ describe("App UI state persistence", () => {
       "aria-checked",
       "false",
     );
-    expect(screen.getByRole("switch", { name: "Enable X Monitor" })).toHaveAttribute(
+    expect(screen.getByRole("switch", { name: "Enable agent surveillance" })).toHaveAttribute(
       "aria-checked",
       "false",
     );
 
     fireEvent.click(screen.getByRole("switch", { name: "Show runtime status strip" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Enable X Monitor" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Enable agent surveillance" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Audio" }));
     fireEvent.click(screen.getByRole("button", { name: /Double beep/i }));

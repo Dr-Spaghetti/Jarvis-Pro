@@ -8,11 +8,11 @@ import {
 } from "../src/app/hotkeys";
 
 describe("hotkeys helpers", () => {
-  it("parses primary nav keys from 1 to 5", () => {
-    expect(parsePrimaryNavKey("1")).toBe(1);
-    expect(parsePrimaryNavKey("2")).toBe(2);
-    expect(parsePrimaryNavKey("3")).toBe(3);
-    expect(parsePrimaryNavKey("5")).toBe(5);
+  it("maps number keys to tab order, not stored nav ids", () => {
+    expect(parsePrimaryNavKey("1")).toBe(9);
+    expect(parsePrimaryNavKey("2")).toBe(1);
+    expect(parsePrimaryNavKey("3")).toBe(2);
+    expect(parsePrimaryNavKey("5")).toBe(4);
   });
 
   it("returns null for unsupported nav keys", () => {

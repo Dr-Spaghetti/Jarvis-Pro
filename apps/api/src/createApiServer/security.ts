@@ -91,6 +91,13 @@ export const isAuthTokenMatch = (candidate: string, expected: string): boolean =
   return timingSafeEqual(candidateBuffer, expectedBuffer);
 };
 
+export const allowsQueryAuthToken = (pathname: string): boolean => {
+  if (pathname.includes("/ws")) return true;
+  if (pathname.includes("/export")) return true;
+  if (pathname.includes("/asset")) return true;
+  return false;
+};
+
 export const extractRequestAuthToken = (
   request: IncomingMessage,
   requestUrl: URL,
@@ -111,9 +118,12 @@ export const extractRequestAuthToken = (
     }
   }
 
-  // <a href> download links cannot use headers; accept ?token= for those only.
-  const queryToken = requestUrl.searchParams.get("token");
-  if (queryToken && queryToken.trim().length > 0) return queryToken.trim();
+  // <a href> downloads and WS fallbacks cannot use headers. Ordinary API
+  // routes must use Authorization so the token does not land in logs/history.
+  if (allowsQueryAuthToken(requestUrl.pathname)) {
+    const queryToken = requestUrl.searchParams.get("token");
+    if (queryToken && queryToken.trim().length > 0) return queryToken.trim();
+  }
 
   return null;
 };

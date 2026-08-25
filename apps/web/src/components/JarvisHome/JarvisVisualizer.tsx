@@ -45,10 +45,10 @@ const RINGS = [
 ] as const;
 
 const ORBITAL_LABELS = [
-  { label: "INPUT", value: "2.4K" },
-  { label: "OUTPUT", value: "847" },
-  { label: "LATENCY", value: "38ms" },
-  { label: "UPTIME", value: "14h" },
+  { label: "ASK", value: "READY" },
+  { label: "VOICE", value: "MIC" },
+  { label: "VAULT", value: "LOCAL" },
+  { label: "AGENTS", value: "PTY" },
 ];
 
 const TICK_RADIUS = 318;

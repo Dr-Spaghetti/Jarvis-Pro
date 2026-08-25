@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { extname, join } from "node:path";
+import { extname } from "node:path";
 
 import type { UsageChartResponse } from "../claudeSessionScanner";
 import type { ClaudeUsageSnapshot } from "../claudeUsage";
@@ -122,6 +122,7 @@ import {
   readHeaderValue,
 } from "./security";
 import { handleSkillsRunRoute } from "./skillsRoutes";
+import { resolveSafeStaticPath } from "./staticFiles";
 import { handleTaskPlanRoute } from "./taskPlanRoutes";
 import { handleTokenTelemetryRoute } from "./telemetryRoutes";
 import {
@@ -389,9 +390,10 @@ const serveStaticFile = async (
   webDistDir: string,
   pathname: string,
 ): Promise<boolean> => {
-  // Prevent path traversal.
-  const safePath = pathname.replace(/\.\./g, "").replace(/\/+/g, "/");
-  const filePath = join(webDistDir, safePath === "/" ? "index.html" : safePath);
+  const filePath = resolveSafeStaticPath(webDistDir, pathname);
+  if (!filePath) {
+    return false;
+  }
 
   try {
     const content = await readFile(filePath);

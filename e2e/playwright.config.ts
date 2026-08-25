@@ -6,6 +6,7 @@ import { defineConfig } from "@playwright/test";
 // Override via:  BASE_URL=http://localhost:5173 pnpm test:e2e
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:8787";
+const E2E_AUTH_TOKEN = process.env.OCTOGENT_AUTH_TOKEN ?? process.env.E2E_AUTH_TOKEN ?? "";
 
 export default defineConfig({
   testDir: "./tests",
@@ -21,14 +22,14 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     trace: "on-first-retry",
-    // Seed the auth token into localStorage before the page loads so the
-    // auth gate doesn't block tests. Key matches apiClient.ts AUTH_TOKEN_STORAGE_KEY.
+    // Seed auth from the environment so a live token is never committed.
+    // Key matches apiClient.ts AUTH_TOKEN_STORAGE_KEY.
     storageState: {
       cookies: [],
       origins: [
         {
           origin: BASE_URL,
-          localStorage: [{ name: "octogent.authToken", value: "Ragubball2" }],
+          localStorage: [{ name: "octogent.authToken", value: E2E_AUTH_TOKEN }],
         },
       ],
     },

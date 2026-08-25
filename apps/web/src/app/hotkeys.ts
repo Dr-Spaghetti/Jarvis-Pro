@@ -1,4 +1,4 @@
-import { PRIMARY_NAV_MAX, type PrimaryNavIndex } from "./constants";
+import { PRIMARY_NAV_ITEMS, type PrimaryNavIndex } from "./constants";
 const MAX_TICKER_QUERY_LENGTH = 16;
 const TICKER_QUERY_ALLOWED_PATTERN = /[^A-Z0-9._/-]/g;
 
@@ -21,11 +21,11 @@ export const isEditableEventTarget = (target: EventTarget | null): boolean => {
 export const parsePrimaryNavKey = (key: string): PrimaryNavIndex | null => {
   if (key.length !== 1) return null;
   const n = Number.parseInt(key, 10);
-  if (Number.isNaN(n) || n < 1 || n > PRIMARY_NAV_MAX) {
+  if (Number.isNaN(n) || n < 1) {
     return null;
   }
-
-  return n as PrimaryNavIndex;
+  const item = PRIMARY_NAV_ITEMS[n - 1];
+  return item ? item.index : null;
 };
 
 export const normalizeTickerQueryInput = (value: string): string =>

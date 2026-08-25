@@ -13,8 +13,7 @@ test.describe("Settings — Email Inbox", () => {
       .filter({ hasText: /integrations/i })
       .click();
 
-    // AgentMail inbox address must be visible
-    await expect(page.getByText("niggims@agentmail.to")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Email Inbox" })).toBeVisible();
   });
 
   test("email inbox toggle is present and interactive", async ({ page }) => {
