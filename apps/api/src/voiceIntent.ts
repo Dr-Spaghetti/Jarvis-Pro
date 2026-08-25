@@ -17,7 +17,7 @@ export type JarvisVoiceIntent =
         | "jarvis";
     }
   | { type: "brain-search"; query: string }
-  | { type: "brain-capture"; text: string }
+  | { type: "brain-capture"; text: string; kind?: "note" | "task" }
   | { type: "remember"; text: string }
   | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
   | { type: "deploy-agent"; archetypeId: string; archetypeName: string }
@@ -100,6 +100,15 @@ export const resolveJarvisVoiceIntent = (transcript: string): JarvisVoiceIntentR
   ]);
   if (searchQuery !== null && searchQuery.length > 0) {
     return { transcript, commandText, intent: { type: "brain-search", query: searchQuery } };
+  }
+
+  const taskText = afterAnyPrefix(command, ["add a task", "new task", "create a task", "task"]);
+  if (taskText !== null && taskText.length > 0) {
+    return {
+      transcript,
+      commandText,
+      intent: { type: "brain-capture", text: taskText, kind: "task" },
+    };
   }
 
   const captureText = afterAnyPrefix(command, [

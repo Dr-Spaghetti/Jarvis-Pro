@@ -45,7 +45,7 @@ export class JarvisPage {
 
   async goToTab(name: string) {
     // Scope to the primary nav to avoid matching aria-label*= on content-area elements.
-    // Tab aria-labels are positional: "Jarvis HQ (1)", "Content Analyzer (6)", "Settings (8)", etc.
+    // Tab aria-labels are positional: "Jarvis HQ (1)", "Content Analyzer (4)", "Settings (6)".
     await this.page
       .locator('[aria-label="Primary navigation"]')
       .locator(`[aria-label*="${name}"]`)

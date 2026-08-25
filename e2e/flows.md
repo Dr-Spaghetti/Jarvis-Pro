@@ -12,6 +12,8 @@ This is the living coverage map for E2E tests. Update it whenever a new tab, fea
 ├── JARVIS HQ TAB [aria-label*="Jarvis HQ"]
 │   ★ Conversation panel visible
 │   ★ Chat input present and accepts text
+│   ★ Today panel visible (capture + open tasks)
+│   - Capture note/remember/task confirms the vault path
 │   - Send message → streaming response appears
 │   - Agent status updates during processing
 │   - New session clears history
@@ -30,6 +32,8 @@ This is the living coverage map for E2E tests. Update it whenever a new tab, fea
 │   - Email subject shown below filename for email items
 │
 ├── SETTINGS TAB [aria-label*="Settings"]
+│   └── HEALTH section (default)
+│       ★ Assistant health heading visible
 │   └── INTEGRATIONS section
 │       ★ Email Inbox heading visible
 │       - Email inbox enable/disable toggle interactive

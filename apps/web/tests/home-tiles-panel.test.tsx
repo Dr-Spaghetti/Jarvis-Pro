@@ -19,7 +19,7 @@ describe("HomeTilesPanel", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders ok values and not-configured tiles distinctly", async () => {
+  it("renders ok values and not-configured tiles distinctly as buttons", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       if (requestUrl(input).endsWith("/api/tiles")) {
         return jsonResponse({

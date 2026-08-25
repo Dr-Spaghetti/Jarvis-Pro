@@ -98,11 +98,11 @@ describe("App shell and navigation", () => {
     render(<App />);
     await screen.findByRole("navigation", { name: "Primary navigation" });
 
-    fireEvent.keyDown(window, { key: "5" });
+    fireEvent.keyDown(window, { key: "3" });
 
     expect(
       screen.getByRole("button", {
-        name: "Recent Convos (5)",
+        name: "Recent Convos (3)",
       }),
     ).toHaveAttribute("aria-current", "page");
   });
@@ -115,15 +115,15 @@ describe("App shell and navigation", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Settings (8)",
+        name: "Settings (6)",
       }),
     );
 
     expect(await screen.findByLabelText("Settings primary view")).toBeInTheDocument();
-    // Audio section is shown by default.
+    expect(screen.getByRole("button", { name: "Health" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Audio" }));
     expect(screen.getByRole("button", { name: /Soft chime/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Retro beep/i })).toBeInTheDocument();
-    // Navigate to Surfaces section to check visibility toggles.
     fireEvent.click(screen.getByRole("button", { name: "Surfaces" }));
     expect(screen.getByRole("switch", { name: "Show runtime status strip" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Enable agent surveillance" })).toBeInTheDocument();
@@ -191,12 +191,12 @@ describe("App shell and navigation", () => {
     expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
     expect(document.querySelector(".workspace-shell")).toHaveClass("workspace-shell--full");
 
-    fireEvent.click(screen.getByRole("button", { name: "Recent Convos (5)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Recent Convos (3)" }));
 
     expect(await screen.findByLabelText("Active Agents sidebar")).toBeInTheDocument();
     expect(document.querySelector(".workspace-shell")).not.toHaveClass("workspace-shell--full");
 
-    fireEvent.click(screen.getByRole("button", { name: "Agent Arsenal (2)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agent Arsenal (7)" }));
 
     expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
     expect(document.querySelector(".workspace-shell")).toHaveClass("workspace-shell--full");

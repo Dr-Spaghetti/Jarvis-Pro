@@ -86,6 +86,7 @@ describe("App UI state persistence", () => {
     expect(await screen.findByLabelText("Settings primary view")).toBeInTheDocument();
     expect(screen.queryByLabelText("Runtime status strip")).toBeNull();
     expect(screen.queryByLabelText("Telemetry ticker tape")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Audio" }));
     expect(screen.getByRole("button", { name: /Retro beep/i })).toHaveAttribute(
       "aria-pressed",
       "true",

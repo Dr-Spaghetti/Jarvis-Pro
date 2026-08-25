@@ -79,14 +79,20 @@ export const buildSnippet = (body: string, around?: string): string => {
 
 export const toPosix = (p: string): string => p.split(sep).join("/");
 
+export const resolveVaultFile = (vaultDir: string, relPath: string): string | null => {
+  const target = resolve(vaultDir, relPath);
+  const root = resolve(vaultDir);
+  if (target !== root && !target.startsWith(`${root}${sep}`)) return null;
+  if (!target.toLowerCase().endsWith(".md")) return null;
+  return target;
+};
+
 export const readNote = (
   vaultDir: string,
   relPath: string,
 ): { content: string; modified: string } | null => {
-  const target = resolve(vaultDir, relPath);
-  const root = resolve(vaultDir);
-  if (target !== root && !target.startsWith(root + sep)) return null;
-  if (!target.toLowerCase().endsWith(".md") || !existsSync(target)) return null;
+  const target = resolveVaultFile(vaultDir, relPath);
+  if (!target || !existsSync(target)) return null;
   try {
     return {
       content: readFileSync(target, "utf8"),

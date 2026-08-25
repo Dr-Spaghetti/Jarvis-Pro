@@ -8,14 +8,14 @@ The runtime underneath is [Octogent](https://github.com/hesamsheikh/octogent) (P
 
 | Tab | What it does |
 |-----|----------------|
-| **Jarvis HQ** | Ask Jarvis (text + optional voice). Searches your Obsidian vault when `OBSIDIAN_VAULT_PATH` is set. |
+| **Jarvis HQ** | Ask Jarvis (text + optional voice) plus a Today stack: capture notes/tasks/memory, open vault tasks, and live tiles. |
 | **Agent Arsenal** | Deploy a real Claude Code session. “Brainstorm” is an in-API loop — it does **not** spawn a terminal. |
 | **Surveillance** | Live view of running terminals. |
 | **Workflows** | Multi-step Ask Jarvis checklists, not Zapier. |
 | **Recent Convos** | Session history. |
 | **Content Analyzer** | Files, URLs, and AgentMail **links and images**. |
 | **Ideas** | Scratchpad into the vault. |
-| **Settings** | Voice, Gmail, email ingest, morning brief, remote token. |
+| **Settings** | Assistant health, voice, Gmail, email ingest, morning brief, remote token. Arsenal / Surveillance / Terminal sit under Engine in the nav. |
 | **Terminal** | Launch Claude or Codex. Close **stops** the process. |
 
 Start with **Ask**, **Analyze**, or **Deploy**. Everything else is supporting.

@@ -98,7 +98,14 @@ const mockRequests = (opts: MockOpts = {}) => {
     if (url.includes("/api/brain/recent")) return jsonResponse({ configured: true, notes: [] });
     if (url.includes("/api/brain/journal"))
       return jsonResponse({ configured: true, entries: journalEntries });
-    if (url.includes("/api/brain/memory")) return jsonResponse({ items: [] });
+    if (url.includes("/api/brain/memory")) return jsonResponse({ items: [], sections: { Me: [] } });
+    if (url.includes("/api/brain/tasks")) return jsonResponse({ configured: true, tasks: [] });
+    if (url.includes("/api/brain/health"))
+      return jsonResponse({
+        items: [{ id: "vault", title: "Brain (vault)", status: "ok", detail: "connected" }],
+      });
+    if (url.includes("/api/brief/config"))
+      return jsonResponse({ enabled: false, time: "08:00", lastBriefDate: null });
     if (url.includes("/api/brain/digest")) return jsonResponse({ tasks: { openCount: 0 } });
     if (url.includes("/api/brain/semantic")) return jsonResponse({ notes: semanticNotes });
 
@@ -118,7 +125,7 @@ describe("Hardening: integration paths", () => {
     mockRequests({ afterPin: { ...TENTACLE, pinned: true } });
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Agent Arsenal (2)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Agent Arsenal (7)" }));
 
     const panel = await screen.findByRole("region", { name: "Recent Agents" });
 
@@ -161,7 +168,7 @@ describe("Hardening: integration paths", () => {
     mockRequests();
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Content Analyzer (6)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Content Analyzer (4)" }));
 
     expect(await screen.findByLabelText("Analyzer primary view")).toBeInTheDocument();
     expect(screen.getByLabelText("Upload file for analysis")).toBeInTheDocument();
@@ -171,7 +178,7 @@ describe("Hardening: integration paths", () => {
     mockRequests();
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settings (8)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Settings (6)" }));
 
     await screen.findByLabelText("Settings primary view");
 
@@ -202,7 +209,7 @@ describe("Hardening: integration paths", () => {
     mockRequests({ semanticNotes: notes });
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settings (8)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Settings (6)" }));
     await screen.findByLabelText("Settings primary view");
     fireEvent.click(screen.getByRole("button", { name: "Interface" }));
 

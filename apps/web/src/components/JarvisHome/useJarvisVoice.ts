@@ -502,6 +502,7 @@ export const useJarvisVoice = ({
 
         if (intent.type === "brain-capture") {
           const captureText = intent.text;
+          const captureKind = intent.kind === "task" ? "task" : "note";
           const captureLabel =
             captureText.length > 60 ? `${captureText.slice(0, 60)}…` : captureText;
           setPendingVoiceIntent({
@@ -511,7 +512,10 @@ export const useJarvisVoice = ({
               const response = await apiFetch(buildBrainCaptureUrl(), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: captureText }),
+                body: JSON.stringify({
+                  text: captureText,
+                  kind: captureKind,
+                }),
               });
               if (!response.ok) {
                 setVoiceError("Capture failed");

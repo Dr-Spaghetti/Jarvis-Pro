@@ -1,8 +1,14 @@
 import { useCallback, useState } from "react";
 
 import { apiFetch } from "../../runtime/apiClient";
-import { buildBrainAskUrl, buildJarvisConversationTurnUrl } from "../../runtime/runtimeEndpoints";
+import {
+  buildBrainAskUrl,
+  buildBrainRememberUrl,
+  buildJarvisConversationTurnUrl,
+} from "../../runtime/runtimeEndpoints";
 import { stripMarkdownForSpeech } from "./utils";
+
+export type MemoryProposal = { text: string; section: string };
 
 type UseJarvisAskOptions = {
   chatModel: string;
@@ -23,6 +29,7 @@ export const useJarvisAsk = ({
   const [answerVia, setAnswerVia] = useState<string | null>(null);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [askNote, setAskNote] = useState<string | null>(null);
+  const [proposedMemories, setProposedMemories] = useState<MemoryProposal[]>([]);
   const [jarvisSessionId, setJarvisSessionId] = useState<string>(() => {
     try {
       const stored = window.localStorage.getItem("jarvis.sessionId");
@@ -45,6 +52,7 @@ export const useJarvisAsk = ({
     setAnswerVia(null);
     setSourcesExpanded(false);
     setAskNote(null);
+    setProposedMemories([]);
     const askedAt = new Date().toISOString();
     try {
       const res = await apiFetch(buildBrainAskUrl(), {
@@ -64,6 +72,7 @@ export const useJarvisAsk = ({
         via?: string;
         sources?: { title: string; path: string }[];
         citations?: { title: string; url: string }[];
+        proposedMemories?: MemoryProposal[];
       };
       if (data.available && typeof data.answer === "string") {
         const answeredAt = new Date().toISOString();
@@ -71,6 +80,7 @@ export const useJarvisAsk = ({
         setAnswerSources(Array.isArray(data.sources) ? data.sources : []);
         setAnswerCitations(Array.isArray(data.citations) ? data.citations : []);
         setAnswerVia(typeof data.via === "string" ? data.via : null);
+        setProposedMemories(Array.isArray(data.proposedMemories) ? data.proposedMemories : []);
         void loadConversation();
         void apiFetch(buildJarvisConversationTurnUrl(), {
           method: "POST",
@@ -121,7 +131,25 @@ export const useJarvisAsk = ({
     clearConversation();
     setAnswer(null);
     setAskNote(null);
+    setProposedMemories([]);
     setAsk("");
+  }, []);
+
+  const keepProposedMemory = useCallback(async (proposal: MemoryProposal) => {
+    try {
+      await apiFetch(buildBrainRememberUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: proposal.text, section: proposal.section }),
+      });
+    } catch {
+      /* ignore */
+    }
+    setProposedMemories((current) => current.filter((item) => item.text !== proposal.text));
+  }, []);
+
+  const skipProposedMemory = useCallback((proposal: MemoryProposal) => {
+    setProposedMemories((current) => current.filter((item) => item.text !== proposal.text));
   }, []);
 
   // Called by the voice hook's onVoiceAnswer callback.
@@ -160,5 +188,8 @@ export const useJarvisAsk = ({
     startNewChat,
     handleVoiceAnswer,
     handleVoiceAnswerFailed,
+    proposedMemories,
+    keepProposedMemory,
+    skipProposedMemory,
   };
 };

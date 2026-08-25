@@ -30,6 +30,7 @@ import {
   handleBrainCaptureRoute,
   handleBrainConversationRoute,
   handleBrainDigestRoute,
+  handleBrainHealthRoute,
   handleBrainJournalRoute,
   handleBrainLearningsRoute,
   handleBrainMemoryRoute,
@@ -39,6 +40,7 @@ import {
   handleBrainRememberRoute,
   handleBrainSearchRoute,
   handleBrainSemanticRoute,
+  handleBrainTasksRoute,
 } from "./brainRoutes";
 import {
   handleBrainstormExpandRoute,
@@ -260,6 +262,8 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleBrainModelsRoute,
       handleBrainConversationRoute,
       handleBrainLearningsRoute,
+      handleBrainTasksRoute,
+      handleBrainHealthRoute,
       handleOrchestrateRoute,
     ],
   ],

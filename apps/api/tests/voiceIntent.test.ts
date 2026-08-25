@@ -98,6 +98,11 @@ describe("resolveJarvisVoiceIntent", () => {
       expect(intent.type).toBe("brain-capture");
     });
 
+    it("routes 'add a task …' to capture with kind task", () => {
+      const { intent } = resolveJarvisVoiceIntent("hey jarvis add a task buy milk");
+      expect(intent).toEqual({ type: "brain-capture", text: "buy milk", kind: "task" });
+    });
+
     it("routes 'correction …' to remember", () => {
       const { intent } = resolveJarvisVoiceIntent(
         "hey jarvis correction the venue contact is rachel",

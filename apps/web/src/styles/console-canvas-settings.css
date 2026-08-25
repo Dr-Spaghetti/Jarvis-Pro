@@ -36,6 +36,56 @@
   font-size: 0.82rem;
 }
 
+.settings-health-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.settings-health-item {
+  border: 1px solid #2b2f36;
+  background: #11161d;
+  padding: 0.5rem 0.6rem;
+}
+
+.settings-health-item[data-status="ok"] {
+  border-color: color-mix(in srgb, var(--term-green) 45%, #2b2f36);
+}
+
+.settings-health-item[data-status="error"] {
+  border-color: rgba(224, 85, 85, 0.45);
+}
+
+.settings-health-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.settings-health-title {
+  color: #dce6f7;
+  font-size: 0.86rem;
+}
+
+.settings-health-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #93a4bb;
+}
+
+.settings-health-item[data-status="ok"] .settings-health-status {
+  color: #d6ffe4;
+}
+
+.settings-health-detail {
+  margin: 0.28rem 0 0;
+  color: #9eb0c8;
+  font-size: 0.78rem;
+}
+
 .settings-sound-picker {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));

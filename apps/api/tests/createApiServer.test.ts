@@ -613,8 +613,8 @@ describe("createApiServer", () => {
       expect(byId.get("brain-notes")?.status).toBe("not-configured");
       expect(byId.get("journal-week")?.status).toBe("not-configured");
       expect(byId.get("gmail-unread")?.status).toBe("not-configured");
-      expect(byId.get("apollo")?.status).toBe("not-configured");
-      expect(byId.get("local-falcon")?.status).toBe("not-configured");
+      expect(byId.has("apollo")).toBe(false);
+      expect(byId.has("local-falcon")).toBe(false);
       // never a fabricated value
       for (const tile of payload.tiles) {
         if (tile.status === "not-configured") {

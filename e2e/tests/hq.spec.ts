@@ -11,6 +11,8 @@ test.describe("Jarvis HQ", () => {
     // which contains <div className="nc-hq-console hud-panel"> as the conversation panel
     await expect(page.locator('[aria-label="Jarvis home view"]')).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(".nc-hq-console")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByLabel("Today")).toBeVisible();
+    await expect(page.getByRole("form", { name: "Capture" })).toBeVisible();
   });
 
   test("chat input is present and accepts text", async ({ page }) => {

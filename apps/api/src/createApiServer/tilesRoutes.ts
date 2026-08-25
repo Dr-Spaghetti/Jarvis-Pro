@@ -148,13 +148,10 @@ export const handleTilesRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  const [gmail, apollo, localFalcon] = await Promise.all([
-    gmailTile(),
-    apolloTile(),
-    localFalconTile(),
-  ]);
-
-  const tiles: HomeTile[] = [...brainTiles(), gmail, apollo, localFalcon];
+  const gmail = await gmailTile();
+  const tiles: HomeTile[] = [...brainTiles(), gmail];
+  if (process.env.APOLLO_API_KEY?.trim()) tiles.push(await apolloTile());
+  if (process.env.LOCALFALCON_API_KEY?.trim()) tiles.push(await localFalconTile());
   writeJson(response, 200, { tiles, generatedAt: new Date().toISOString() }, corsOrigin);
   return true;
 };

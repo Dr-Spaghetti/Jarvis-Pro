@@ -18,6 +18,7 @@ import {
 } from "../runtime/runtimeEndpoints";
 import { JarvisConfigSection } from "./JarvisConfigSection";
 import { MorningBriefPanel } from "./MorningBriefPanel";
+import { SettingsHealthPanel } from "./SettingsHealthPanel";
 import { ActionButton } from "./ui/ActionButton";
 import { SettingsToggle } from "./ui/SettingsToggle";
 
@@ -156,6 +157,7 @@ type SettingsPrimaryViewProps = {
 };
 
 type SettingsSection =
+  | "health"
   | "audio"
   | "surfaces"
   | "integrations"
@@ -165,6 +167,7 @@ type SettingsSection =
   | "interface";
 
 const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string; icon: string }> = [
+  { id: "health", label: "Health", icon: "♥" },
   { id: "audio", label: "Audio", icon: "♪" },
   { id: "surfaces", label: "Surfaces", icon: "⊞" },
   { id: "integrations", label: "Integrations", icon: "⟳" },
@@ -187,7 +190,7 @@ export const SettingsPrimaryView = ({
   onConnectGmail,
   onDisconnectGmail,
 }: SettingsPrimaryViewProps) => {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("audio");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("health");
 
   return (
     <section className="settings-view" aria-label="Settings primary view">
@@ -216,6 +219,8 @@ export const SettingsPrimaryView = ({
       </nav>
 
       <div className="settings-main">
+        {activeSection === "health" && <SettingsHealthPanel />}
+
         {activeSection === "audio" && (
           <section className="settings-panel" aria-label="Completion notification settings">
             <header className="settings-panel-header">

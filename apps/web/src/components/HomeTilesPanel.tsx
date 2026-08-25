@@ -15,6 +15,10 @@ type HomeTile = {
 
 type TilesResponse = { tiles: HomeTile[]; generatedAt: string };
 
+type HomeTilesPanelProps = {
+  onTileActivate?: (tileId: string) => void;
+};
+
 const formatGeneratedAt = (iso: string): string => {
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleTimeString();
@@ -26,7 +30,7 @@ const STATUS_TEXT: Record<HomeTile["status"], string> = {
   error: "Unavailable",
 };
 
-export const HomeTilesPanel = () => {
+export const HomeTilesPanel = ({ onTileActivate }: HomeTilesPanelProps) => {
   const [tiles, setTiles] = useState<HomeTile[]>([]);
   const [generatedAt, setGeneratedAt] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -83,11 +87,13 @@ export const HomeTilesPanel = () => {
       {!isLoading && !error && (
         <div className="jarvis-tiles-grid">
           {tiles.map((tile) => (
-            <article
+            <button
               className="jarvis-tile"
               data-status={tile.status}
               key={tile.id}
               title={tile.detail ?? undefined}
+              type="button"
+              onClick={() => onTileActivate?.(tile.id)}
             >
               <span className="jarvis-tile-title">{tile.title}</span>
               {tile.status === "ok" ? (
@@ -98,7 +104,7 @@ export const HomeTilesPanel = () => {
               ) : (
                 <span className="jarvis-tile-status">{STATUS_TEXT[tile.status]}</span>
               )}
-            </article>
+            </button>
           ))}
         </div>
       )}

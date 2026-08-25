@@ -14,6 +14,7 @@ import {
   handleBrainCaptureRoute,
   handleBrainConversationRoute,
   handleBrainDigestRoute,
+  handleBrainHealthRoute,
   handleBrainJournalRoute,
   handleBrainMemoryRoute,
   handleBrainModelsRoute,
@@ -22,6 +23,7 @@ import {
   handleBrainRememberRoute,
   handleBrainSearchRoute,
   handleBrainSemanticRoute,
+  handleBrainTasksRoute,
   localDateStamp,
   parseConversationMarkdown,
 } from "../src/createApiServer/brainRoutes";
@@ -159,9 +161,32 @@ describe("brainRoutes", () => {
     });
     expect(res.status).toBe(201);
     expect(res.json.ok).toBe(true);
+    expect(res.json.kind).toBe("note");
     const file = join(vault, "Inbox", "Quick Capture.md");
     expect(existsSync(file)).toBe(true);
     expect(readFileSync(file, "utf8")).toContain("call Vinny about Q3");
+  });
+
+  it("capture kind=task writes an Inbox.md checkbox", async () => {
+    const res = await call(handleBrainCaptureRoute, "POST", "/api/brain/capture", {
+      text: "invoice Park Place",
+      kind: "task",
+    });
+    expect(res.status).toBe(201);
+    expect(res.json.path).toBe("Inbox.md");
+    expect(readFileSync(join(vault, "Inbox.md"), "utf8")).toMatch(/- \[ \] invoice Park Place/);
+  });
+
+  it("capture kind=remember writes Memory.md", async () => {
+    const res = await call(handleBrainCaptureRoute, "POST", "/api/brain/capture", {
+      text: "Nick hates phone calls",
+      kind: "remember",
+      section: "Me",
+    });
+    expect(res.status).toBe(201);
+    expect(res.json.path).toBe("Jarvis/Memory.md");
+    const mem = await call(handleBrainMemoryRoute, "GET", "/api/brain/memory");
+    expect(mem.json.sections.Me).toContain("Nick hates phone calls");
   });
 
   it("journal appends an entry and lists it back newest-first with parsed fields", async () => {
@@ -209,14 +234,29 @@ describe("brainRoutes", () => {
     expect(mem.status).toBe(200);
     expect(mem.json.configured).toBe(true);
     expect(mem.json.items).toContain("Nick prefers email-only outreach (no calls).");
+    expect(mem.json.sections.Facts).toContain("Nick prefers email-only outreach (no calls).");
     expect(existsSync(join(vault, "Jarvis", "Memory.md"))).toBe(true);
+  });
+
+  it("remember writes into the requested memory section", async () => {
+    const res = await call(handleBrainRememberRoute, "POST", "/api/brain/remember", {
+      text: "Always answer in one sentence.",
+      section: "Me",
+    });
+    expect(res.status).toBe(201);
+    expect(res.json.section).toBe("Me");
+    const mem = await call(handleBrainMemoryRoute, "GET", "/api/brain/memory");
+    expect(mem.json.sections.Me).toContain("Always answer in one sentence.");
+    expect(mem.json.sections.Facts).not.toContain("Always answer in one sentence.");
   });
 
   it("memory reports unconfigured when no vault is set", async () => {
     Reflect.deleteProperty(process.env, "OBSIDIAN_VAULT_PATH");
     const res = await call(handleBrainMemoryRoute, "GET", "/api/brain/memory");
     expect(res.status).toBe(200);
-    expect(res.json).toEqual({ configured: false, content: "", items: [] });
+    expect(res.json.configured).toBe(false);
+    expect(res.json.items).toEqual([]);
+    expect(res.json.sections.Facts).toEqual([]);
   });
 
   it("digest assembles open tasks, recent notes, and counts without an agent", async () => {
@@ -317,6 +357,50 @@ describe("brainRoutes", () => {
       answer: "Sunny, 75.",
     });
     expect(res.json.turns[1].answer).toBe("Rain likely.");
+  });
+
+  it("tasks list open checkboxes, add to Inbox.md, and toggle them", async () => {
+    writeFileSync(join(vault, "Project.md"), "# Project\n\n- [ ] Call Rachel\n- [x] Done\n");
+    const listed = await call(handleBrainTasksRoute, "GET", "/api/brain/tasks");
+    expect(listed.status).toBe(200);
+    expect(listed.json.configured).toBe(true);
+    const texts = listed.json.tasks.map((t: { text: string }) => t.text);
+    expect(texts).toContain("Call Rachel");
+    expect(texts).not.toContain("Done");
+
+    const added = await call(handleBrainTasksRoute, "POST", "/api/brain/tasks", {
+      text: "Buy milk",
+    });
+    expect(added.status).toBe(201);
+    expect(added.json.task.source).toBe("inbox");
+    expect(readFileSync(join(vault, "Inbox.md"), "utf8")).toMatch(/- \[ \] Buy milk/);
+
+    const toggled = await call(handleBrainTasksRoute, "PATCH", "/api/brain/tasks", {
+      path: added.json.task.path,
+      line: added.json.task.line,
+      done: true,
+      text: "Buy milk",
+    });
+    expect(toggled.status).toBe(200);
+    expect(toggled.json.task.done).toBe(true);
+    expect(readFileSync(join(vault, "Inbox.md"), "utf8")).toMatch(/- \[x\] Buy milk/);
+  });
+
+  it("health reports vault and key status without leaking secrets", async () => {
+    const prevToken = process.env.OCTOGENT_AUTH_TOKEN;
+    process.env.OCTOGENT_AUTH_TOKEN = "secret-should-not-leak";
+    try {
+      const res = await call(handleBrainHealthRoute, "GET", "/api/brain/health");
+      expect(res.status).toBe(200);
+      const vaultItem = res.json.items.find((i: { id: string }) => i.id === "vault");
+      const authItem = res.json.items.find((i: { id: string }) => i.id === "auth");
+      expect(vaultItem.status).toBe("ok");
+      expect(authItem.status).toBe("ok");
+      expect(JSON.stringify(res.json)).not.toContain("secret-should-not-leak");
+    } finally {
+      if (prevToken === undefined) Reflect.deleteProperty(process.env, "OCTOGENT_AUTH_TOKEN");
+      else process.env.OCTOGENT_AUTH_TOKEN = prevToken;
+    }
   });
 
   it("conversation route reports unconfigured when no vault is set", async () => {

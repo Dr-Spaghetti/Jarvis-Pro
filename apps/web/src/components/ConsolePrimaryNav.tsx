@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { PRIMARY_NAV_ITEMS, type PrimaryNavIndex } from "../app/constants";
+import { LIFE_NAV_ITEMS, PRIMARY_NAV_ITEMS, type PrimaryNavIndex } from "../app/constants";
 
 const RECENT_CONVOS_INDEX: PrimaryNavIndex = 4;
 
@@ -49,26 +49,33 @@ export const ConsolePrimaryNav = ({
         {PRIMARY_NAV_ITEMS.map((item, position) => {
           const shortcut = position < 9 ? String(position + 1) : null;
           return (
-            <button
-              aria-current={item.index === activePrimaryNav ? "page" : undefined}
-              aria-label={shortcut ? `${item.label} (${shortcut})` : item.label}
-              className="console-primary-nav-tab"
-              data-active={item.index === activePrimaryNav ? "true" : "false"}
-              key={item.index}
-              onClick={() => {
-                onPrimaryNavChange(item.index);
-              }}
-              title={shortcut ? `${item.label} — press ${shortcut}` : item.label}
-              type="button"
-            >
-              <span className="console-primary-nav-tab-icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span className="console-primary-nav-tab-label">{item.label}</span>
-              {item.index === RECENT_CONVOS_INDEX && hasNewTurn && (
-                <span className="console-primary-nav-badge" aria-label="New conversation" />
-              )}
-            </button>
+            <div key={item.index}>
+              {position === LIFE_NAV_ITEMS.length ? (
+                <div className="console-primary-nav-group-label" role="presentation">
+                  Engine
+                </div>
+              ) : null}
+              <button
+                aria-current={item.index === activePrimaryNav ? "page" : undefined}
+                aria-label={shortcut ? `${item.label} (${shortcut})` : item.label}
+                className="console-primary-nav-tab"
+                data-active={item.index === activePrimaryNav ? "true" : "false"}
+                data-group={item.group}
+                onClick={() => {
+                  onPrimaryNavChange(item.index);
+                }}
+                title={shortcut ? `${item.label} — press ${shortcut}` : item.label}
+                type="button"
+              >
+                <span className="console-primary-nav-tab-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span className="console-primary-nav-tab-label">{item.label}</span>
+                {item.index === RECENT_CONVOS_INDEX && hasNewTurn && (
+                  <span className="console-primary-nav-badge" aria-label="New conversation" />
+                )}
+              </button>
+            </div>
           );
         })}
       </div>

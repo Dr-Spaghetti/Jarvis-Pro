@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import type { ConversationTurn } from "./types";
+import type { MemoryProposal } from "./useJarvisAsk";
 
 type Props = {
   conversation: ConversationTurn[];
@@ -16,6 +17,9 @@ type Props = {
   setSourcesExpanded: (v: boolean) => void;
   submitAsk: () => void;
   onNewChat: () => void;
+  proposedMemories: MemoryProposal[];
+  onKeepMemory: (proposal: MemoryProposal) => void;
+  onSkipMemory: (proposal: MemoryProposal) => void;
 };
 
 export const JarvisConversationConsole = ({
@@ -32,6 +36,9 @@ export const JarvisConversationConsole = ({
   setSourcesExpanded,
   submitAsk,
   onNewChat,
+  proposedMemories,
+  onKeepMemory,
+  onSkipMemory,
 }: Props) => {
   const consoleScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -113,6 +120,23 @@ export const JarvisConversationConsole = ({
         {isThinking && (
           <div className="nc-hq-thinking">
             PROCESSING<span className="nc-blink">_</span>
+          </div>
+        )}
+        {proposedMemories.length > 0 && !asking && (
+          <div className="nc-hq-memory-propose" aria-label="Proposed memories">
+            {proposedMemories.map((proposal) => (
+              <div className="nc-hq-memory-chip" key={`${proposal.section}:${proposal.text}`}>
+                <span>
+                  Remember ({proposal.section}): {proposal.text}
+                </span>
+                <button type="button" onClick={() => onKeepMemory(proposal)}>
+                  Keep
+                </button>
+                <button type="button" onClick={() => onSkipMemory(proposal)}>
+                  Skip
+                </button>
+              </div>
+            ))}
           </div>
         )}
         {askNote && !asking && (

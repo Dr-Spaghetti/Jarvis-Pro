@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { type BrainDigest, computeBrainDigest, resolveVaultDir } from "./brainRoutes";
+import { type BrainDigest, computeBrainDigest } from "./brain/digest";
+import { resolveVaultDir } from "./brain/vault";
 
 // Deterministic morning-brief scheduler. At a user-configured local time it
 // writes a "Daily Brief — YYYY-MM-DD" note into the vault from the existing

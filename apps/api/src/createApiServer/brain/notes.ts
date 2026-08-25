@@ -3,16 +3,26 @@ import { join } from "node:path";
 
 import type { ApiRouteHandler } from "../routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "../routeHelpers";
+import { type MemorySection, appendMemoryFact, isMemorySection } from "./memory";
+import { addInboxTask } from "./tasks";
 import {
   type BrainNote,
+  asRecord,
   buildSnippet,
   deriveTitle,
   listMarkdownFiles,
+  oneLine,
   readNote,
   resolveVaultDir,
   stripFrontmatter,
   toPosix,
 } from "./vault";
+
+const CAPTURE_KINDS = ["note", "remember", "task"] as const;
+type CaptureKind = (typeof CAPTURE_KINDS)[number];
+
+const isCaptureKind = (value: unknown): value is CaptureKind =>
+  typeof value === "string" && (CAPTURE_KINDS as readonly string[]).includes(value);
 
 export const handleBrainRecentRoute: ApiRouteHandler = async ({
   request,
@@ -115,18 +125,31 @@ export const handleBrainCaptureRoute: ApiRouteHandler = async ({
   }
   const body = await readJsonBodyOrWriteError(request, response, corsOrigin);
   if (!body.ok) return true;
-  const text = ((body.payload as { text?: unknown } | null)?.text ?? "").toString().trim();
+  const payload = asRecord(body.payload);
+  const text = typeof payload.text === "string" ? oneLine(payload.text) : "";
   if (text.length === 0) {
     writeJson(response, 400, { error: "text (non-empty string) is required" }, corsOrigin);
     return true;
   }
+  const kind: CaptureKind = isCaptureKind(payload.kind) ? payload.kind : "note";
   try {
+    if (kind === "remember") {
+      const section: MemorySection = isMemorySection(payload.section) ? payload.section : "Facts";
+      const path = appendMemoryFact(vaultDir, text, section);
+      writeJson(response, 201, { ok: true, kind, path, section }, corsOrigin);
+      return true;
+    }
+    if (kind === "task") {
+      const added = addInboxTask(vaultDir, text);
+      writeJson(response, 201, { ok: true, kind, path: added.path }, corsOrigin);
+      return true;
+    }
     const inboxDir = join(vaultDir, "Inbox");
     if (!existsSync(inboxDir)) mkdirSync(inboxDir, { recursive: true });
     const file = join(inboxDir, "Quick Capture.md");
     if (!existsSync(file)) appendFileSync(file, "# Quick Capture\n\n", "utf8");
     appendFileSync(file, `- ${text}\n`, "utf8");
-    writeJson(response, 201, { ok: true, path: "Inbox/Quick Capture.md" }, corsOrigin);
+    writeJson(response, 201, { ok: true, kind, path: "Inbox/Quick Capture.md" }, corsOrigin);
   } catch (error) {
     writeJson(
       response,

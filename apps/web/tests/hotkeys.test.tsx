@@ -10,9 +10,11 @@ import {
 describe("hotkeys helpers", () => {
   it("maps number keys to tab order, not stored nav ids", () => {
     expect(parsePrimaryNavKey("1")).toBe(9);
-    expect(parsePrimaryNavKey("2")).toBe(1);
-    expect(parsePrimaryNavKey("3")).toBe(2);
-    expect(parsePrimaryNavKey("5")).toBe(4);
+    expect(parsePrimaryNavKey("2")).toBe(3);
+    expect(parsePrimaryNavKey("3")).toBe(4);
+    expect(parsePrimaryNavKey("5")).toBe(6);
+    expect(parsePrimaryNavKey("6")).toBe(7);
+    expect(parsePrimaryNavKey("7")).toBe(1);
     expect(parsePrimaryNavKey("9")).toBe(8);
   });
 

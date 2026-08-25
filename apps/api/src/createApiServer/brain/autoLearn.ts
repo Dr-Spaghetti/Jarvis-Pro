@@ -1,6 +1,7 @@
 /**
  * Auto-extracts a single learning from each conversation turn using Claude Haiku
- * and persists it to Memory.md + the learnings store.
+ * and persists it to the learnings store. Durable Memory.md facts are confirmed
+ * by the user via /api/brain/remember.
  *
  * Always called without await — never blocks the user-facing response.
  */
@@ -8,11 +9,6 @@
 import { randomUUID } from "node:crypto";
 
 import { insertLearning, searchLearnings } from "../db";
-import { ensureAndAppend, resolveVaultDir } from "./vault";
-
-const MEMORY_PATH = "Jarvis/Memory.md";
-const MEMORY_HEADER =
-  "# Jarvis Memory\n\nLong-lived context Jarvis should remember about Nick and his work.\n\n## Facts\n\n";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
@@ -84,20 +80,8 @@ export const extractLearning = async (
       if (isDupe) return;
     }
 
-    // Write to Memory.md in the Obsidian vault (best-effort)
-    const vaultDir = resolveVaultDir();
-    if (vaultDir) {
-      try {
-        ensureAndAppend(vaultDir, MEMORY_PATH, MEMORY_HEADER, `${text}\n`);
-      } catch (err) {
-        console.warn(
-          "[autoLearn] Memory.md write failed:",
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-
-    // Persist to the learnings store
+    // Persist to the learnings store. Durable Memory.md writes go through
+    // /api/brain/remember after the user confirms a proposed fact.
     insertLearning({
       id: randomUUID(),
       content: newFact,

@@ -101,6 +101,8 @@ export const AuthGate = ({ children }: AuthGateProps) => {
         setGateState("ready");
       } else if (verifyResponse.status === 401) {
         setPromptError("That token was rejected. Check OCTOGENT_AUTH_TOKEN in .env and try again.");
+      } else if (verifyResponse.status === 429) {
+        setPromptError("Too many failed attempts. Wait a minute, or restart Jarvis, then try again.");
       } else {
         setPromptError(`Unexpected response from the server (${verifyResponse.status}).`);
       }

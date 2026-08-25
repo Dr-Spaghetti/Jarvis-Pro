@@ -17,7 +17,8 @@ import {
   appendConversationTurn,
   readConversationTurns,
 } from "./conversation";
-import { readMemoryFacts } from "./memory";
+import { readMemorySections, selectMemorySlice } from "./memory";
+import { proposeMemoryFromQuestion } from "./proposeMemory";
 import { lexicalSearchNotes, loadSemanticIndex } from "./search";
 import { asRecord, deriveTitle, oneLine, resolveVaultDir, stripFrontmatter } from "./vault";
 
@@ -710,9 +711,10 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
 
   const vaultDir = resolveVaultDir();
   const notes = vaultDir ? await retrieveContext(vaultDir, question, 6) : [];
-  const facts = vaultDir ? readMemoryFacts(vaultDir, 20) : [];
+  const facts = vaultDir ? selectMemorySlice(readMemorySections(vaultDir), question, 12) : [];
   const history = vaultDir ? readConversationTurns(vaultDir, 10) : [];
   const sources = notes.map((note) => ({ title: note.title, path: note.rel }));
+  const proposedMemories = proposeMemoryFromQuestion(question);
 
   const memoryBlock = facts.length > 0 ? facts.map((f) => `- ${f}`).join("\n") : "(none)";
   const contextBlock =
@@ -745,7 +747,13 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         writeJson(
           response,
           200,
-          { available: true, answer: result.summary, sources, via: "orchestrate" },
+          {
+            available: true,
+            answer: result.summary,
+            sources,
+            via: "orchestrate",
+            proposedMemories,
+          },
           corsOrigin,
         );
       } else {
@@ -767,7 +775,13 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         writeJson(
           response,
           200,
-          { available: true, answer: result.answer, sources, via: result.via },
+          {
+            available: true,
+            answer: result.answer,
+            sources,
+            via: result.via,
+            proposedMemories,
+          },
           corsOrigin,
         );
         return true;
@@ -845,6 +859,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
           sources,
           citations: perp.citations,
           via: "perplexity-sonar",
+          proposedMemories,
         },
         corsOrigin,
       );
@@ -857,7 +872,12 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
     if (result?.ok) {
       if (vaultDir) appendConversationTurn(vaultDir, question, result.answer);
       recordTurn(question, result.answer);
-      writeJson(response, 200, { available: true, answer: result.answer, sources }, corsOrigin);
+      writeJson(
+        response,
+        200,
+        { available: true, answer: result.answer, sources, proposedMemories },
+        corsOrigin,
+      );
       return true;
     }
     const claudeReason =
@@ -906,7 +926,14 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
         writeJson(
           response,
           200,
-          { available: true, answer: claudeResult.answer, sources, model: autoModel, via },
+          {
+            available: true,
+            answer: claudeResult.answer,
+            sources,
+            model: autoModel,
+            via,
+            proposedMemories,
+          },
           corsOrigin,
         );
         return true;
@@ -934,6 +961,7 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
           sources,
           citations: perpResult.citations,
           via: "perplexity-sonar",
+          proposedMemories,
         },
         corsOrigin,
       );
@@ -971,6 +999,11 @@ export const handleBrainAskRoute: ApiRouteHandler = async (
   }
   if (vaultDir) appendConversationTurn(vaultDir, question, ollamaAnswer);
   recordTurn(question, ollamaAnswer);
-  writeJson(response, 200, { available: true, answer: ollamaAnswer, sources }, corsOrigin);
+  writeJson(
+    response,
+    200,
+    { available: true, answer: ollamaAnswer, sources, proposedMemories },
+    corsOrigin,
+  );
   return true;
 };

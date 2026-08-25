@@ -1,6 +1,8 @@
 // Thin re-export barrel. All logic lives in the brain/ subdirectory.
 export { handleBrainJournalRoute } from "./brain/journal";
 export { handleBrainMemoryRoute, handleBrainRememberRoute } from "./brain/memory";
+export { handleBrainHealthRoute } from "./brain/health";
+export { handleBrainTasksRoute } from "./brain/tasks";
 export {
   handleBrainRecentRoute,
   handleBrainNoteRoute,

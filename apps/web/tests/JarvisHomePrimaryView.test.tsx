@@ -42,6 +42,15 @@ const mockJarvisHomeFetch = () =>
     if (url.includes("/api/tiles")) {
       return jsonResponse({ tiles: [], generatedAt: new Date().toISOString() });
     }
+    if (url.includes("/api/brain/tasks")) {
+      return jsonResponse({ configured: true, tasks: [] });
+    }
+    if (url.includes("/api/brain/memory")) {
+      return jsonResponse({ configured: true, items: [], sections: { Me: [], Facts: [] } });
+    }
+    if (url.includes("/api/brief/config")) {
+      return jsonResponse({ enabled: false, time: "08:00", lastBriefDate: null });
+    }
     return jsonResponse({});
   });
 
@@ -116,6 +125,8 @@ describe("JarvisHomePrimaryView", () => {
 
     render(<JarvisHomePrimaryView onNavigate={vi.fn()} />);
 
+    expect(screen.getByLabelText("Today")).toBeInTheDocument();
+    expect(screen.getByLabelText("Capture")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "🎙 TAP TO TALK" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "MUTE" })).toBeInTheDocument();
 

@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
-import { HomeTilesPanel } from "./HomeTilesPanel";
 import { JarvisActivityFeed } from "./JarvisHome/JarvisActivityFeed";
 import { JarvisConversationConsole } from "./JarvisHome/JarvisConversationConsole";
 import { JarvisIntentConfirmOverlay } from "./JarvisHome/JarvisIntentConfirmOverlay";
 import { JarvisLearningsPanel } from "./JarvisHome/JarvisLearningsPanel";
+import { JarvisTodayPanel } from "./JarvisHome/JarvisTodayPanel";
 import { JarvisVisualizer } from "./JarvisHome/JarvisVisualizer";
 import { JarvisVoiceBar } from "./JarvisHome/JarvisVoiceBar";
 import { JarvisVoiceStatus } from "./JarvisHome/JarvisVoiceStatus";
@@ -76,7 +76,7 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       <JarvisVisualizer visMode={visMode} setVisMode={setVisMode} />
 
       <div className="nc-hq-tiles">
-        <HomeTilesPanel />
+        <JarvisTodayPanel onNavigate={onNavigate} />
       </div>
 
       <JarvisVoiceBar
@@ -132,6 +132,9 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
         setSourcesExpanded={ask.setSourcesExpanded}
         submitAsk={() => void ask.submitAsk()}
         onNewChat={() => ask.startNewChat(() => setConversation([]))}
+        proposedMemories={ask.proposedMemories}
+        onKeepMemory={(proposal) => void ask.keepProposedMemory(proposal)}
+        onSkipMemory={ask.skipProposedMemory}
       />
     </section>
   );

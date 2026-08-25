@@ -53,7 +53,7 @@ export type JarvisIntentResolution = {
           | "jarvis";
       }
     | { type: "brain-search"; query: string }
-    | { type: "brain-capture"; text: string }
+    | { type: "brain-capture"; text: string; kind?: "note" | "task" }
     | { type: "remember"; text: string }
     | { type: "create-terminal"; workspaceMode: "shared" | "worktree" }
     | { type: "run-skill"; skillName: string }

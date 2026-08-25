@@ -5,6 +5,7 @@ import type { ApiRouteHandler } from "../routeHelpers";
 import { writeJson, writeMethodNotAllowed } from "../routeHelpers";
 import { JOURNAL_PATH, type JournalEntry, parseJournalLine } from "./journal";
 import { MEMORY_PATH } from "./memory";
+import { OPEN_TASK_RE, parseOpenTask } from "./tasks";
 import {
   type BrainNote,
   buildSnippet,
@@ -22,7 +23,6 @@ export const localDateStamp = (): string => {
   return `${d.getFullYear()}-${month}-${day}`;
 };
 
-const OPEN_TASK = /^\s*[-*]\s+\[ \]\s+(.+?)\s*$/;
 const MAX_DIGEST_TASKS = 30;
 
 export type BrainDigest = {
@@ -72,8 +72,8 @@ export const computeBrainDigest = (): BrainDigest => {
       if (!relPosix.startsWith("Journal/") && !relPosix.startsWith("Jarvis/")) {
         for (const line of content.split(/\r?\n/)) {
           if (openTasks.length >= MAX_DIGEST_TASKS) break;
-          const match = OPEN_TASK.exec(line);
-          if (match?.[1]) openTasks.push(match[1].trim());
+          const open = parseOpenTask(line);
+          if (open) openTasks.push(open);
         }
       }
     } catch {
@@ -135,7 +135,7 @@ export const computeBrainTileStats = (now: number = Date.now()): BrainTileStats 
     try {
       const content = readFileSync(join(vaultDir, rel), "utf8");
       for (const line of content.split(/\r?\n/)) {
-        if (OPEN_TASK.test(line)) openTaskCount += 1;
+        if (OPEN_TASK_RE.test(line)) openTaskCount += 1;
       }
     } catch {
       // skip unreadable

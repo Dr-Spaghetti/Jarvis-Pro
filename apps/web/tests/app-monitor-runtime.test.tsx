@@ -75,7 +75,7 @@ describe("App Monitor runtime", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Surveillance (3)",
+        name: "Surveillance (8)",
       }),
     );
 
@@ -150,7 +150,7 @@ describe("App Monitor runtime", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Surveillance (3)",
+        name: "Surveillance (8)",
       }),
     );
 
@@ -345,7 +345,7 @@ describe("App Monitor runtime", () => {
 
     expect(screen.queryByLabelText("Telemetry ticker tape")).toBeNull();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Surveillance (3)" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Surveillance (8)" }));
     expect(await screen.findByLabelText("Surveillance room disabled")).toBeInTheDocument();
   });
 });
