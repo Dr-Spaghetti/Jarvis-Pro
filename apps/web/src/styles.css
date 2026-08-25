@@ -31,3 +31,6 @@
 
 /* HUD Ultimate — comprehensive visual override, loaded last */
 @import "./styles/jarvis-hud-ultimate.css";
+
+/* HQ desk layout — wins over overlay chrome on the home view */
+@import "./styles/jarvis-hq-desk.css";

@@ -62,35 +62,63 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
   autoSpeakRef.current = voice.autoSpeakIfListening;
 
   return (
-    <section className="nc-hq" aria-label="Jarvis home view">
+    <section className="nc-hq nc-hq--desk" aria-label="Jarvis home view">
       <div className="nc-hq-grid" aria-hidden="true" />
       <div className="nc-hq-scanlines" aria-hidden="true" />
 
-      <JarvisVoiceStatus
-        isSpeaking={voice.isSpeaking}
-        isThinking={voice.isThinking}
-        isRecordingCommand={voice.isRecordingCommand}
-        isWakeArmed={voice.isWakeArmed}
-      />
-
-      <JarvisVisualizer visMode={visMode} setVisMode={setVisMode} />
-
-      <div className="nc-hq-tiles">
+      <aside className="nc-hq-today-col">
         <JarvisTodayPanel onNavigate={onNavigate} />
-      </div>
+        <JarvisLearningsPanel />
+        <JarvisActivityFeed recentRuns={recentRuns} />
+      </aside>
 
-      <JarvisVoiceBar
-        isRecordingCommand={voice.isRecordingCommand}
-        isMuted={voice.isMuted}
-        isListening={voice.isListening}
-        canReplay={voice.canReplay}
-        togglePushToTalk={voice.togglePushToTalk}
-        hardMute={voice.hardMute}
-        unmute={voice.unmute}
-        playPending={voice.playPending}
-        startListening={voice.startListening}
-        stopListening={voice.stopListening}
-      />
+      <div className="nc-hq-desk">
+        <header className="nc-hq-desk-hdr">
+          <JarvisVoiceStatus
+            isSpeaking={voice.isSpeaking}
+            isThinking={voice.isThinking}
+            isRecordingCommand={voice.isRecordingCommand}
+            isWakeArmed={voice.isWakeArmed}
+          />
+          <div className="nc-hq-core-jewel">
+            <JarvisVisualizer visMode={visMode} setVisMode={setVisMode} />
+          </div>
+        </header>
+
+        {voice.voiceError && <div className="nc-hq-voice-error">{voice.voiceError}</div>}
+
+        <JarvisConversationConsole
+          conversation={conversation}
+          isThinking={voice.isThinking}
+          asking={ask.asking}
+          ask={ask.ask}
+          setAsk={ask.setAsk}
+          askNote={ask.askNote}
+          answerVia={ask.answerVia}
+          answerSources={ask.answerSources}
+          answerCitations={ask.answerCitations}
+          sourcesExpanded={ask.sourcesExpanded}
+          setSourcesExpanded={ask.setSourcesExpanded}
+          submitAsk={() => void ask.submitAsk()}
+          onNewChat={() => ask.startNewChat(() => setConversation([]))}
+          proposedMemories={ask.proposedMemories}
+          onKeepMemory={(proposal) => void ask.keepProposedMemory(proposal)}
+          onSkipMemory={ask.skipProposedMemory}
+        />
+
+        <JarvisVoiceBar
+          isRecordingCommand={voice.isRecordingCommand}
+          isMuted={voice.isMuted}
+          isListening={voice.isListening}
+          canReplay={voice.canReplay}
+          togglePushToTalk={voice.togglePushToTalk}
+          hardMute={voice.hardMute}
+          unmute={voice.unmute}
+          playPending={voice.playPending}
+          startListening={voice.startListening}
+          stopListening={voice.stopListening}
+        />
+      </div>
 
       {voice.pendingVoiceIntent && (
         <JarvisIntentConfirmOverlay
@@ -111,31 +139,6 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
           }}
         />
       )}
-
-      {voice.voiceError && <div className="nc-hq-voice-error">{voice.voiceError}</div>}
-
-      <JarvisActivityFeed recentRuns={recentRuns} />
-
-      <JarvisLearningsPanel />
-
-      <JarvisConversationConsole
-        conversation={conversation}
-        isThinking={voice.isThinking}
-        asking={ask.asking}
-        ask={ask.ask}
-        setAsk={ask.setAsk}
-        askNote={ask.askNote}
-        answerVia={ask.answerVia}
-        answerSources={ask.answerSources}
-        answerCitations={ask.answerCitations}
-        sourcesExpanded={ask.sourcesExpanded}
-        setSourcesExpanded={ask.setSourcesExpanded}
-        submitAsk={() => void ask.submitAsk()}
-        onNewChat={() => ask.startNewChat(() => setConversation([]))}
-        proposedMemories={ask.proposedMemories}
-        onKeepMemory={(proposal) => void ask.keepProposedMemory(proposal)}
-        onSkipMemory={ask.skipProposedMemory}
-      />
     </section>
   );
 };

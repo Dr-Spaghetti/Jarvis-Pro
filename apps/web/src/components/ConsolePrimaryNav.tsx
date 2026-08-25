@@ -38,12 +38,8 @@ export const ConsolePrimaryNav = ({
   return (
     <nav className="console-primary-nav" aria-label="Primary navigation">
       <div className="console-primary-nav-brand">
-        <div className="console-primary-nav-wordmark">
-          JARVIS
-          <br />
-          HQ
-        </div>
-        <div className="console-primary-nav-version">LOCAL</div>
+        <div className="console-primary-nav-wordmark">JARVIS</div>
+        <div className="console-primary-nav-version">Local</div>
       </div>
       <div className="console-primary-nav-tabs">
         {PRIMARY_NAV_ITEMS.map((item, position) => {

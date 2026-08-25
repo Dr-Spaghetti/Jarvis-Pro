@@ -278,7 +278,7 @@ export const JarvisVisualizer = ({ visMode, setVisMode }: Props) => {
   return (
     <>
       <div className="nc-hq-variant-ctrl">
-        <span className="nc-hq-variant-label">CONSCIOUSNESS_CORE</span>
+        <span className="nc-hq-variant-label">Core</span>
         <div className="nc-hq-variant-tabs">
           {(["core", "radar", "signal"] as const).map((m) => (
             <button

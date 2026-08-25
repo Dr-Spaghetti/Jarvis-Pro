@@ -12,7 +12,7 @@ export const JarvisActivityFeed = ({ recentRuns }: Props) => {
   const overflow = recentRuns.length - MAX_SHOWN;
   return (
     <div className="nc-hq-activity">
-      <div className="nc-hq-activity-hdr">EXEC_LOG</div>
+      <div className="nc-hq-activity-hdr">Recent</div>
       {recentRuns.length === 0 ? (
         <div className="nc-hq-activity-empty">No recent workflow runs</div>
       ) : (

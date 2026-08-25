@@ -1,0 +1,393 @@
+/*
+ * Jarvis HQ desk layout — loaded after HUD Ultimate so the working
+ * surface wins over overlay chrome without rewriting every tab.
+ */
+
+.console-shell .console-main-canvas {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.console-shell .console-main-canvas > .workspace-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.nc-hq--desk {
+  display: grid;
+  grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 18px 16px 14px;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--font-headline), var(--font-display);
+}
+
+.nc-hq--desk .nc-hq-scanlines {
+  display: none;
+}
+
+.nc-hq--desk .nc-hq-grid,
+.nc-hq--desk .nc-hq-scanlines {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.nc-hq--desk .nc-hq-today-col {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.nc-hq--desk .nc-hq-desk {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.nc-hq--desk .nc-hq-grid {
+  opacity: 0.28;
+  background-image: radial-gradient(
+    ellipse 50% 40% at 72% 18%,
+    rgba(57, 255, 20, 0.08) 0%,
+    transparent 70%
+  );
+}
+
+.nc-hq--desk .nc-hq-today-col,
+.nc-hq--desk .nc-hq-desk {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid rgba(57, 255, 20, 0.16);
+  background: rgba(4, 8, 5, 0.78);
+}
+
+.nc-hq--desk .nc-hq-today-col {
+  overflow: auto;
+  padding: 14px 14px 10px;
+  gap: 12px;
+}
+
+.nc-hq--desk .nc-hq-tiles {
+  position: static;
+  top: auto;
+  left: auto;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.nc-hq--desk .jarvis-today {
+  gap: 14px;
+}
+
+.nc-hq--desk .jarvis-panel-title {
+  font-family: var(--font-headline);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #39ff14;
+  margin: 0;
+}
+
+.nc-hq--desk .jarvis-today-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(226, 226, 226, 0.45);
+}
+
+.nc-hq--desk .jarvis-today-task,
+.nc-hq--desk .jarvis-today-memory li,
+.nc-hq--desk .jarvis-capture-input {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.nc-hq--desk .jarvis-capture-input,
+.nc-hq--desk .jarvis-capture-kind,
+.nc-hq--desk .jarvis-capture-submit {
+  border-radius: 2px;
+}
+
+.nc-hq--desk .nc-hq-desk {
+  background: rgba(3, 7, 4, 0.62);
+}
+
+.nc-hq--desk .nc-hq-desk-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.12);
+  flex-shrink: 0;
+  min-height: 72px;
+}
+
+.nc-hq--desk .nc-hq-voice-status {
+  position: static;
+  top: auto;
+  left: auto;
+  z-index: auto;
+}
+
+.nc-hq--desk .nc-hq-voice-label {
+  letter-spacing: 0.16em;
+  font-size: 10px;
+}
+
+.nc-hq--desk .nc-hq-voice-indicator {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  border-color: rgba(57, 255, 20, 0.28);
+}
+
+.nc-hq--desk .nc-hq-core-jewel {
+  width: 148px;
+  height: 72px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.nc-hq--desk .nc-hq-variant-ctrl {
+  display: none;
+}
+
+.nc-hq--desk .nc-hq-visualizer {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: 148px;
+  height: 148px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nc-hq--desk .nc-hq-visualizer canvas {
+  width: 148px !important;
+  height: 148px !important;
+}
+
+.nc-hq--desk .nc-hq-console {
+  position: relative !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: auto !important;
+  max-height: none !important;
+  flex: 1;
+  min-height: 0;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+.nc-hq--desk .nc-hq-console-hdr {
+  padding: 12px 16px;
+  background: transparent !important;
+}
+
+.nc-hq--desk .nc-hq-console-hdr-left {
+  font-family: var(--font-headline);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+.nc-hq--desk .nc-hq-console-hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nc-hq--desk .nc-hq-console-turns {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.nc-hq--desk .nc-hq-new-chat {
+  background: none;
+  border: 1px solid rgba(57, 255, 20, 0.28);
+  color: rgba(57, 255, 20, 0.85);
+  font-family: var(--font-headline);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.nc-hq--desk .nc-hq-console-msgs {
+  padding: 8px 18px 16px;
+  gap: 16px;
+}
+
+.nc-hq--desk .nc-hq-empty {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 24px 4px;
+  max-width: 36em;
+}
+
+.nc-hq--desk .nc-hq-msg--you,
+.nc-hq--desk .nc-hq-msg--jarvis {
+  max-width: 78%;
+  padding: 12px 16px;
+}
+
+.nc-hq--desk .nc-hq-msg-who {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.nc-hq--desk .nc-hq-msg-text {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #e8eee8;
+}
+
+.nc-hq--desk .nc-hq-thinking,
+.nc-hq--desk .nc-hq-ask-note {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 6px 0;
+}
+
+.nc-hq--desk .nc-hq-ask-note {
+  color: var(--term-red, #ff6152);
+}
+
+.nc-hq--desk .nc-hq-console-input {
+  padding: 10px 16px 4px;
+  gap: 10px;
+}
+
+.nc-hq--desk .nc-hq-input {
+  font-size: 15px;
+  padding: 10px 4px;
+}
+
+.nc-hq--desk .nc-hq-send {
+  padding: 8px 16px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.nc-hq--desk .nc-hq-voice-bar {
+  position: static !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 8px 16px 14px;
+  gap: 8px;
+}
+
+.nc-hq--desk .nc-hq-talk-btn,
+.nc-hq--desk .nc-hq-handsfree-btn,
+.nc-hq--desk .nc-hq-mute-btn,
+.nc-hq--desk .nc-hq-replay-btn {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.nc-hq--desk .nc-hq-activity,
+.nc-hq--desk .nc-hq-learnings-panel {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  max-height: 180px;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.nc-hq--desk .nc-hq-learnings-panel {
+  padding: 10px 0 0;
+  border: 0 !important;
+  border-top: 1px solid rgba(57, 255, 20, 0.12) !important;
+  background: transparent !important;
+}
+
+.nc-hq--desk .nc-hq-learnings-title,
+.nc-hq--desk .nc-hq-activity-hdr {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(226, 226, 226, 0.45);
+}
+
+.nc-hq--desk .nc-hq-voice-error {
+  position: static;
+  margin: 0 16px;
+}
+
+.nc-hq--desk .nc-hq-intent-confirm {
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 40;
+}
+
+.nc-hq--desk .jarvis-tile {
+  min-height: 64px;
+  border-radius: 2px;
+}
+
+/* Nav: readable labels, less costume tracking */
+.console-primary-nav-wordmark {
+  font-size: 1.05rem;
+  letter-spacing: 0.22em;
+  line-height: 1.1;
+}
+
+.console-primary-nav-tab-label {
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.console-primary-nav-tab {
+  padding: 0.7rem 1.25rem;
+}
+
+@media (max-width: 980px) {
+  .nc-hq--desk {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(180px, 34%) minmax(0, 1fr);
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .nc-hq--desk .nc-hq-core-jewel {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nc-hq--desk .nc-hq-voice-dot,
+  .nc-hq--desk .nc-hq-console-hdr-dot,
+  .nc-hq-scanlines {
+    animation: none;
+  }
+}

@@ -62,7 +62,7 @@ export const HomeTilesPanel = ({ onTileActivate }: HomeTilesPanelProps) => {
   return (
     <section className="jarvis-panel jarvis-tiles" aria-label="Home tiles">
       <div className="jarvis-tiles-header">
-        <p className="jarvis-panel-title">📊 Today</p>
+        <p className="jarvis-panel-title">Metrics</p>
         <div className="jarvis-tiles-meta">
           {generatedAt && !error ? (
             <span className="jarvis-tiles-fresh">as of {formatGeneratedAt(generatedAt)}</span>

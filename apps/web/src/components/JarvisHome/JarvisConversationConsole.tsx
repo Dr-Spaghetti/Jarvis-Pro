@@ -54,39 +54,15 @@ export const JarvisConversationConsole = ({
       <div className="nc-hq-console-hdr">
         <span className="nc-hq-console-hdr-left">
           <span className="nc-hq-console-hdr-dot" aria-hidden="true" />
-          DIRECT_LINK · JARVIS
+          Ask Jarvis
         </span>
-        <span
-          className="nc-hq-console-hdr-right"
-          style={{ display: "flex", alignItems: "center", gap: 10 }}
-        >
-          <span
-            style={{
-              fontSize: 9,
-              letterSpacing: ".18em",
-              color: "var(--text-secondary)",
-              textTransform: "uppercase",
-            }}
-          >
-            CTX · {conversation.length} {conversation.length === 1 ? "TURN" : "TURNS"}
+        <span className="nc-hq-console-hdr-right">
+          <span className="nc-hq-console-turns">
+            {conversation.length} {conversation.length === 1 ? "turn" : "turns"}
           </span>
           {conversation.length > 0 && (
-            <button
-              type="button"
-              onClick={onNewChat}
-              style={{
-                background: "none",
-                border: "1px solid rgba(57,255,20,0.18)",
-                color: "rgba(57,255,20,0.38)",
-                fontFamily: "var(--font-display)",
-                fontSize: 8,
-                letterSpacing: ".14em",
-                textTransform: "uppercase",
-                padding: "2px 7px",
-                cursor: "pointer",
-              }}
-            >
-              NEW CHAT
+            <button type="button" className="nc-hq-new-chat" onClick={onNewChat}>
+              New chat
             </button>
           )}
         </span>
@@ -94,34 +70,23 @@ export const JarvisConversationConsole = ({
 
       <div className="nc-hq-console-msgs" ref={consoleScrollRef}>
         {conversation.length === 0 && (
-          <div
-            style={{
-              color: "var(--text-secondary)",
-              fontSize: 11,
-              letterSpacing: ".08em",
-              padding: "8px 0",
-            }}
-          >
-            AWAITING DIRECTIVE<span className="nc-blink">_</span>
+          <div className="nc-hq-empty">
+            Ask anything — a note, a task, or what’s on your plate today.
           </div>
         )}
         {conversation.map((turn, i) => (
           <div className="nc-hq-turn" key={`${turn.time}-${i}`}>
             <div className="nc-hq-msg nc-hq-msg--you">
-              <div className="nc-hq-msg-who">USR_CMD · {turn.time}</div>
+              <div className="nc-hq-msg-who">You · {turn.time}</div>
               <div className="nc-hq-msg-text">{turn.question}</div>
             </div>
             <div className="nc-hq-msg nc-hq-msg--jarvis">
-              <div className="nc-hq-msg-who">JARVIS</div>
+              <div className="nc-hq-msg-who">Jarvis</div>
               <div className="nc-hq-msg-text">{turn.answer.replace(/\[\d+\]/g, "")}</div>
             </div>
           </div>
         ))}
-        {isThinking && (
-          <div className="nc-hq-thinking">
-            PROCESSING<span className="nc-blink">_</span>
-          </div>
-        )}
+        {isThinking && <div className="nc-hq-thinking">Thinking…</div>}
         {proposedMemories.length > 0 && !asking && (
           <div className="nc-hq-memory-propose" aria-label="Proposed memories">
             {proposedMemories.map((proposal) => (
@@ -139,20 +104,7 @@ export const JarvisConversationConsole = ({
             ))}
           </div>
         )}
-        {askNote && !asking && (
-          <div
-            style={{
-              color: "var(--term-red, #ff4444)",
-              fontSize: 11,
-              letterSpacing: ".08em",
-              padding: "6px 0",
-              marginTop: 4,
-              lineHeight: 1.5,
-            }}
-          >
-            ⚠ {askNote}
-          </div>
-        )}
+        {askNote && !asking && <div className="nc-hq-ask-note">⚠ {askNote}</div>}
         {answerVia && !asking && (
           <div className="nc-hq-attribution">
             <button
@@ -197,7 +149,7 @@ export const JarvisConversationConsole = ({
         <input
           className="nc-hq-input"
           type="text"
-          placeholder="Issue a directive to JARVIS…"
+          placeholder="Ask Jarvis…"
           value={ask}
           aria-label="Send a message to Jarvis"
           onChange={(e) => setAsk(e.target.value)}

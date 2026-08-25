@@ -77,6 +77,6 @@ describe("HomeTilesPanel", () => {
     render(<HomeTilesPanel />);
 
     // No tiles, no crash — the header still renders.
-    expect(await screen.findByText("📊 Today")).toBeInTheDocument();
+    expect(await screen.findByText("Metrics")).toBeInTheDocument();
   });
 });

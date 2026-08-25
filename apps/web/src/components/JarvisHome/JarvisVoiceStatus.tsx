@@ -12,18 +12,18 @@ export const JarvisVoiceStatus = ({
   isWakeArmed,
 }: Props) => (
   <div className="nc-hq-voice-status">
-    <div className="nc-hq-voice-label">VOICE_SYNTH</div>
+    <div className="nc-hq-voice-label">Voice</div>
     <div className="nc-hq-voice-indicator">
       <span className="nc-hq-voice-dot" aria-hidden="true" />
       {isSpeaking
-        ? "SPEAKING"
+        ? "Speaking"
         : isThinking
-          ? "PROCESSING"
+          ? "Thinking"
           : isRecordingCommand
-            ? "LISTENING"
+            ? "Listening"
             : isWakeArmed
-              ? "WAKE ARMED"
-              : "STANDBY"}
+              ? "Wake armed"
+              : "Ready"}
     </div>
   </div>
 );

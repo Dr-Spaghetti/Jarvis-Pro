@@ -55,7 +55,7 @@ export const JarvisLearningsPanel = () => {
   return (
     <div className="nc-hq-learnings-panel hud-panel">
       <div className="nc-hq-learnings-header">
-        <span className="nc-hq-learnings-title">WHAT JARVIS KNOWS ABOUT YOU</span>
+        <span className="nc-hq-learnings-title">Known facts</span>
         <span className="nc-hq-learnings-count">{learnings.length} facts</span>
       </div>
       {loading ? (
