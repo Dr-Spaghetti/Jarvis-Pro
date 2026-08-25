@@ -39,6 +39,9 @@ const mockJarvisHomeFetch = () =>
     if (url.includes("/api/voice/transcribe")) {
       return jsonResponse({ text: "" });
     }
+    if (url.includes("/api/tiles")) {
+      return jsonResponse({ tiles: [], generatedAt: new Date().toISOString() });
+    }
     return jsonResponse({});
   });
 

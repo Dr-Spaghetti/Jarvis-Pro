@@ -1,8 +1,31 @@
 const JARVIS = "http://localhost:8787";
 const MAX_CTX = 800;
+const TOKEN_KEY = "octogent.authToken";
 
 let panel = null;
 let answerText = "";
+
+function syncTokenFromJarvisOrigin() {
+  try {
+    if (location.origin !== JARVIS) return;
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) chrome.storage.local.set({ [TOKEN_KEY]: token });
+  } catch {
+    /* ignore */
+  }
+}
+
+async function jarvisHeaders() {
+  const headers = { "Content-Type": "application/json" };
+  try {
+    const stored = await chrome.storage.local.get(TOKEN_KEY);
+    const token = stored[TOKEN_KEY];
+    if (token) headers.Authorization = `Bearer ${token}`;
+  } catch {
+    /* ignore */
+  }
+  return headers;
+}
 
 function getContext() {
   const sel = (window.getSelection()?.toString() ?? "").trim();
@@ -73,6 +96,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+syncTokenFromJarvisOrigin();
+
 async function sendQuestion() {
   const input = panel.querySelector(".j-input");
   const send = panel.querySelector(".j-send");
@@ -93,7 +118,7 @@ async function sendQuestion() {
     if (ctx) body.clipboardContext = ctx;
     const res = await fetch(`${JARVIS}/api/brain/ask`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await jarvisHeaders(),
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error("Jarvis is offline — start it first.");
@@ -132,7 +157,7 @@ async function playAnswer() {
   try {
     const res = await fetch(`${JARVIS}/api/voice/speak`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await jarvisHeaders(),
       body: JSON.stringify({ text: answerText, provider: "deepgram", model: "aura-2-odysseus-en" }),
     });
     if (!res.ok) throw new Error("speak failed");

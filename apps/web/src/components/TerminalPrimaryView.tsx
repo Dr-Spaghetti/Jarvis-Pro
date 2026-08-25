@@ -1,7 +1,7 @@
-import { type CSSProperties, useCallback, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../runtime/apiClient";
-import { buildTerminalsUrl } from "../runtime/runtimeEndpoints";
+import { buildTerminalSnapshotsUrl, buildTerminalsUrl } from "../runtime/runtimeEndpoints";
 import { Terminal } from "./Terminal";
 
 type Session = { id: string; label: string };
@@ -19,6 +19,30 @@ export const TerminalPrimaryView = () => {
   const [claudeModel, setClaudeModel] = useState(CLAUDE_MODELS[0]?.value ?? "claude-sonnet-4-6");
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiFetch(buildTerminalSnapshotsUrl());
+        if (!res.ok) return;
+        const data = (await res.json()) as Array<{
+          terminalId: string;
+          label: string;
+          state?: string;
+        }>;
+        if (cancelled || !Array.isArray(data)) return;
+        const live = data.filter((s) => s.state !== "exited" && s.state !== "stopped");
+        setSessions(live.map((s) => ({ id: s.terminalId, label: s.label || s.terminalId })));
+        setActiveId((cur) => cur ?? live[0]?.terminalId ?? null);
+      } catch {
+        /* keep empty local list */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const launch = useCallback(async () => {
     setLaunching(true);

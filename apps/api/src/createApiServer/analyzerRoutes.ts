@@ -623,6 +623,37 @@ export const handleAnalyzerListRoute: ApiRouteHandler = async ({
   return true;
 };
 
+export const ingestImageBuffer = async (
+  body: Buffer,
+  mimeType: string,
+  filename: string,
+  extra: Partial<AnalysisMeta> = {},
+): Promise<{ id: string } | { error: string }> => {
+  let result = await analyzeImageWithGemini(body, mimeType, extra.focusPrompt);
+  if (!result) {
+    result = await analyzeImageWithClaude(body, mimeType, extra.focusPrompt);
+  }
+  if (!result) {
+    const geminiKey = getGeminiKey();
+    const error = !geminiKey
+      ? "Set GEMINI_API_KEY in .env for image analysis (Claude fallback also unavailable — check ANTHROPIC_API_KEY)."
+      : "Image analysis failed — Gemini returned an error (possibly quota). Claude fallback also failed. Check API keys and quotas.";
+    return { error };
+  }
+
+  const id = extra.id ?? `analysis-${Date.now()}`;
+  const meta: AnalysisMeta = {
+    id,
+    type: "image",
+    filename,
+    mimeType,
+    created: extra.created ?? new Date().toISOString(),
+    ...extra,
+  };
+  saveAnalysis(meta, result);
+  return { id };
+};
+
 export const handleAnalyzerImageRoute: ApiRouteHandler = async ({
   request,
   response,
@@ -657,45 +688,20 @@ export const handleAnalyzerImageRoute: ApiRouteHandler = async ({
     return true;
   }
 
-  // Try Gemini first, fall back to Claude
-  let result = await analyzeImageWithGemini(body, mimeType, focusPrompt);
-  if (!result) {
-    const geminiKey = getGeminiKey();
-    result = await analyzeImageWithClaude(body, mimeType, focusPrompt);
-    if (!result) {
-      const errorMsg = !geminiKey
-        ? "Set GEMINI_API_KEY in .env for image analysis (Claude fallback also unavailable — check ANTHROPIC_API_KEY)."
-        : "Image analysis failed — Gemini returned an error (possibly quota). Claude fallback also failed. Check API keys and quotas.";
-      writeJson(response, 503, { error: errorMsg }, corsOrigin);
-      return true;
-    }
-    if (geminiKey) {
-      // Gemini was available but failed — note quota issue
-      result = { ...result, provider: "claude" };
-    }
-  }
-
-  const id = `analysis-${Date.now()}`;
-  const meta: AnalysisMeta = {
-    id,
-    type: "image",
-    filename,
-    mimeType,
-    created: new Date().toISOString(),
+  const ingested = await ingestImageBuffer(body, mimeType, filename, {
     ...(focusPrompt ? { focusPrompt } : {}),
-  };
-
-  try {
-    saveAnalysis(meta, result);
-    writeJson(response, 201, { id, meta, result }, corsOrigin);
-  } catch (e) {
-    writeJson(
-      response,
-      500,
-      { error: e instanceof Error ? e.message : "Failed to save analysis." },
-      corsOrigin,
-    );
+  });
+  if ("error" in ingested) {
+    writeJson(response, 503, { error: ingested.error }, corsOrigin);
+    return true;
   }
+  const record = readAnalysis(ingested.id);
+  writeJson(
+    response,
+    201,
+    { id: ingested.id, meta: record?.meta, result: record?.result },
+    corsOrigin,
+  );
   return true;
 };
 

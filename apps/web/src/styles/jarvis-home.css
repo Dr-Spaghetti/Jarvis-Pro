@@ -83,6 +83,20 @@
   color: var(--text-primary);
 }
 
+.nc-hq-tiles {
+  position: absolute;
+  top: 72px;
+  left: 12px;
+  width: min(300px, 32vw);
+  max-height: 42%;
+  overflow: auto;
+  z-index: 20;
+  pointer-events: auto;
+  background: rgba(2, 3, 4, 0.72);
+  border: 1px solid rgba(57, 255, 20, 0.18);
+  padding: 8px;
+}
+
 .nc-hq-grid {
   position: absolute;
   inset: 0;

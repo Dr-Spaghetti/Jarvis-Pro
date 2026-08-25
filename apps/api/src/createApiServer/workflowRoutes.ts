@@ -495,15 +495,18 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
-    const timeoutId = setTimeout(() => requestController.abort(), STEP_TIMEOUT_MS);
     let answer: string;
+    const stepController = new AbortController();
+    const onClientClose = () => stepController.abort();
+    requestController.signal.addEventListener("abort", onClientClose);
+    const stepTimeout = setTimeout(() => stepController.abort(), STEP_TIMEOUT_MS);
 
     try {
       const askRes = await fetch(brainAskUrl, {
         method: "POST",
         headers,
         body: JSON.stringify({ question }),
-        signal: requestController.signal,
+        signal: stepController.signal,
       });
       const data = (await askRes.json()) as { answer?: string };
       answer = typeof data.answer === "string" ? data.answer : "(no answer)";
@@ -515,7 +518,8 @@ export const handleWorkflowRunRoute: ApiRouteHandler = async (
       }
       runStatus = "error";
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(stepTimeout);
+      requestController.signal.removeEventListener("abort", onClientClose);
     }
 
     const durationMs = Date.now() - stepStart;

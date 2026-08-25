@@ -28,8 +28,8 @@ describe("classifyBrainQuestion", () => {
     if (r.type === "agentic") expect(r.connectors).toContain("apollo");
   });
 
-  it("detects 'pipeline' as Apollo", () => {
-    const r = classifyBrainQuestion("show me my pipeline");
+  it("detects 'sales pipeline' as Apollo", () => {
+    const r = classifyBrainQuestion("show me my sales pipeline");
     expect(r.type).toBe("agentic");
     if (r.type === "agentic") expect(r.connectors).toContain("apollo");
   });
@@ -48,11 +48,8 @@ describe("classifyBrainQuestion", () => {
     expect(classifyBrainQuestion("CHECK MY APOLLO LEADS").type).toBe("agentic");
   });
 
-  it("does not over-match — 'rank' in an unrelated phrase", () => {
-    // "rank" is intentionally broad in the classifier (acceptable false positive)
-    // — this documents current behaviour rather than asserting it never fires
-    const r = classifyBrainQuestion("what rank did she finish in the race");
-    expect(r.type).toBe("agentic"); // broad keyword match is expected
-    if (r.type === "agentic") expect(r.connectors).toContain("localfalcon");
+  it("does not treat ordinary 'rank' / 'leads' English as agency connectors", () => {
+    expect(classifyBrainQuestion("what rank did she finish in the race").type).toBe("general");
+    expect(classifyBrainQuestion("what leads to better conversions").type).toBe("general");
   });
 });

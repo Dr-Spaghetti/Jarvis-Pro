@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 import { AGENT_ARCHETYPES } from "../agentArsenal";
 import type { ApiRouteHandler } from "./routeHelpers";
@@ -107,7 +109,9 @@ export const orchestrateTask = async (
 
   const jobId = randomUUID();
   const coordDir = `.octogent/orchestration/${jobId}`;
+  mkdirSync(join(process.cwd(), coordDir), { recursive: true });
   const deployed: DeployedAgent[] = [];
+  const deployErrors: string[] = [];
 
   for (const item of validPlan) {
     const archetype = archetypeMap.get(item.archetypeId);
@@ -136,12 +140,22 @@ Other agents: ${validPlan
         archetypeId: item.archetypeId,
         subtask: item.subtask,
       });
-    } catch {
-      /* skip */
+    } catch (err) {
+      deployErrors.push(
+        `${archetype.name}: ${err instanceof Error ? err.message : "deploy failed"}`,
+      );
     }
   }
 
-  if (deployed.length === 0) return { ok: false, error: "Failed to deploy any agents" };
+  if (deployed.length === 0) {
+    return {
+      ok: false,
+      error:
+        deployErrors.length > 0
+          ? `Failed to deploy any agents: ${deployErrors.join("; ")}`
+          : "Failed to deploy any agents",
+    };
+  }
 
   return {
     ok: true,

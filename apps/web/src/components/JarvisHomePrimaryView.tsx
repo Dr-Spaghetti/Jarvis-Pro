@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import type { PrimaryNavIndex } from "../app/constants";
+import { HomeTilesPanel } from "./HomeTilesPanel";
 import { JarvisActivityFeed } from "./JarvisHome/JarvisActivityFeed";
 import { JarvisConversationConsole } from "./JarvisHome/JarvisConversationConsole";
 import { JarvisIntentConfirmOverlay } from "./JarvisHome/JarvisIntentConfirmOverlay";
@@ -73,6 +74,10 @@ export const JarvisHomePrimaryView = ({ onNavigate }: JarvisHomePrimaryViewProps
       />
 
       <JarvisVisualizer visMode={visMode} setVisMode={setVisMode} />
+
+      <div className="nc-hq-tiles">
+        <HomeTilesPanel />
+      </div>
 
       <JarvisVoiceBar
         isRecordingCommand={voice.isRecordingCommand}

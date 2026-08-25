@@ -222,8 +222,20 @@ export async function executeAgentLoop(
     };
   }
 
+  const loopStartedAt = Date.now();
+
   // Multi-iteration loop
   for (let iterNum = 1; iterNum <= currentStrategy.maxIterations; iterNum++) {
+    if (Date.now() - loopStartedAt > context.maxDurationMs) {
+      return {
+        finalOutput,
+        metrics: buildAgentLoopMetrics(strategy, iterations, selfCorrectionCount, 0),
+        succeeded: (qualityProgression[qualityProgression.length - 1] ?? 0) > 0.6,
+        earlyTermination: true,
+        terminationReason: `Stopped after ${context.maxDurationMs}ms duration cap`,
+      };
+    }
+
     // === EXECUTE ===
     const { output, durationMs } = await executeAgentIteration(context, iterNum, finalOutput);
 
@@ -271,12 +283,14 @@ export async function executeAgentLoop(
     finalOutput = output;
 
     // === DECIDE ===
-    const shouldContinue = shouldContinueLoop(
-      iterNum,
-      currentStrategy.maxIterations,
-      qualityProgression,
-      currentStrategy.fallbackThreshold,
-    );
+    const shouldContinue =
+      reflection.shouldContinue !== false &&
+      shouldContinueLoop(
+        iterNum,
+        currentStrategy.maxIterations,
+        qualityProgression,
+        currentStrategy.fallbackThreshold,
+      );
 
     if (!shouldContinue && iterNum < currentStrategy.maxIterations) {
       return {

@@ -39,6 +39,11 @@ export const createEmailIngestWebSocket = (projectStateDir: string) => {
             subject?: string;
             text?: string;
             html?: string;
+            attachments?: Array<{
+              filename?: string;
+              content_type?: string;
+              url?: string;
+            }>;
           };
         };
 
@@ -52,6 +57,11 @@ export const createEmailIngestWebSocket = (projectStateDir: string) => {
             messageId: m.message_id ?? "",
             text: m.text ?? "",
             html: m.html ?? "",
+            attachments: (m.attachments ?? []).map((a) => ({
+              filename: a.filename,
+              contentType: a.content_type,
+              url: a.url,
+            })),
           });
         }
       } catch {

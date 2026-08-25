@@ -53,7 +53,8 @@ export const useJarvisAsk = ({
         body: JSON.stringify(chatModel ? { question, model: chatModel } : { question }),
       });
       if (!res.ok) {
-        setAskNote("Ask failed");
+        const errBody = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
+        setAskNote(errBody.error ?? errBody.hint ?? `Ask failed (${res.status})`);
         return;
       }
       const data = (await res.json()) as {
@@ -101,8 +102,8 @@ export const useJarvisAsk = ({
           data.hint ?? "No local chat model is running. Pull one with: ollama pull qwen2.5:7b",
         );
       }
-    } catch {
-      setAskNote("Ask failed");
+    } catch (err) {
+      setAskNote(err instanceof Error ? err.message : "Ask failed — is Jarvis running?");
     } finally {
       setAsking(false);
     }

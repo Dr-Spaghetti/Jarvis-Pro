@@ -3,7 +3,7 @@
   "name": "Jarvis",
   "version": "1.0.0",
   "description": "Ask Jarvis about any webpage without switching tabs.",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "storage"],
   "host_permissions": ["http://localhost:8787/*"],
   "background": {
     "service_worker": "background.js"

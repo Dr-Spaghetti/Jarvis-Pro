@@ -609,6 +609,7 @@ const VideoResult = ({ result }: { result: VideoAnalysisResult }) => (
 
 export const AnalyzerPrimaryView = () => {
   const [analyses, setAnalyses] = useState<AnalysisMeta[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AnalysisRecord | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -652,11 +653,15 @@ export const AnalyzerPrimaryView = () => {
   const fetchList = useCallback(async () => {
     try {
       const res = await apiFetch(buildAnalyzerUrl());
-      if (!res.ok) return;
+      if (!res.ok) {
+        setListError(`Could not load analyses (${res.status})`);
+        return;
+      }
       const data = (await res.json()) as { analyses: AnalysisMeta[] };
       setAnalyses(data.analyses);
+      setListError(null);
     } catch {
-      // silent — list is non-critical
+      setListError("Could not load analyses — is Jarvis running?");
     }
   }, []);
 
@@ -938,7 +943,9 @@ export const AnalyzerPrimaryView = () => {
         <aside style={s.sidebar}>
           <p style={s.sidebarHdr}>Past Analyses</p>
           <div style={s.sidebarList}>
-            {analyses.length === 0 ? (
+            {listError ? (
+              <p style={{ ...s.statusMsg(true), fontSize: 9 }}>{listError}</p>
+            ) : analyses.length === 0 ? (
               <p style={{ ...s.statusMsg(false), fontSize: 9 }}>No analyses yet</p>
             ) : (
               analyses.map((a) => (

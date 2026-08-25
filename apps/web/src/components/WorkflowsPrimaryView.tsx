@@ -627,15 +627,20 @@ export const WorkflowsPrimaryView = () => {
   // Run history for the selected workflow
   const [runHistory, setRunHistory] = useState<WorkflowRun[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const fetchWorkflows = useCallback(async () => {
     try {
       const res = await apiFetch(buildWorkflowsUrl(), { method: "GET" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setListError(`Could not load workflows (${res.status})`);
+        return;
+      }
       const data = (await res.json()) as { workflows: Workflow[] };
       setWorkflows(Array.isArray(data.workflows) ? data.workflows : []);
+      setListError(null);
     } catch {
-      // ignore
+      setListError("Could not load workflows — is Jarvis running?");
     }
   }, []);
 
@@ -869,7 +874,15 @@ export const WorkflowsPrimaryView = () => {
       </header>
 
       <div style={nc.body}>
-        {workflows.length === 0 && !creating ? (
+        {listError && !creating ? (
+          <div style={nc.mainCentered}>
+            <p style={nc.emptyTitle}>Could not load workflows</p>
+            <p style={nc.emptyDesc}>{listError}</p>
+            <button type="button" style={nc.createBtn} onClick={() => void fetchWorkflows()}>
+              Retry
+            </button>
+          </div>
+        ) : workflows.length === 0 && !creating ? (
           <div style={nc.mainCentered}>
             <span style={nc.emptyGlyph}>⟐</span>
             <p style={nc.emptyTitle}>No workflows yet</p>

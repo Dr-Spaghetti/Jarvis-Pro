@@ -13,7 +13,7 @@ The runtime underneath is [Octogent](https://github.com/hesamsheikh/octogent) (P
 | **Surveillance** | Live view of running terminals. |
 | **Workflows** | Multi-step Ask Jarvis checklists, not Zapier. |
 | **Recent Convos** | Session history. |
-| **Content Analyzer** | Files, URLs, and AgentMail **links**. |
+| **Content Analyzer** | Files, URLs, and AgentMail **links and images**. |
 | **Ideas** | Scratchpad into the vault. |
 | **Settings** | Voice, Gmail, email ingest, morning brief, remote token. |
 | **Terminal** | Launch Claude or Codex. Close **stops** the process. |

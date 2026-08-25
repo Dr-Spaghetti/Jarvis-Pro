@@ -26,4 +26,6 @@ Jarvis must be running at `http://localhost:8787`. Use **START JARVIS FINAL** on
 
 - Works on most websites. A small number of sites (e.g. some Google apps) block browser extensions via CSP — this is a browser limitation.
 - Context is capped at 800 characters to keep API calls fast.
+- If Jarvis requires an unlock token, open Jarvis in the browser once so the
+  extension can copy it. Reload the extension after changing `OCTOGENT_AUTH_TOKEN`.
 - Voice defaults to Deepgram Odysseus (deep male). Change in Jarvis Settings → Voice.

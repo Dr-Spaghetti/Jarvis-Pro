@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type UrlResearchResult, saveAnalysis } from "./analyzerRoutes.js";
+import { type UrlResearchResult, ingestImageBuffer, saveAnalysis } from "./analyzerRoutes.js";
 import { askViaPerplexity } from "./brain/ask.js";
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -57,33 +57,81 @@ const NOISE_DOMAINS = new Set([
   "mktomail.com",
 ]);
 
-const isNoiseUrl = (u: string): boolean => {
+const isNoiseHost = (u: string): boolean => {
   try {
-    const parsed = new URL(u);
-    if (IMAGE_EXTENSIONS.test(parsed.pathname)) return true;
-    const host = parsed.hostname.toLowerCase();
+    const host = new URL(u).hostname.toLowerCase();
     return [...NOISE_DOMAINS].some((d) => host === d || host.endsWith(`.${d}`));
   } catch {
     return true;
   }
 };
 
-const extractUrls = (text: string, html: string): string[] => {
-  // Prefer text body URLs — they're intentional. HTML adds extras from signatures/formatting.
+const isImageUrl = (u: string): boolean => {
+  try {
+    return IMAGE_EXTENSIONS.test(new URL(u).pathname);
+  } catch {
+    return false;
+  }
+};
+
+export const extractEmailTargets = (
+  text: string,
+  html: string,
+): { pageUrls: string[]; imageUrls: string[] } => {
   const textUrls = text.match(URL_REGEX) ?? [];
   const htmlUrls = html.match(URL_REGEX) ?? [];
   const raw = textUrls.length > 0 ? textUrls : htmlUrls;
   const seen = new Set<string>();
-  return raw.filter((u) => {
+  const pageUrls: string[] = [];
+  const imageUrls: string[] = [];
+  for (const u of raw) {
     try {
       new URL(u);
     } catch {
-      return false;
+      continue;
     }
-    if (seen.has(u)) return false;
+    if (seen.has(u) || isNoiseHost(u)) continue;
     seen.add(u);
-    return !isNoiseUrl(u);
+    if (isImageUrl(u)) imageUrls.push(u);
+    else pageUrls.push(u);
+  }
+  return { pageUrls, imageUrls };
+};
+
+const mimeFromImageUrl = (u: string): string => {
+  try {
+    const path = new URL(u).pathname.toLowerCase();
+    if (path.endsWith(".png")) return "image/png";
+    if (path.endsWith(".gif")) return "image/gif";
+    if (path.endsWith(".webp")) return "image/webp";
+  } catch {
+    /* ignore */
+  }
+  return "image/jpeg";
+};
+
+const ingestRemoteImage = async (
+  url: string,
+  emailMeta: {
+    source: "email";
+    emailFrom: string;
+    emailSubject: string;
+    emailMessageId: string;
+  },
+): Promise<boolean> => {
+  if (isBlockedFetchUrl(url)) return false;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) return false;
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length === 0 || buf.length > 20 * 1024 * 1024) return false;
+  const mimeType = res.headers.get("content-type")?.split(";")[0]?.trim() || mimeFromImageUrl(url);
+  if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mimeType)) return false;
+  const ingested = await ingestImageBuffer(buf, mimeType, url.split("/").pop() || "email-image", {
+    id: `analysis-${randomUUID()}`,
+    sourceUrl: url,
+    ...emailMeta,
   });
+  return !("error" in ingested);
 };
 
 // ─── URL analysis ─────────────────────────────────────────────────────────────
@@ -167,6 +215,7 @@ export const processEmailWebhook = async (
     messageId: string;
     text: string;
     html: string;
+    attachments?: Array<{ filename?: string; contentType?: string; url?: string }>;
   },
 ): Promise<EmailIngestResult> => {
   const result: EmailIngestResult = { analysisCount: 0, errors: [] };
@@ -177,9 +226,9 @@ export const processEmailWebhook = async (
     emailMessageId: opts.messageId,
   };
 
-  const urls = extractUrls(opts.text, opts.html);
+  const { pageUrls, imageUrls } = extractEmailTargets(opts.text, opts.html);
 
-  for (const url of urls) {
+  for (const url of pageUrls) {
     try {
       const urlResult = await analyzeUrl(url);
       if (urlResult) {
@@ -200,6 +249,25 @@ export const processEmailWebhook = async (
       }
     } catch (e) {
       result.errors.push(`URL ${url}: ${String(e)}`);
+    }
+  }
+
+  for (const url of imageUrls) {
+    try {
+      if (await ingestRemoteImage(url, emailMeta)) result.analysisCount++;
+    } catch (e) {
+      result.errors.push(`Image ${url}: ${String(e)}`);
+    }
+  }
+
+  for (const attachment of opts.attachments ?? []) {
+    const url = attachment.url?.trim();
+    const mime = attachment.contentType ?? "";
+    if (!url || !mime.startsWith("image/")) continue;
+    try {
+      if (await ingestRemoteImage(url, emailMeta)) result.analysisCount++;
+    } catch (e) {
+      result.errors.push(`Attachment ${attachment.filename ?? url}: ${String(e)}`);
     }
   }
 

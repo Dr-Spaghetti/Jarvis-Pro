@@ -14,7 +14,6 @@ export type BrainQuestionRoute =
   | { type: "orchestrate" };
 
 const LOCALFALCON_KEYWORDS = [
-  "rank",
   "ranking",
   "rankings",
   "map pack",
@@ -46,15 +45,16 @@ const ORCHESTRATE_SINGLE_WORDS = ["multi-agent", "orchestrate"];
 
 const APOLLO_KEYWORDS = [
   "apollo",
-  "leads",
   "lead count",
+  "how many leads",
+  "my leads",
+  "apollo leads",
+  "sales pipeline",
+  "lead pipeline",
   "prospects",
-  "pipeline",
-  "outreach",
-  "sequence",
+  "outreach sequence",
   "email campaign",
   "lead credits",
-  "enrichment",
   "contacts remaining",
 ];
 
